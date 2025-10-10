@@ -1,4 +1,4 @@
-package model.entity;
+package com.pedropaulo.minhasFinancas.model.entity;
 
 import jakarta.persistence.*;
 import lombok.*;

@@ -1,4 +1,4 @@
-package model.enums;
+package com.pedropaulo.minhasFinancas.model.enums;
 
 public enum StatusLancamento {
     PENDENTE,
