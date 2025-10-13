@@ -1,9 +1,9 @@
-package model.entity;
+package com.pedropaulo.minhasFinancas.model.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import model.enums.StatusLancamento;
-import model.enums.TipoLancamento;
+import com.pedropaulo.minhasFinancas.model.enums.StatusLancamento;
+import com.pedropaulo.minhasFinancas.model.enums.TipoLancamento;
 import org.springframework.data.jpa.convert.threeten.Jsr310JpaConverters;
 
 import java.math.BigDecimal;
