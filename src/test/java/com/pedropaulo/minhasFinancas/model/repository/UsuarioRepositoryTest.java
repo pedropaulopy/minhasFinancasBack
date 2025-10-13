@@ -7,10 +7,12 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 
 @SpringBootTest
 @RunWith(SpringRunner.class)
+@ActiveProfiles("test")
 public class UsuarioRepositoryTest {
     @Autowired
     UsuarioRepository repository;
@@ -23,5 +25,14 @@ public class UsuarioRepositoryTest {
         boolean exists = repository.existsByEmail("usuario@email.com");
 
         Assertions.assertThat(exists).isTrue();
+    }
+
+    @Test
+    public void retornaFalsoQuandoNaoHouverUsuarioCadastradoComEmail() {
+        repository.deleteAll();
+
+        boolean exists = repository.existsByEmail("usuario@email.com");
+
+        Assertions.assertThat(exists).isFalse();
     }
 }

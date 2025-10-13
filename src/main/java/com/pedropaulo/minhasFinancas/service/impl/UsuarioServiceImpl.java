@@ -1,11 +1,15 @@
 package com.pedropaulo.minhasFinancas.service.impl;
 
+import com.pedropaulo.minhasFinancas.exception.Autenticacao;
 import com.pedropaulo.minhasFinancas.exception.RegraNegocioException;
 import com.pedropaulo.minhasFinancas.service.UsuarioService;
 import com.pedropaulo.minhasFinancas.model.entity.Usuario;
 import com.pedropaulo.minhasFinancas.model.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
 
 @Service
 public class UsuarioServiceImpl implements UsuarioService {
@@ -19,13 +23,23 @@ public class UsuarioServiceImpl implements UsuarioService {
     }
 
     @Override
-    public Usuario autenticar(String email, String senha) {
-        return null;
+    public Usuario autenticar(String email, String senha) throws RegraNegocioException {
+        Optional<Usuario> usuario = repository.findByEmail(email);
+        if(!usuario.isPresent()){
+            throw new Autenticacao("Usuário não encontrado para o email informado.");
+        }
+        if(!usuario.get().getSenha().equals(senha)){
+            throw new Autenticacao("Senha inválida.");
+        }
+        return usuario.get();
+
     }
 
     @Override
-    public Usuario salvarUsuario(Usuario usuario) {
-        return null;
+    @Transactional
+    public Usuario salvarUsuario(Usuario usuario) throws RegraNegocioException {
+        validarEmail(usuario.getEmail());
+        return repository.save(usuario);
     }
 
     @Override
