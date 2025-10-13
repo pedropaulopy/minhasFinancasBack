@@ -1,7 +1,7 @@
 package com.pedropaulo.minhasFinancas.exception;
 
-public class Autenticacao extends RuntimeException {
-    public Autenticacao(String message) {
+public class AutenticacaoException extends RuntimeException {
+    public AutenticacaoException(String message) {
         super(message);
     }
 }

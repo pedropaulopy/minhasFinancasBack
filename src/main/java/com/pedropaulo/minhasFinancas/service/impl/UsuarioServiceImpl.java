@@ -1,6 +1,6 @@
 package com.pedropaulo.minhasFinancas.service.impl;
 
-import com.pedropaulo.minhasFinancas.exception.Autenticacao;
+import com.pedropaulo.minhasFinancas.exception.AutenticacaoException;
 import com.pedropaulo.minhasFinancas.exception.RegraNegocioException;
 import com.pedropaulo.minhasFinancas.service.UsuarioService;
 import com.pedropaulo.minhasFinancas.model.entity.Usuario;
@@ -26,10 +26,10 @@ public class UsuarioServiceImpl implements UsuarioService {
     public Usuario autenticar(String email, String senha) throws RegraNegocioException {
         Optional<Usuario> usuario = repository.findByEmail(email);
         if(!usuario.isPresent()){
-            throw new Autenticacao("Usuário não encontrado para o email informado.");
+            throw new AutenticacaoException("Usuário não encontrado para o email informado.");
         }
         if(!usuario.get().getSenha().equals(senha)){
-            throw new Autenticacao("Senha inválida.");
+            throw new AutenticacaoException("Senha inválida.");
         }
         return usuario.get();
 
