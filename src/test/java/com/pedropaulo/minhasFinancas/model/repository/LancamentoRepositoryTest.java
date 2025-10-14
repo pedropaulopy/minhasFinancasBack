@@ -26,9 +26,9 @@ public class LancamentoRepositoryTest {
     LancamentoRepository repository;
 
     @Autowired
-    TestEntityManager entityManager;
+    static TestEntityManager entityManager;
 
-    private Lancamento criaEPersisteLancamento(){
+    public static Lancamento criaEPersisteLancamento(){
         Lancamento lancamento = Lancamento.builder().
                 ano(2025).
                 mes(11).
