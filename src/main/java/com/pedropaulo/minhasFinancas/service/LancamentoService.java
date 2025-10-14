@@ -4,6 +4,7 @@ import com.pedropaulo.minhasFinancas.exception.RegraNegocioException;
 import com.pedropaulo.minhasFinancas.model.entity.Lancamento;
 import com.pedropaulo.minhasFinancas.model.enums.StatusLancamento;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,4 +17,5 @@ public interface LancamentoService {
     void atualizarStatus(Lancamento lancamento, StatusLancamento status) throws RegraNegocioException;
     void validar(Lancamento lancamento) throws RegraNegocioException;
     Optional<Lancamento> obterPorId(Long id);
+    BigDecimal obterSaldoPorUsuario(Long id);
 }

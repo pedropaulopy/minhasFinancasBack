@@ -118,4 +118,14 @@ public class LancamentoResource {
             throw new RegraNegocioException("Usuário não encontrado para o ID informado.");
         }
     }
+
+    @GetMapping("saldo/{id}")
+    public ResponseEntity obterSaldo(@PathVariable("id") Long idUsuario) throws RegraNegocioException {
+        Optional<Usuario> usuario = usuarioService.obterPorId(idUsuario);
+        if(!usuario.isPresent()){
+            return new ResponseEntity("Usuário não encontrado para o ID informado.", HttpStatus.BAD_REQUEST);
+        }
+        BigDecimal saldo = service.obterSaldoPorUsuario(idUsuario);
+        return ResponseEntity.ok(saldo);
+    }
 }
