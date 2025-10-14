@@ -5,6 +5,7 @@ import com.pedropaulo.minhasFinancas.exception.AutenticacaoException;
 import com.pedropaulo.minhasFinancas.exception.RegraNegocioException;
 import com.pedropaulo.minhasFinancas.model.entity.Usuario;
 import com.pedropaulo.minhasFinancas.service.UsuarioService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -12,12 +13,9 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/usuarios")
+@RequiredArgsConstructor
 public class UsuarioResource {
-    private UsuarioService service;
-
-    public UsuarioResource(UsuarioService service) {
-        this.service = service;
-    }
+    private final UsuarioService service;
 
     @PostMapping
     public ResponseEntity salvar (@RequestBody UsuarioDTO dto){
