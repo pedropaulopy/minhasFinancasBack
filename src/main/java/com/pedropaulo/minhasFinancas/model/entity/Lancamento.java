@@ -42,11 +42,11 @@ public class Lancamento {
     @Convert(converter = Jsr310JpaConverters.LocalDateConverter.class)
     private LocalDate dataCadastro;
 
-    @Column(name="tipo_lancamento")
+    @Column(name="tipo")
     @Enumerated(EnumType.STRING)
     private TipoLancamento tipoLancamento;
 
-    @Column(name="status_lancamento")
+    @Column(name="status")
     @Enumerated(EnumType.STRING)
     private StatusLancamento statusLancamento;
 }
