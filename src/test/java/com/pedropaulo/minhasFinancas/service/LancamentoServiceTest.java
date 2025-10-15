@@ -25,9 +25,11 @@ import java.util.List;
 @RunWith(SpringRunner.class)
 @ActiveProfiles("test")
 public class LancamentoServiceTest {
+    @SuppressWarnings("removal")
     @SpyBean
     LancamentoServiceImpl service;
 
+    @SuppressWarnings("removal")
     @MockBean
     LancamentoRepository repository;
 
@@ -239,18 +241,27 @@ public class LancamentoServiceTest {
         lancamento.setAno(2025);
         lancamento.setValor(BigDecimal.ZERO);
         erro = Assertions.catchThrowable(() -> service.validar(lancamento));
-        Assertions.assertThat(erro).isInstanceOf(RegraNegocioException.class).hasMessage("Informe um valor válido.");
+        Assertions.assertThat(erro).isInstanceOf(RegraNegocioException.class).hasMessage("Insira um valor válido.");
 
         lancamento.setValor(BigDecimal.valueOf(-1));
         erro = Assertions.catchThrowable(() -> service.validar(lancamento));
-        Assertions.assertThat(erro).isInstanceOf(RegraNegocioException.class).hasMessage("Informe um valor válido.");
+        Assertions.assertThat(erro).isInstanceOf(RegraNegocioException.class).hasMessage("Insira um valor válido.");
 
         lancamento.setValor(BigDecimal.valueOf(1));
         erro = Assertions.catchThrowable(() -> service.validar(lancamento));
-        Assertions.assertThat(erro).isInstanceOf(RegraNegocioException.class).hasMessage("Informe um tipo de transição válido.");
+        Assertions.assertThat(erro).isInstanceOf(RegraNegocioException.class).hasMessage("Insira um tipo de transação válido.");
 
         lancamento.setTipoLancamento(TipoLancamento.RECEITA);
         erro = Assertions.catchThrowable(() -> service.validar(lancamento));
         Assertions.assertThat(erro).isInstanceOf(RegraNegocioException.class).hasMessage("Informe um usuário válido.");
+    }
+
+    @Test
+    public void deveObterSaldoDeUmUsuario() {
+        Long idUsuario = 1l;
+        Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuario(idUsuario, TipoLancamento.RECEITA)).thenReturn(BigDecimal.valueOf(100));
+        Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuario(idUsuario, TipoLancamento.DESPESA)).thenReturn(BigDecimal.valueOf(50));
+        BigDecimal saldo = service.obterSaldoPorUsuario(idUsuario);
+        Assertions.assertThat(saldo).isEqualTo(BigDecimal.valueOf(50));
     }
 }
