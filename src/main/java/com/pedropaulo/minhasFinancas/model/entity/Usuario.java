@@ -1,5 +1,6 @@
 package com.pedropaulo.minhasFinancas.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -23,6 +24,7 @@ public class Usuario {
     @Column(name="email")
     private String email;
 
+    @JsonIgnore
     @Column(name="senha")
     private String senha;
 }
