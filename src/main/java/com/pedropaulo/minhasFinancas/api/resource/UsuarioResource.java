@@ -51,7 +51,7 @@ public class UsuarioResource {
     public ResponseEntity obterSaldo(@PathVariable("id") Long idUsuario) throws RegraNegocioException {
         Optional<Usuario> usuario = service.obterPorId(idUsuario);
         if(!usuario.isPresent()){
-            return new ResponseEntity("Usuário não encontrado para o ID informado.", HttpStatus.BAD_REQUEST);
+            return new ResponseEntity("Usuário não encontrado para o ID informado.", HttpStatus.NOT_FOUND);
         }
         BigDecimal saldo = lancamentoService.obterSaldoPorUsuario(idUsuario);
         return ResponseEntity.ok(saldo);

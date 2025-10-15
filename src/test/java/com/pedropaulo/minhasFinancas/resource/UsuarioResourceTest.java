@@ -27,6 +27,9 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.math.BigDecimal;
+import java.util.Optional;
+
 @RunWith(SpringRunner.class)
 @ActiveProfiles("test")
 @WebMvcTest(controllers = UsuarioResource.class)
@@ -58,9 +61,9 @@ public class UsuarioResourceTest {
         String json = new ObjectMapper().writeValueAsString(dto);
 
         MockHttpServletRequestBuilder request = MockMvcRequestBuilders.post((API.concat("/autenticar")))
-                                        .contentType(JSON)
-                                        .accept(JSON)
-                                        .content(json);
+                .contentType(JSON)
+                .accept(JSON)
+                .content(json);
 
         mvc.perform(request).andExpect(MockMvcResultMatchers.status().isOk())
                 .andExpect(MockMvcResultMatchers.jsonPath("id").value(usuario.getId()))
@@ -124,6 +127,36 @@ public class UsuarioResourceTest {
         mvc.perform(request).andExpect(MockMvcResultMatchers.status().isBadRequest());
     }
 
+    @Test
+    public void deveRetornarSaldoDeUmUsuario() throws Exception {
+        Long idUsuario = 1L;
+        BigDecimal saldo = BigDecimal.valueOf(1000);
+
+        Usuario usuario = Usuario.builder().id(idUsuario).nome("nome").email("email@email.com").build();
+        Mockito.when(service.obterPorId(idUsuario)).thenReturn(java.util.Optional.of(usuario));
+
+        Mockito.when(lancamentoService.obterSaldoPorUsuario(idUsuario)).thenReturn(saldo);
+
+        MockHttpServletRequestBuilder request = MockMvcRequestBuilders.get((API.concat("/saldo/").concat(idUsuario.toString())))
+                .contentType(JSON)
+                .accept(JSON);
+
+        mvc.perform(request).andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.content().string("1000"));
+    }
+
+    @Test
+    public void naoDeveRetornarSaldoDeUmUsuario() throws Exception {
+        Long idUsuario = 1L;
+
+        Mockito.when(service.obterPorId(idUsuario)).thenReturn(Optional.empty());
+
+        MockHttpServletRequestBuilder request = MockMvcRequestBuilders.get((API.concat("/saldo/").concat(idUsuario.toString())))
+                .contentType(JSON)
+                .accept(JSON);
+
+        mvc.perform(request).andExpect(MockMvcResultMatchers.status().isNotFound());
+    }
 
 
 }
