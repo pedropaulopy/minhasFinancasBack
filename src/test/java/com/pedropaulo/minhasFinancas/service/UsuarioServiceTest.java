@@ -31,11 +31,11 @@ public class UsuarioServiceTest {
         @MockBean
         UsuarioRepository repository;
 
-        @Before
-        public void setUp(){
-            repository = Mockito.mock(UsuarioRepository.class);
-            service = new UsuarioServiceImpl(repository);
-        }
+//        @Before
+//        public void setUp(){
+//            repository = Mockito.mock(UsuarioRepository.class);
+//            service = new UsuarioServiceImpl(repository);
+//        }
 
         @Test(expected = Test.None.class)
         public void deveValidarEmail() throws RegraNegocioException {
@@ -75,7 +75,7 @@ public class UsuarioServiceTest {
             Assertions.assertThat(result).isNotNull();
         }
 
-        @Test
+        @Test(expected = RegraNegocioException.class)
         public void naoDeveSalvarUsuarioComEmailJaCadastrado() throws RegraNegocioException {
             String email = "email@email.com";
             Usuario usuario = Usuario.builder().email(email).build();
