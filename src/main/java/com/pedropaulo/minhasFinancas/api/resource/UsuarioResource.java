@@ -4,20 +4,24 @@ import com.pedropaulo.minhasFinancas.api.dto.UsuarioDTO;
 import com.pedropaulo.minhasFinancas.exception.AutenticacaoException;
 import com.pedropaulo.minhasFinancas.exception.RegraNegocioException;
 import com.pedropaulo.minhasFinancas.model.entity.Usuario;
+import com.pedropaulo.minhasFinancas.service.LancamentoService;
 import com.pedropaulo.minhasFinancas.service.UsuarioService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.util.Optional;
+
 @RestController
 @RequestMapping("/api/usuarios")
+@RequiredArgsConstructor
 public class UsuarioResource {
-    private UsuarioService service;
+    private final UsuarioService service;
+    private final LancamentoService lancamentoService;
 
-    public UsuarioResource(UsuarioService service) {
-        this.service = service;
-    }
 
     @PostMapping
     public ResponseEntity salvar (@RequestBody UsuarioDTO dto){
@@ -41,5 +45,15 @@ public class UsuarioResource {
         }catch (AutenticacaoException | RegraNegocioException error){
             return ResponseEntity.badRequest().body(error.getMessage());
         }
+    }
+
+    @GetMapping("saldo/{id}")
+    public ResponseEntity obterSaldo(@PathVariable("id") Long idUsuario) throws RegraNegocioException {
+        Optional<Usuario> usuario = service.obterPorId(idUsuario);
+        if(!usuario.isPresent()){
+            return new ResponseEntity("Usuário não encontrado para o ID informado.", HttpStatus.BAD_REQUEST);
+        }
+        BigDecimal saldo = lancamentoService.obterSaldoPorUsuario(idUsuario);
+        return ResponseEntity.ok(saldo);
     }
 }
