@@ -71,14 +71,14 @@ public class LancamentoServiceImpl implements LancamentoService {
         if(lancamento.getAno() == null || lancamento.getAno().toString().length()!=4){
             throw new RegraNegocioException("Insira um ano válido.");
         }
-        if(lancamento.getUsuario() == null || lancamento.getUsuario().getId()==null){
-            throw new RegraNegocioException("Informe um usuário válido.");
-        }
         if(lancamento.getValor() == null || lancamento.getValor().doubleValue()<1){
             throw new RegraNegocioException("Insira um valor válido.");
         }
         if(lancamento.getTipoLancamento() == null){
             throw new RegraNegocioException("Insira um tipo de transação válido.");
+        }
+        if(lancamento.getUsuario() == null || lancamento.getUsuario().getId()==null){
+            throw new RegraNegocioException("Informe um usuário válido.");
         }
     }
 
