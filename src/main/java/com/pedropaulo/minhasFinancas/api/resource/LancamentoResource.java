@@ -134,9 +134,10 @@ public class LancamentoResource {
     }
 
     @GetMapping("/buscar/{id}")
-    public Optional<ResponseEntity> obterLancamento(@PathVariable("id") Long id){
-        return Optional.of(service.obterPorId(id).map(lancamento -> new ResponseEntity(converter(lancamento), HttpStatus.OK))
-                .orElseGet(() -> new ResponseEntity(HttpStatus.NOT_FOUND)));
+    public ResponseEntity<?> obterLancamento(@PathVariable("id") Long id) {
+        return service.obterPorId(id)
+                .map(lancamento -> new ResponseEntity<>(converter(lancamento), HttpStatus.OK))
+                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
 
