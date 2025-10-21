@@ -10,6 +10,7 @@ import com.pedropaulo.minhasFinancas.model.enums.TipoLancamento;
 import com.pedropaulo.minhasFinancas.service.LancamentoService;
 import com.pedropaulo.minhasFinancas.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.graphql.GraphQlProperties;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -41,6 +42,19 @@ public class LancamentoResource {
         lancamento.setStatusLancamento(StatusLancamento.valueOf(dto.getStatusLancamento()));
         return lancamento;
     }
+
+    private LancamentoDTO converter(Lancamento lancamento){
+        return LancamentoDTO.builder()
+                .id(lancamento.getId())
+                .descricao(lancamento.getDescricao())
+                .valor(lancamento.getValor())
+                .mes(lancamento.getMes())
+                .ano(lancamento.getAno())
+                .statusLancamento(String.valueOf(lancamento.getStatusLancamento()))
+                .tipoLancamento(String.valueOf(lancamento.getTipoLancamento()))
+                .build();
+    }
+
     @PostMapping("/salvar")
     public ResponseEntity salvar(@RequestBody LancamentoDTO dto){
         try{
@@ -84,7 +98,7 @@ public class LancamentoResource {
     }
 
     @DeleteMapping("deletar/{id}")
-    public ResponseEntity deletar(@PathVariable Long id, @RequestBody LancamentoDTO dto){
+    public ResponseEntity deletar(@PathVariable Long id){
         return service.obterPorId(id).map(entity ->{
             service.deletar(entity);
             return new ResponseEntity(HttpStatus.NO_CONTENT);
@@ -118,6 +132,13 @@ public class LancamentoResource {
             throw new RegraNegocioException("Usuário não encontrado para o ID informado.");
         }
     }
+
+    @GetMapping("/buscar/{id}")
+    public Optional<ResponseEntity> obterLancamento(@PathVariable("id") Long id){
+        return Optional.of(service.obterPorId(id).map(lancamento -> new ResponseEntity(converter(lancamento), HttpStatus.OK))
+                .orElseGet(() -> new ResponseEntity(HttpStatus.NOT_FOUND)));
+    }
+
 
 
 }
