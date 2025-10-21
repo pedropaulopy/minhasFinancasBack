@@ -5,7 +5,6 @@ import com.pedropaulo.minhasFinancas.model.entity.Lancamento;
 import com.pedropaulo.minhasFinancas.model.enums.StatusLancamento;
 import com.pedropaulo.minhasFinancas.model.enums.TipoLancamento;
 import com.pedropaulo.minhasFinancas.model.repository.LancamentoRepository;
-import com.pedropaulo.minhasFinancas.model.repository.LancamentoRepositoryTest;
 import com.pedropaulo.minhasFinancas.service.impl.LancamentoServiceImpl;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
@@ -259,8 +258,8 @@ public class LancamentoServiceTest {
     @Test
     public void deveObterSaldoDeUmUsuario() {
         Long idUsuario = 1l;
-        Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuario(idUsuario, TipoLancamento.RECEITA)).thenReturn(BigDecimal.valueOf(100));
-        Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuario(idUsuario, TipoLancamento.DESPESA)).thenReturn(BigDecimal.valueOf(50));
+        Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuario(idUsuario, TipoLancamento.RECEITA, StatusLancamento.valueOf(StatusLancamento.EFETIVADO.name()))).thenReturn(BigDecimal.valueOf(100));
+        Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuario(idUsuario, TipoLancamento.DESPESA, StatusLancamento.valueOf(StatusLancamento.EFETIVADO.name()))).thenReturn(BigDecimal.valueOf(50));
         BigDecimal saldo = service.obterSaldoPorUsuario(idUsuario);
         Assertions.assertThat(saldo).isEqualTo(BigDecimal.valueOf(50));
     }
