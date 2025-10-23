@@ -1,13 +1,12 @@
 package com.pedropaulo.minhasFinancas.model.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
 import com.pedropaulo.minhasFinancas.model.enums.StatusLancamento;
 import com.pedropaulo.minhasFinancas.model.enums.TipoLancamento;
-import org.springframework.data.jpa.convert.threeten.Jsr310JpaConverters;
-
+import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import lombok.*;
+import org.springframework.data.jpa.convert.threeten.Jsr310JpaConverters;
 
 @Entity
 @Table(name="lancamento", schema="financas")

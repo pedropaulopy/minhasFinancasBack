@@ -3,7 +3,6 @@ package com.pedropaulo.minhasFinancas.service;
 import com.pedropaulo.minhasFinancas.exception.RegraNegocioException;
 import com.pedropaulo.minhasFinancas.model.entity.Lancamento;
 import com.pedropaulo.minhasFinancas.model.enums.StatusLancamento;
-
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
