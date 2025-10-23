@@ -10,6 +10,7 @@ import com.pedropaulo.minhasFinancas.model.enums.TipoLancamento;
 import com.pedropaulo.minhasFinancas.service.LancamentoService;
 import com.pedropaulo.minhasFinancas.service.UsuarioService;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +33,7 @@ public class LancamentoResource {
         lancamento.setMes(dto.getMes());
         lancamento.setAno(dto.getAno());
         lancamento.setValor(dto.getValor());
-
+        lancamento.setDataCadastro(LocalDate.now());
         Usuario usuario = usuarioService.obterPorId(dto.getUsuario()).orElseThrow(() -> new RegraNegocioException("Usuário não encontrado com o ID informado."));
 
         lancamento.setUsuario(usuario);

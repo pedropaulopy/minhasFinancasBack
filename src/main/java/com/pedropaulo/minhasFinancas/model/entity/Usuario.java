@@ -3,6 +3,9 @@ package com.pedropaulo.minhasFinancas.model.entity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.jpa.convert.threeten.Jsr310JpaConverters;
+
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "usuario", schema = "financas")
@@ -25,4 +28,8 @@ public class Usuario {
   @JsonIgnore
   @Column(name = "senha")
   private String senha;
+
+  @Column(name="data_cadastro")
+  @Convert(converter = Jsr310JpaConverters.LocalDateConverter.class)
+  private LocalDate dataCadastro;
 }
