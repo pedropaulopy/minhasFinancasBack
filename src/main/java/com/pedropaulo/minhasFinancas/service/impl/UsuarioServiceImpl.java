@@ -15,8 +15,8 @@ import java.util.Optional;
 @Service
 public class UsuarioServiceImpl implements UsuarioService {
 
-    private UsuarioRepository repository;
-    private PasswordEncoder encoder;
+    private final UsuarioRepository repository;
+    private final PasswordEncoder encoder;
 
     @Autowired
     public UsuarioServiceImpl(UsuarioRepository repository, PasswordEncoder encoder) {

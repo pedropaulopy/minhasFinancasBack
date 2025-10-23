@@ -74,9 +74,9 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         // Use as mesmas configurações que você tinha:
-        config.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
+        config.setAllowedOrigins(List.of("http://localhost:3000"));
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(Arrays.asList("*")); // "all" é ["*"]
+        config.setAllowedHeaders(List.of("*")); // "all" é ["*"]
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

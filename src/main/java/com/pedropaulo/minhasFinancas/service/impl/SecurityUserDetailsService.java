@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class SecurityUserDetailsService implements UserDetailsService {
 
-    private UsuarioRepository usuarioRepository;
+    private final UsuarioRepository usuarioRepository;
 
     public SecurityUserDetailsService(UsuarioRepository usuarioRepository) {
         this.usuarioRepository = usuarioRepository;

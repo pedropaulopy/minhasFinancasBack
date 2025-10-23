@@ -18,7 +18,7 @@ import java.util.Optional;
 
 @Service
 public class LancamentoServiceImpl implements LancamentoService {
-    private LancamentoRepository repository;
+    private final LancamentoRepository repository;
 
     public LancamentoServiceImpl(LancamentoRepository repository) {
         this.repository = repository;
