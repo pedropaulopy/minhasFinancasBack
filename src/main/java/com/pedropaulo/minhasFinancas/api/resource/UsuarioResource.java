@@ -5,7 +5,6 @@ import com.pedropaulo.minhasFinancas.api.dto.UsuarioDTO;
 import com.pedropaulo.minhasFinancas.exception.AutenticacaoException;
 import com.pedropaulo.minhasFinancas.exception.RegraNegocioException;
 import com.pedropaulo.minhasFinancas.model.entity.Usuario;
-import com.pedropaulo.minhasFinancas.service.JwtService;
 import com.pedropaulo.minhasFinancas.service.LancamentoService;
 import com.pedropaulo.minhasFinancas.service.UsuarioService;
 import com.pedropaulo.minhasFinancas.service.impl.JwtServiceImpl;
