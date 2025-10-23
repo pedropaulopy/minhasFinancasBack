@@ -65,7 +65,7 @@ public class LancamentoResource {
         }
     }
 
-    @PutMapping("atualizar/{id}")
+    @PutMapping("{id}/atualizar")
     public ResponseEntity atualizar(@PathVariable Long id, @RequestBody LancamentoDTO dto){
         return service.obterPorId(id).map(entity ->{
             try {
@@ -79,7 +79,7 @@ public class LancamentoResource {
         }).orElseGet(() -> ResponseEntity.badRequest().body("Lançamento não encontrado."));
     }
 
-    @PutMapping("atualizar_status/{id}")
+    @PutMapping("{id}/atualizar_status")
     public ResponseEntity atualizarStatus(@PathVariable Long id, @RequestBody LancamentoStatusDTO dto){
         return service.obterPorId(id).map(entity ->{
             StatusLancamento statusSelecionado = StatusLancamento.valueOf(dto.getStatus());
@@ -96,7 +96,7 @@ public class LancamentoResource {
         }).orElseGet(() -> ResponseEntity.badRequest().body("Lançamento não encontrado."));
     }
 
-    @DeleteMapping("deletar/{id}")
+    @DeleteMapping("{id}/deletar")
     public ResponseEntity deletar(@PathVariable Long id){
         return service.obterPorId(id).map(entity ->{
             service.deletar(entity);
@@ -132,7 +132,7 @@ public class LancamentoResource {
         }
     }
 
-    @GetMapping("/buscar/{id}")
+    @GetMapping("{id}/buscar")
     public ResponseEntity<?> obterLancamento(@PathVariable("id") Long id) {
         return service.obterPorId(id)
                 .map(lancamento -> new ResponseEntity<>(converter(lancamento), HttpStatus.OK))

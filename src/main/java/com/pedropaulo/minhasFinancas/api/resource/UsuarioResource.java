@@ -52,7 +52,7 @@ public class UsuarioResource {
         }
     }
 
-    @GetMapping("saldo/{id}")
+    @GetMapping("{id}/saldo")
     public ResponseEntity obterSaldo(@PathVariable("id") Long idUsuario) throws RegraNegocioException {
         Optional<Usuario> usuario = service.obterPorId(idUsuario);
         if(!usuario.isPresent()){
