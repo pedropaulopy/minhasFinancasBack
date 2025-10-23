@@ -19,7 +19,6 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/usuarios")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000", methods = {RequestMethod.GET, RequestMethod.POST})
 public class UsuarioResource {
     private final UsuarioService service;
     private final LancamentoService lancamentoService;
