@@ -258,8 +258,8 @@ public class LancamentoServiceTest {
     @Test
     public void deveObterSaldoDeUmUsuario() {
         Long idUsuario = 1l;
-        Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuario(idUsuario, TipoLancamento.RECEITA, StatusLancamento.valueOf(StatusLancamento.EFETIVADO.name()))).thenReturn(BigDecimal.valueOf(100));
-        Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuario(idUsuario, TipoLancamento.DESPESA, StatusLancamento.valueOf(StatusLancamento.EFETIVADO.name()))).thenReturn(BigDecimal.valueOf(50));
+        Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.RECEITA, StatusLancamento.valueOf(StatusLancamento.EFETIVADO.name()))).thenReturn(BigDecimal.valueOf(100));
+        Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.DESPESA, StatusLancamento.valueOf(StatusLancamento.EFETIVADO.name()))).thenReturn(BigDecimal.valueOf(50));
         BigDecimal saldo = service.obterSaldoPorUsuario(idUsuario);
         Assertions.assertThat(saldo).isEqualTo(BigDecimal.valueOf(50));
     }

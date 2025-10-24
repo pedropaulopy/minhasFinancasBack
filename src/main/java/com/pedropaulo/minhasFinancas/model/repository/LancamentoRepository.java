@@ -11,8 +11,10 @@ import org.springframework.data.repository.query.Param;
 public interface LancamentoRepository extends JpaRepository<Lancamento, Long> {
     @Query(
             value = "select sum(l.valor) from Lancamento l join l.usuario u " +
-                    "where u.id =:idUsuario and l.tipoLancamento =:tipo and l.statusLancamento = :status group by u")
-    BigDecimal obterSaldoPorTipoLancamentoEUsuario(
+                    "where u.id =:idUsuario and l.tipoLancamento =:tipo and l.statusLancamento = :status  " +
+                    "and l.ano = YEAR(CURRENT_DATE) " +
+                    "and l.mes = MONTH(CURRENT_DATE)  group by u")
+    BigDecimal obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(
             @Param("idUsuario") Long idUsuario,
             @Param("tipo") TipoLancamento tipo,
             @Param("status") StatusLancamento status
