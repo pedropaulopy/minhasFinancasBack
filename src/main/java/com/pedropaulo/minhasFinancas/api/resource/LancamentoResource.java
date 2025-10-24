@@ -9,15 +9,14 @@ import com.pedropaulo.minhasFinancas.model.enums.StatusLancamento;
 import com.pedropaulo.minhasFinancas.model.enums.TipoLancamento;
 import com.pedropaulo.minhasFinancas.service.LancamentoService;
 import com.pedropaulo.minhasFinancas.service.UsuarioService;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.graphql.GraphQlProperties;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/lancamentos")
@@ -34,7 +33,7 @@ public class LancamentoResource {
         lancamento.setMes(dto.getMes());
         lancamento.setAno(dto.getAno());
         lancamento.setValor(dto.getValor());
-
+        lancamento.setDataCadastro(LocalDate.now());
         Usuario usuario = usuarioService.obterPorId(dto.getUsuario()).orElseThrow(() -> new RegraNegocioException("Usuário não encontrado com o ID informado."));
 
         lancamento.setUsuario(usuario);
@@ -66,7 +65,7 @@ public class LancamentoResource {
         }
     }
 
-    @PutMapping("atualizar/{id}")
+    @PutMapping("{id}/atualizar")
     public ResponseEntity atualizar(@PathVariable Long id, @RequestBody LancamentoDTO dto){
         return service.obterPorId(id).map(entity ->{
             try {
@@ -80,7 +79,7 @@ public class LancamentoResource {
         }).orElseGet(() -> ResponseEntity.badRequest().body("Lançamento não encontrado."));
     }
 
-    @PutMapping("atualizar_status/{id}")
+    @PutMapping("{id}/atualizar_status")
     public ResponseEntity atualizarStatus(@PathVariable Long id, @RequestBody LancamentoStatusDTO dto){
         return service.obterPorId(id).map(entity ->{
             StatusLancamento statusSelecionado = StatusLancamento.valueOf(dto.getStatus());
@@ -97,7 +96,7 @@ public class LancamentoResource {
         }).orElseGet(() -> ResponseEntity.badRequest().body("Lançamento não encontrado."));
     }
 
-    @DeleteMapping("deletar/{id}")
+    @DeleteMapping("{id}/deletar")
     public ResponseEntity deletar(@PathVariable Long id){
         return service.obterPorId(id).map(entity ->{
             service.deletar(entity);
@@ -133,7 +132,7 @@ public class LancamentoResource {
         }
     }
 
-    @GetMapping("/buscar/{id}")
+    @GetMapping("{id}/buscar")
     public ResponseEntity<?> obterLancamento(@PathVariable("id") Long id) {
         return service.obterPorId(id)
                 .map(lancamento -> new ResponseEntity<>(converter(lancamento), HttpStatus.OK))

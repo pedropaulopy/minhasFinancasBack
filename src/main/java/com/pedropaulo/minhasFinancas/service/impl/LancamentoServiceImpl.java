@@ -6,19 +6,18 @@ import com.pedropaulo.minhasFinancas.model.enums.StatusLancamento;
 import com.pedropaulo.minhasFinancas.model.enums.TipoLancamento;
 import com.pedropaulo.minhasFinancas.model.repository.LancamentoRepository;
 import com.pedropaulo.minhasFinancas.service.LancamentoService;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import org.springframework.data.domain.Example;
 import org.springframework.data.domain.ExampleMatcher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-
 @Service
 public class LancamentoServiceImpl implements LancamentoService {
-    private LancamentoRepository repository;
+    private final LancamentoRepository repository;
 
     public LancamentoServiceImpl(LancamentoRepository repository) {
         this.repository = repository;
@@ -90,8 +89,8 @@ public class LancamentoServiceImpl implements LancamentoService {
     @Override
     @Transactional(readOnly = true)
     public BigDecimal obterSaldoPorUsuario(Long id) {
-        BigDecimal receitas = repository.obterSaldoPorTipoLancamentoEUsuario(id, TipoLancamento.valueOf(TipoLancamento.RECEITA.name()), StatusLancamento.valueOf(StatusLancamento.EFETIVADO.name()));
-        BigDecimal despesas = repository.obterSaldoPorTipoLancamentoEUsuario(id, TipoLancamento.valueOf(TipoLancamento.DESPESA.name()), StatusLancamento.valueOf(StatusLancamento.EFETIVADO.name()));
+        BigDecimal receitas = repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(id, TipoLancamento.valueOf(TipoLancamento.RECEITA.name()), StatusLancamento.valueOf(StatusLancamento.EFETIVADO.name()));
+        BigDecimal despesas = repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(id, TipoLancamento.valueOf(TipoLancamento.DESPESA.name()), StatusLancamento.valueOf(StatusLancamento.EFETIVADO.name()));
         if(receitas == null){
             receitas = BigDecimal.ZERO;
         }

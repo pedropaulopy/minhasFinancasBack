@@ -3,28 +3,33 @@ package com.pedropaulo.minhasFinancas.model.entity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.jpa.convert.threeten.Jsr310JpaConverters;
 
-import java.util.Objects;
+import java.time.LocalDate;
 
 @Entity
-@Table(name="usuario", schema="financas")
-@Builder //usado para criar objetos de forma mais simples
-@Data //lombok gera getters, setters hashcode e equals
+@Table(name = "usuario", schema = "financas")
+@Builder // usado para criar objetos de forma mais simples
+@Data // lombok gera getters, setters hashcode e equals
 @NoArgsConstructor
 @AllArgsConstructor
 public class Usuario {
-    @Id
-    @Column(name="id")
-    @GeneratedValue(strategy=GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @Column(name = "id")
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @Column(name="nome")
-    private String nome;
+  @Column(name = "nome")
+  private String nome;
 
-    @Column(name="email")
-    private String email;
+  @Column(name = "email")
+  private String email;
 
-    @JsonIgnore
-    @Column(name="senha")
-    private String senha;
+  @JsonIgnore
+  @Column(name = "senha")
+  private String senha;
+
+  @Column(name="data_cadastro")
+  @Convert(converter = Jsr310JpaConverters.LocalDateConverter.class)
+  private LocalDate dataCadastro;
 }

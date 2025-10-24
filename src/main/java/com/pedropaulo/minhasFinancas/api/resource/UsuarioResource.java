@@ -8,13 +8,13 @@ import com.pedropaulo.minhasFinancas.model.entity.Usuario;
 import com.pedropaulo.minhasFinancas.service.LancamentoService;
 import com.pedropaulo.minhasFinancas.service.UsuarioService;
 import com.pedropaulo.minhasFinancas.service.impl.JwtServiceImpl;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.math.BigDecimal;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/usuarios")
@@ -29,7 +29,9 @@ public class UsuarioResource {
         Usuario usuario = Usuario.builder()
                 .nome(dto.getNome())
                 .email(dto.getEmail())
-                .senha(dto.getSenha()).build();
+                .senha(dto.getSenha())
+                .dataCadastro(LocalDate.now())
+                .build();
         try{
             Usuario usuarioSalvo = service.salvarUsuario(usuario);
             return new ResponseEntity(usuarioSalvo, HttpStatus.CREATED);
@@ -50,7 +52,7 @@ public class UsuarioResource {
         }
     }
 
-    @GetMapping("saldo/{id}")
+    @GetMapping("{id}/saldo")
     public ResponseEntity obterSaldo(@PathVariable("id") Long idUsuario) throws RegraNegocioException {
         Optional<Usuario> usuario = service.obterPorId(idUsuario);
         if(!usuario.isPresent()){
