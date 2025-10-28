@@ -23,7 +23,6 @@ import org.springframework.web.bind.annotation.*;
 public class LancamentoResource {
   private final LancamentoService service;
   private final UsuarioService usuarioService;
-  private final LancamentoService lancamentoService;
 
   @PostMapping("/salvar")
   public ResponseEntity salvar(@RequestBody LancamentoDTO dto) {
@@ -51,7 +50,7 @@ public class LancamentoResource {
   public ResponseEntity atualizarStatus(
       @PathVariable Long id, @RequestBody LancamentoStatusDTO dto){
         try{
-            lancamentoService.atualizarStatus(id, StatusLancamento.valueOf(dto.getStatus()));
+            service.atualizarStatus(id, StatusLancamento.valueOf(dto.getStatus()));
             return new ResponseEntity(HttpStatus.CREATED);
         }catch(RegraNegocioException e){
             return new ResponseEntity(e.getMessage(), HttpStatus.BAD_REQUEST);
@@ -61,7 +60,7 @@ public class LancamentoResource {
   @DeleteMapping("{id}/deletar")
   public ResponseEntity deletar(@PathVariable Long id) {
       try{
-          lancamentoService.deletar(id);
+          service.deletar(id);
           return new ResponseEntity(HttpStatus.NO_CONTENT);
       }catch (RegraNegocioException e){
           return new ResponseEntity(e.getMessage(), HttpStatus.NOT_FOUND);
@@ -93,7 +92,7 @@ public class LancamentoResource {
   @GetMapping("{id}/buscar")
   public ResponseEntity<?> obterLancamento(@PathVariable("id") Long id){
       try{
-          lancamentoService.obterPorIdLancamento(id);
+          service.obterPorIdLancamento(id);
           return new ResponseEntity(HttpStatus.OK);
       }catch(RegraNegocioException e){
           return new ResponseEntity(e.getMessage(), HttpStatus.NOT_FOUND);

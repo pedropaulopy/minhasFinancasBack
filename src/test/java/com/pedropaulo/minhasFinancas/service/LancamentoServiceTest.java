@@ -1,7 +1,10 @@
 package com.pedropaulo.minhasFinancas.service;
 
+import com.pedropaulo.minhasFinancas.api.dto.LancamentoDTO;
+import com.pedropaulo.minhasFinancas.api.dto.LancamentoDTOFactory;
 import com.pedropaulo.minhasFinancas.exception.RegraNegocioException;
 import com.pedropaulo.minhasFinancas.model.entity.Lancamento;
+import com.pedropaulo.minhasFinancas.model.entity.Usuario;
 import com.pedropaulo.minhasFinancas.model.enums.StatusLancamento;
 import com.pedropaulo.minhasFinancas.model.enums.TipoLancamento;
 import com.pedropaulo.minhasFinancas.model.repository.LancamentoRepository;
@@ -10,65 +13,73 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.boot.test.mock.mockito.SpyBean;
-import org.springframework.data.domain.Example;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@ExtendWith(SpringExtension.class)
-@ActiveProfiles("test")
+@ExtendWith(MockitoExtension.class)
 public class LancamentoServiceTest {
-    @SuppressWarnings("removal")
-    @SpyBean
+
+    @Mock
+    LancamentoRepository repository;
+
+    @Mock
+    UsuarioService usuarioService;
+
     LancamentoServiceImpl service;
 
-    @SuppressWarnings("removal")
-    @MockBean
-    LancamentoRepository repository;
+    @BeforeEach
+    public void setUp() {
+        // cria spy manual injetando os mocks
+        service = Mockito.spy(new LancamentoServiceImpl(repository, usuarioService));
+    }
 
     @Test
     public void deveSalvarUmLancamento() throws RegraNegocioException {
-        Lancamento lancamentoASalvar = Lancamento.builder().
-                ano(2025).
-                mes(11).
-                descricao("Lançamento teste").
-                valor(BigDecimal.valueOf(100)).
-                tipoLancamento(TipoLancamento.DESPESA).
-                statusLancamento(StatusLancamento.PENDENTE).
-                dataCadastro(LocalDate.now()).build();
+        Lancamento lancamentoASalvar = Lancamento.builder()
+                .ano(2025)
+                .mes(11)
+                .descricao("Lançamento teste")
+                .valor(BigDecimal.valueOf(100))
+                .tipoLancamento(TipoLancamento.DESPESA)
+                .statusLancamento(StatusLancamento.PENDENTE)
+                .dataCadastro(LocalDate.now()).build();
 
         Mockito.doNothing().when(service).validar(lancamentoASalvar);
-        Lancamento lancamentoSalvo = Lancamento.builder().
-                ano(2025).
-                mes(11).
-                descricao("Lançamento teste").
-                valor(BigDecimal.valueOf(100)).
-                tipoLancamento(TipoLancamento.DESPESA).
-                statusLancamento(StatusLancamento.PENDENTE).
-                dataCadastro(LocalDate.now()).build();
-        lancamentoSalvo.setId(1l);
+        Lancamento lancamentoSalvo = Lancamento.builder()
+                .ano(2025)
+                .mes(11)
+                .descricao("Lançamento teste")
+                .valor(BigDecimal.valueOf(100))
+                .tipoLancamento(TipoLancamento.DESPESA)
+                .statusLancamento(StatusLancamento.PENDENTE)
+                .dataCadastro(LocalDate.now()).build();
+        lancamentoSalvo.setId(1L);
         lancamentoSalvo.setStatusLancamento(StatusLancamento.PENDENTE);
+
         Mockito.when(repository.save(lancamentoASalvar)).thenReturn(lancamentoSalvo);
+
         Lancamento lancamento = service.salvar(lancamentoASalvar);
+
         Assertions.assertThat(lancamento.getId()).isEqualTo(lancamentoSalvo.getId());
         Assertions.assertThat(lancamento.getStatusLancamento()).isEqualTo(StatusLancamento.PENDENTE);
     }
 
     @Test
     public void deveLancarErroAoTentarSalvarUmLancamentoInvalido() throws RegraNegocioException {
-        Lancamento lancamentoASalvar = Lancamento.builder().
-                ano(2025).
-                mes(11).
-                descricao("Lançamento teste").
-                valor(BigDecimal.valueOf(100)).
-                tipoLancamento(TipoLancamento.DESPESA).
-                statusLancamento(StatusLancamento.PENDENTE).
-                dataCadastro(LocalDate.now()).build();
+        Lancamento lancamentoASalvar = Lancamento.builder()
+                .ano(2025)
+                .mes(11)
+                .descricao("Lançamento teste")
+                .valor(BigDecimal.valueOf(100))
+                .tipoLancamento(TipoLancamento.DESPESA)
+                .statusLancamento(StatusLancamento.PENDENTE)
+                .dataCadastro(LocalDate.now()).build();
 
         Mockito.doThrow(RegraNegocioException.class).when(service).validar(lancamentoASalvar);
         Assertions.catchThrowableOfType(() -> service.salvar(lancamentoASalvar), RegraNegocioException.class);
@@ -77,138 +88,130 @@ public class LancamentoServiceTest {
 
     @Test
     public void deveAtualizarUmLancamento() throws RegraNegocioException {
-        Lancamento lancamentoSalvo = Lancamento.builder().
-                id(1l).
-                ano(2025).
-                mes(11).
-                descricao("Lançamento teste").
-                valor(BigDecimal.valueOf(100)).
-                tipoLancamento(TipoLancamento.DESPESA).
-                statusLancamento(StatusLancamento.PENDENTE).
-                dataCadastro(LocalDate.now()).build();
+        Lancamento lancamentoSalvo = Lancamento.builder()
+                .id(1L)
+                .ano(2025)
+                .mes(11)
+                .descricao("Lançamento teste")
+                .valor(BigDecimal.valueOf(100))
+                .tipoLancamento(TipoLancamento.DESPESA)
+                .statusLancamento(StatusLancamento.PENDENTE)
+                .dataCadastro(LocalDate.now()).build();
 
-        Mockito.doNothing().when(service).validar(lancamentoSalvo);
+        // prepara DTO com novos valores (usa a fábrica no mesmo pacote do DTO)
+        LancamentoDTO dto = LancamentoDTOFactory.create(1L, "Lançamento teste", 11, 2025, BigDecimal.valueOf(100),
+                TipoLancamento.DESPESA.name(), StatusLancamento.PENDENTE.name());
+
+        Mockito.doReturn(lancamentoSalvo).when(service).obterPorIdLancamento(1L);
         Mockito.when(repository.save(lancamentoSalvo)).thenReturn(lancamentoSalvo);
-        service.atualizar(, lancamentoSalvo, );
+
+        Lancamento atualizado = service.atualizar(1L, dto);
+
         Mockito.verify(repository, Mockito.times(1)).save(lancamentoSalvo);
+        Assertions.assertThat(atualizado).isEqualTo(lancamentoSalvo);
     }
 
     @Test
     public void deveLancarErroAoTentarAtualizarUmLancamentoQueAindaNaoFoiSalvo() throws RegraNegocioException {
-        Lancamento lancamentoASalvar = Lancamento.builder().
-                ano(2025).
-                mes(11).
-                descricao("Lançamento teste").
-                valor(BigDecimal.valueOf(100)).
-                tipoLancamento(TipoLancamento.DESPESA).
-                statusLancamento(StatusLancamento.PENDENTE).
-                dataCadastro(LocalDate.now()).build();
+        LancamentoDTO dto = LancamentoDTOFactory.create(1L, "Lançamento teste", 11, 2025, BigDecimal.valueOf(100),
+                TipoLancamento.DESPESA.name(), StatusLancamento.PENDENTE.name());
 
-        Assertions.catchThrowableOfType(() -> service.atualizar(, lancamentoASalvar, ), NullPointerException.class);
-        Mockito.verify(repository, Mockito.never()).save(lancamentoASalvar);
+        Mockito.doThrow(new RegraNegocioException("Lançamento não encontrado para o ID informado.")).when(service).obterPorIdLancamento(1L);
+
+        Assertions.catchThrowableOfType(() -> service.atualizar(1L, dto), RegraNegocioException.class);
+        Mockito.verify(repository, Mockito.never()).save(Mockito.any());
     }
 
     @Test
-    public void deveDeletarUmLancamento() {
-        Lancamento lancamento = Lancamento.builder().
-                id(1l).
-                ano(2025).
-                mes(11).
-                descricao("Lançamento teste").
-                valor(BigDecimal.valueOf(100)).
-                tipoLancamento(TipoLancamento.DESPESA).
-                statusLancamento(StatusLancamento.PENDENTE).
-                dataCadastro(LocalDate.now()).build();
+    public void deveDeletarUmLancamento() throws RegraNegocioException {
+        Lancamento lancamento = Lancamento.builder()
+                .id(1L)
+                .ano(2025)
+                .mes(11)
+                .descricao("Lançamento teste")
+                .valor(BigDecimal.valueOf(100))
+                .tipoLancamento(TipoLancamento.DESPESA)
+                .statusLancamento(StatusLancamento.PENDENTE)
+                .dataCadastro(LocalDate.now()).build();
 
-        service.deletar(lancamento);
+        Mockito.doReturn(lancamento).when(service).obterPorIdLancamento(1L);
+        service.deletar(1L);
         Mockito.verify(repository).delete(lancamento);
     }
 
     @Test
-    public void deveLancarErroAoTentarDeletarUmLancamentoQueAindaNaoFoiSalvo() {
-        Lancamento lancamento = Lancamento.builder().
-                ano(2025).
-                mes(11).
-                descricao("Lançamento teste").
-                valor(BigDecimal.valueOf(100)).
-                tipoLancamento(TipoLancamento.DESPESA).
-                statusLancamento(StatusLancamento.PENDENTE).
-                dataCadastro(LocalDate.now()).build();
+    public void deveLancarErroAoTentarDeletarUmLancamentoQueAindaNaoFoiSalvo() throws RegraNegocioException {
+        Mockito.doThrow(new RegraNegocioException("Lançamento não encontrado para o ID informado.")).when(service).obterPorIdLancamento(1L);
 
-        Assertions.catchThrowableOfType(() -> service.deletar(lancamento), NullPointerException.class);
-        Mockito.verify(repository, Mockito.never()).delete(lancamento);
+        Assertions.catchThrowableOfType(() -> service.deletar(1L), RegraNegocioException.class);
+        Mockito.verify(repository, Mockito.never()).delete(Mockito.any());
     }
 
     @Test
     public void deveFiltrarLancamentos() {
-        Lancamento lancamento = Lancamento.builder().
-                id(1l).
-                ano(2025).
-                mes(11).
-                descricao("Lançamento teste").
-                valor(BigDecimal.valueOf(100)).
-                tipoLancamento(TipoLancamento.DESPESA).
-                statusLancamento(StatusLancamento.PENDENTE).
-                dataCadastro(LocalDate.now()).build();
+        Lancamento lancamento = Lancamento.builder()
+                .id(1L)
+                .ano(2025)
+                .mes(11)
+                .descricao("Lançamento teste")
+                .valor(BigDecimal.valueOf(100))
+                .tipoLancamento(TipoLancamento.DESPESA)
+                .statusLancamento(StatusLancamento.PENDENTE)
+                .dataCadastro(LocalDate.now()).build();
 
         List<Lancamento> lista = Arrays.asList(lancamento);
-        Mockito.when(repository.findAll(Mockito.any(Example.class))).thenReturn(lista);
+        Mockito.when(repository.findAll(Mockito.any(org.springframework.data.domain.Example.class))).thenReturn(lista);
         List<Lancamento> resultado = service.buscar(lancamento);
         Assertions.assertThat(resultado).isNotEmpty().hasSize(1).contains(lancamento);
     }
 
     @Test
     public void deveAtualizarOStatusDeUmLancamento() throws RegraNegocioException {
-        Lancamento lancamento = Lancamento.builder().
-                id(1l).
-                ano(2025).
-                mes(11).
-                descricao("Lançamento teste").
-                valor(BigDecimal.valueOf(100)).
-                tipoLancamento(TipoLancamento.DESPESA).
-                statusLancamento(StatusLancamento.PENDENTE).
-                dataCadastro(LocalDate.now()).build();
+        Lancamento lancamento = Lancamento.builder()
+                .id(1L)
+                .ano(2025)
+                .mes(11)
+                .descricao("Lançamento teste")
+                .valor(BigDecimal.valueOf(100))
+                .tipoLancamento(TipoLancamento.DESPESA)
+                .statusLancamento(StatusLancamento.PENDENTE)
+                .dataCadastro(LocalDate.now()).build();
 
         StatusLancamento novoStatus = StatusLancamento.EFETIVADO;
-        Mockito.doReturn(lancamento).when(service).atualizar(, lancamento, );
-        service.atualizarStatus(lancamento, novoStatus);
+        Mockito.doReturn(lancamento).when(service).obterPorIdLancamento(1L);
+        service.atualizarStatus(1L, novoStatus);
         Assertions.assertThat(lancamento.getStatusLancamento()).isEqualTo(novoStatus);
-        Mockito.verify(service).atualizar(, lancamento, );
+        Mockito.verify(service).obterPorIdLancamento(1L);
     }
 
     @Test
     public void deveObterUmLancamentoPorId() {
-        Lancamento lancamento = Lancamento.builder().
-                id(1l).
-                ano(2025).
-                mes(11).
-                descricao("Lançamento teste").
-                valor(BigDecimal.valueOf(100)).
-                tipoLancamento(TipoLancamento.DESPESA).
-                statusLancamento(StatusLancamento.PENDENTE).
-                dataCadastro(LocalDate.now()).build();
-        Long id = 1l;
-        Mockito.when(repository.findById(id)).thenReturn(java.util.Optional.of(lancamento));
-        java.util.Optional<Lancamento> resultado = null;
+        Lancamento lancamento = Lancamento.builder()
+                .id(1L)
+                .ano(2025)
+                .mes(11)
+                .descricao("Lançamento teste")
+                .valor(BigDecimal.valueOf(100))
+                .tipoLancamento(TipoLancamento.DESPESA)
+                .statusLancamento(StatusLancamento.PENDENTE)
+                .dataCadastro(LocalDate.now()).build();
+        Long id = 1L;
+        Mockito.when(repository.findById(id)).thenReturn(Optional.of(lancamento));
+        Lancamento resultado = null;
         try {
-            resultado = service.obterPorIdLancamento(, id);
+            resultado = service.obterPorIdLancamento(id);
         } catch (RegraNegocioException e) {
             throw new RuntimeException(e);
         }
-        Assertions.assertThat(resultado.isPresent()).isTrue();
+        Assertions.assertThat(resultado).isNotNull();
     }
 
     @Test
-    public void deveRetornarVazioQuandoOLancamentoNaoExistir() {
-        Long id = 1l;
-        Mockito.when(repository.findById(id)).thenReturn(java.util.Optional.empty());
-        java.util.Optional<Lancamento> resultado = null;
-        try {
-            resultado = service.obterPorIdLancamento(, id);
-        } catch (RegraNegocioException e) {
-            throw new RuntimeException(e);
-        }
-        Assertions.assertThat(resultado.isPresent()).isFalse();
+    public void deveRetornarErroQuandoOLancamentoNaoExistir() {
+        Long id = 1L;
+        Mockito.when(repository.findById(id)).thenReturn(Optional.empty());
+
+        Assertions.catchThrowableOfType(() -> service.obterPorIdLancamento(id), RegraNegocioException.class);
     }
 
     @Test
@@ -266,9 +269,13 @@ public class LancamentoServiceTest {
 
     @Test
     public void deveObterSaldoDeUmUsuario() throws RegraNegocioException {
-        Long idUsuario = 1l;
-        Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.RECEITA, StatusLancamento.valueOf(StatusLancamento.EFETIVADO.name()))).thenReturn(BigDecimal.valueOf(100));
-        Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.DESPESA, StatusLancamento.valueOf(StatusLancamento.EFETIVADO.name()))).thenReturn(BigDecimal.valueOf(50));
+        Long idUsuario = 1L;
+        // usuarioService.obterPorId retorna Optional<Usuario> em outras partes do código
+        Mockito.when(usuarioService.obterPorId(idUsuario)).thenReturn(Optional.of(new Usuario()));
+        Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.RECEITA, StatusLancamento.EFETIVADO))
+                .thenReturn(BigDecimal.valueOf(100));
+        Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.DESPESA, StatusLancamento.EFETIVADO))
+                .thenReturn(BigDecimal.valueOf(50));
         BigDecimal saldo = service.obterSaldoPorUsuario(idUsuario);
         Assertions.assertThat(saldo).isEqualTo(BigDecimal.valueOf(50));
     }
