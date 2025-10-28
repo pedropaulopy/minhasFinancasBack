@@ -19,16 +19,13 @@ import java.util.Optional;
 
 @RunWith(SpringRunner.class)
 @DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 public class LancamentoRepositoryTest {
-    @Autowired
-    LancamentoRepository repository;
+    @Autowired LancamentoRepository repository;
+    @Autowired TestEntityManager entityManager;
 
-    @Autowired
-    static TestEntityManager entityManager;
-
-    public static Lancamento criaEPersisteLancamento(){
+    public Lancamento criaEPersisteLancamento(){
         Lancamento lancamento = Lancamento.builder().
                 ano(2025).
                 mes(11).
@@ -43,18 +40,17 @@ public class LancamentoRepositoryTest {
     }
 
     @Test
-    public void deveSalvarUmLancamento(){
-        Lancamento lancamento = Lancamento.builder().
-                ano(2025).
-                mes(11).
-                descricao("Lançamento teste").
-                valor(BigDecimal.valueOf(100)).
-                tipoLancamento(TipoLancamento.DESPESA).
-                statusLancamento(StatusLancamento.PENDENTE).
-                dataCadastro(LocalDate.now()).build();
+    public void deveSalvarUmLancamento() {
+        Lancamento lancamento = Lancamento.builder()
+                .ano(2025).mes(11).descricao("Lançamento teste")
+                .valor(BigDecimal.valueOf(100))
+                .tipoLancamento(TipoLancamento.DESPESA)
+                .statusLancamento(StatusLancamento.PENDENTE)
+                .dataCadastro(LocalDate.now())
+                .build();
 
-        lancamento = repository.save(lancamento);
-        Assertions.assertThat((lancamento.getId())).isNotNull();
+        Lancamento salvo = repository.save(lancamento);
+        org.assertj.core.api.Assertions.assertThat(salvo.getId()).isNotNull();
     }
 
     @Test

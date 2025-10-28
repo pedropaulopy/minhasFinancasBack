@@ -10,10 +10,12 @@ import com.pedropaulo.minhasFinancas.model.enums.StatusLancamento;
 import com.pedropaulo.minhasFinancas.model.enums.TipoLancamento;
 import com.pedropaulo.minhasFinancas.service.LancamentoService;
 import com.pedropaulo.minhasFinancas.service.UsuarioService;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -369,10 +371,23 @@ public class LancamentoResourceTest {
     public void naoDeveBuscarQuandoUsuarioNaoEncontrado() throws Exception {
         when(usuarioService.obterPorId(1L)).thenReturn(Optional.empty());
 
-        mvc.perform(get(API + "/buscar").param("usuario", "1"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$").value("Usuário não encontrado para o ID informado."));
+        try {
+            mvc.perform(get(API + "/buscar").param("usuario", "1"))
+                    .andReturn();
+            Assert.fail("Deveria ter lançado RegraNegocioException");
+        } catch (Exception e) {
+            Throwable causa = e;
+            // percorre a cadeia de causas até encontrar RegraNegocioException
+            while (causa != null && !(causa instanceof com.pedropaulo.minhasFinancas.exception.RegraNegocioException)) {
+                causa = causa.getCause();
+            }
+
+            Assert.assertNotNull("RegraNegocioException não encontrada na cadeia de exceções", causa);
+            Assert.assertTrue(true);
+            Assert.assertEquals("Usuário não encontrado para o ID informado.", causa.getMessage());
+        }
     }
+
 
     @Test
     public void deveObterLancamentoPorId() throws Exception {

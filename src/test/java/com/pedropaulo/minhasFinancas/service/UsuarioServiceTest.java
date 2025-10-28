@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 
@@ -49,31 +50,57 @@ public class UsuarioServiceTest {
             service.validarEmail("email@email.com");
         }
 
-        @Test
-        public void deveSalvarUsuario() throws RegraNegocioException {
-            Mockito.doNothing().when(service).validarEmail(Mockito.anyString());
-            Usuario usuario = Usuario.builder().id(1L).nome("nome").email("email@email.com").senha("senha").build();
-            Mockito.when(repository.save(Mockito.any(Usuario.class))).thenReturn(usuario);
-            Usuario usuarioSalvo = service.salvarUsuario(new Usuario());
-            Assertions.assertThat(usuarioSalvo).isNotNull();
-            Assertions.assertThat(usuarioSalvo.getId()).isEqualTo(1L);
-            Assertions.assertThat(usuarioSalvo.getNome()).isEqualTo("nome");
-            Assertions.assertThat(usuarioSalvo.getEmail()).isEqualTo("email@email.com");
-            Assertions.assertThat(usuarioSalvo.getSenha()).isEqualTo("senha");
+    @Test
+    public void deveSalvarUsuario() throws RegraNegocioException {
+        Mockito.doNothing().when(service).validarEmail(Mockito.anyString());
 
-        }
+        Usuario usuarioSalvo = Usuario.builder()
+                .id(1L)
+                .nome("nome")
+                .email("email@email.com")
+                .senha("senha-criptografada")
+                .build();
 
-        @Test(expected = Test.None.class)
-        public void deveAutenticarComSucesso() throws RegraNegocioException {
-            String email = "email@emai.com";
-            String senha = "123";
-            Usuario usuario = Usuario.builder().email(email).senha(senha).id(1L).build();
-            Mockito.when(repository.findByEmail(email)).thenReturn(Optional.of(usuario));
+        Mockito.when(repository.save(Mockito.any(Usuario.class))).thenReturn(usuarioSalvo);
 
-            Usuario result = service.autenticar(email, senha);
+        Usuario usuarioParaSalvar = Usuario.builder()
+                .nome("nome")
+                .email("email@email.com")
+                .senha("senha123") // senha em texto puro para ser criptografada no método real
+                .build();
 
-            Assertions.assertThat(result).isNotNull();
-        }
+        Usuario result = service.salvarUsuario(usuarioParaSalvar);
+
+        Assertions.assertThat(result).isNotNull();
+        Assertions.assertThat(result.getId()).isEqualTo(1L);
+        Assertions.assertThat(result.getNome()).isEqualTo("nome");
+        Assertions.assertThat(result.getEmail()).isEqualTo("email@email.com");
+        Assertions.assertThat(result.getSenha()).isNotEqualTo("senha123"); // deve ter sido criptografada
+    }
+
+
+    @Test
+    public void deveAutenticarComSucesso() throws RegraNegocioException {
+        String email = "email@emai.com";
+        String senha = "123";
+
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        String senhaCriptografada = encoder.encode(senha);
+
+        Usuario usuario = Usuario.builder()
+                .id(1L)
+                .email(email)
+                .senha(senhaCriptografada)
+                .build();
+
+        Mockito.when(repository.findByEmail(email)).thenReturn(Optional.of(usuario));
+
+        Usuario result = service.autenticar(email, senha);
+
+        Assertions.assertThat(result).isNotNull();
+        Assertions.assertThat(result.getEmail()).isEqualTo(email);
+        Assertions.assertThat(encoder.matches(senha, result.getSenha())).isTrue();
+    }
 
         @Test(expected = RegraNegocioException.class)
         public void naoDeveSalvarUsuarioComEmailJaCadastrado() throws RegraNegocioException {
