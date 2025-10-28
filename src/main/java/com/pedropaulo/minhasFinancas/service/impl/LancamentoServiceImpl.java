@@ -1,15 +1,16 @@
 package com.pedropaulo.minhasFinancas.service.impl;
 
+import com.pedropaulo.minhasFinancas.api.dto.LancamentoDTO;
 import com.pedropaulo.minhasFinancas.exception.RegraNegocioException;
 import com.pedropaulo.minhasFinancas.model.entity.Lancamento;
+import com.pedropaulo.minhasFinancas.model.entity.Usuario;
 import com.pedropaulo.minhasFinancas.model.enums.StatusLancamento;
 import com.pedropaulo.minhasFinancas.model.enums.TipoLancamento;
 import com.pedropaulo.minhasFinancas.model.repository.LancamentoRepository;
 import com.pedropaulo.minhasFinancas.service.LancamentoService;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
 
 import com.pedropaulo.minhasFinancas.service.UsuarioService;
 import org.springframework.data.domain.Example;
@@ -35,18 +36,24 @@ public class LancamentoServiceImpl implements LancamentoService {
     return repository.save(lancamento);
   }
 
-  @Override
   @Transactional
-  public Lancamento atualizar(Lancamento lancamento) throws RegraNegocioException {
-    Objects.requireNonNull(lancamento.getId());
-    validar(lancamento);
-    return repository.save(lancamento);
+  public Lancamento atualizar(Long id, LancamentoDTO dto) throws RegraNegocioException {
+      Lancamento lancamento = this.obterPorIdLancamento(id);
+
+      lancamento.setDescricao(dto.getDescricao());
+      lancamento.setValor(dto.getValor());
+      lancamento.setMes(dto.getMes());
+      lancamento.setAno(dto.getAno());
+      lancamento.setTipoLancamento(TipoLancamento.valueOf(dto.getTipoLancamento()));
+      lancamento.setStatusLancamento(StatusLancamento.valueOf(dto.getStatusLancamento()));
+
+      return repository.save(lancamento);
   }
 
   @Override
-  public void deletar(Lancamento lancamento) {
-    Objects.requireNonNull(lancamento.getId());
-    repository.delete(lancamento);
+  public void deletar(Long id) throws RegraNegocioException {
+      Lancamento lancamento = this.obterPorIdLancamento(id);
+      repository.delete(lancamento);
   }
 
   @Override
@@ -64,10 +71,13 @@ public class LancamentoServiceImpl implements LancamentoService {
 
   @Override
   @Transactional
-  public void atualizarStatus(Lancamento lancamento, StatusLancamento status)
+  public void atualizarStatus(Long id, StatusLancamento status)
       throws RegraNegocioException {
-    lancamento.setStatusLancamento(status);
-    atualizar(lancamento);
+      Lancamento lancamento = this.obterPorIdLancamento(id);
+        if(status==null){
+            throw new RegraNegocioException("Não foi possível atualizar o status do lançamento, envie um status válido.");
+        }
+        lancamento.setStatusLancamento(status);
   }
 
   @Override
@@ -92,10 +102,10 @@ public class LancamentoServiceImpl implements LancamentoService {
     }
   }
 
-  @Override
-  public Optional<Lancamento> obterPorId(Long id) {
-    return repository.findById(id);
-  }
+    public Lancamento obterPorIdLancamento(Long id) throws RegraNegocioException {
+        return repository.findById(id)
+                .orElseThrow(() -> new RegraNegocioException("Lançamento não encontrado para o ID informado."));
+    }
 
   @Override
   @Transactional(readOnly = true)
@@ -119,4 +129,24 @@ public class LancamentoServiceImpl implements LancamentoService {
     }
     return receitas.subtract(despesas);
   }
+
+    @Override
+    public Lancamento converterDTO(LancamentoDTO dto) throws RegraNegocioException {
+        Lancamento lancamento = new Lancamento();
+        lancamento.setDescricao(dto.getDescricao());
+        lancamento.setMes(dto.getMes());
+        lancamento.setAno(dto.getAno());
+        lancamento.setValor(dto.getValor());
+        lancamento.setDataCadastro(LocalDate.now());
+        Usuario usuario =
+                usuarioService
+                        .obterPorId(dto.getUsuario())
+                        .orElseThrow(
+                                () -> new RegraNegocioException("Usuário não encontrado com o ID informado."));
+
+        lancamento.setUsuario(usuario);
+        lancamento.setTipoLancamento(TipoLancamento.valueOf(dto.getTipoLancamento()));
+        lancamento.setStatusLancamento(StatusLancamento.valueOf(dto.getStatusLancamento()));
+        return lancamento;
+    }
 }

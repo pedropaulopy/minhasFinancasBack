@@ -1,27 +1,29 @@
 package com.pedropaulo.minhasFinancas.service;
 
+import com.pedropaulo.minhasFinancas.api.dto.LancamentoDTO;
 import com.pedropaulo.minhasFinancas.exception.RegraNegocioException;
 import com.pedropaulo.minhasFinancas.model.entity.Lancamento;
 import com.pedropaulo.minhasFinancas.model.enums.StatusLancamento;
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
 
 public interface LancamentoService {
 
   Lancamento salvar(Lancamento lancamento) throws RegraNegocioException;
 
-  Lancamento atualizar(Lancamento lancamento) throws RegraNegocioException;
+  Lancamento atualizar(Long id, LancamentoDTO dto) throws RegraNegocioException;
 
-  void deletar(Lancamento lancamento);
+  void deletar(Long id) throws RegraNegocioException;
 
   List<Lancamento> buscar(Lancamento lancamentoFiltro);
 
-  void atualizarStatus(Lancamento lancamento, StatusLancamento status) throws RegraNegocioException;
+  void atualizarStatus(Long id, StatusLancamento status) throws RegraNegocioException;
 
   void validar(Lancamento lancamento) throws RegraNegocioException;
 
-  Optional<Lancamento> obterPorId(Long id);
+  Lancamento obterPorIdLancamento(Long id) throws RegraNegocioException;
 
   BigDecimal obterSaldoPorUsuario(Long id) throws RegraNegocioException;
+
+  Lancamento converterDTO(LancamentoDTO dto) throws  RegraNegocioException;
 }

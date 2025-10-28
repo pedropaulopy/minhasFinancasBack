@@ -26,7 +26,6 @@ import com.pedropaulo.minhasFinancas.service.UsuarioService;
 import java.math.BigDecimal;
 import java.util.Optional;
 
-import io.jsonwebtoken.lang.Assert;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -204,7 +203,7 @@ public class LancamentoResourceTest {
         existente.setStatusLancamento(StatusLancamento.PENDENTE);
         existente.setValor(BigDecimal.valueOf(100));
 
-        when(lancamentoService.obterPorId(id)).thenReturn(Optional.of(existente));
+        when(lancamentoService.obterPorIdLancamento(, id)).thenReturn(Optional.of(existente));
         when(usuarioService.obterPorId(1L)).thenReturn(Optional.of(usuarioMock));
 
         LancamentoDTO dto = LancamentoDTO.builder()
@@ -233,7 +232,7 @@ public class LancamentoResourceTest {
     @Test
     public void naoDeveAtualizarQuandoLancamentoNaoEncontrado() throws Exception {
         Long id = 123L;
-        when(lancamentoService.obterPorId(id)).thenReturn(Optional.empty());
+        when(lancamentoService.obterPorIdLancamento(, id)).thenReturn(Optional.empty());
         LancamentoDTO dto = criarDtoValido();
         String json = objectMapper.writeValueAsString(dto);
 
@@ -252,9 +251,9 @@ public class LancamentoResourceTest {
         existente.setId(id);
         existente.setUsuario(usuarioMock);
 
-        when(lancamentoService.obterPorId(id)).thenReturn(Optional.of(existente));
+        when(lancamentoService.obterPorIdLancamento(, id)).thenReturn(Optional.of(existente));
         when(usuarioService.obterPorId(1L)).thenReturn(Optional.of(usuarioMock));
-        when(lancamentoService.atualizar(any(Lancamento.class)))
+        when(lancamentoService.atualizar(, any(Lancamento.class), ))
                 .thenThrow(new RegraNegocioException("Dados inválidos para atualização."));
 
         LancamentoDTO dto = criarDtoValido();
@@ -279,7 +278,7 @@ public class LancamentoResourceTest {
         existente.setStatusLancamento(StatusLancamento.PENDENTE);
         existente.setValor(BigDecimal.valueOf(200));
 
-        when(lancamentoService.obterPorId(id)).thenReturn(Optional.of(existente));
+        when(lancamentoService.obterPorIdLancamento(, id)).thenReturn(Optional.of(existente));
 
         String body = objectMapper.writeValueAsString(
                 new com.pedropaulo.minhasFinancas.api.dto.LancamentoStatusDTO("EFETIVADO")
@@ -299,7 +298,7 @@ public class LancamentoResourceTest {
     @Test
     public void naoDeveAtualizarStatusQuandoLancamentoNaoEncontrado() throws Exception {
         Long id = 999L;
-        when(lancamentoService.obterPorId(id)).thenReturn(Optional.empty());
+        when(lancamentoService.obterPorIdLancamento(, id)).thenReturn(Optional.empty());
 
         String body = objectMapper.writeValueAsString(
                 new com.pedropaulo.minhasFinancas.api.dto.LancamentoStatusDTO("EFETIVADO")
@@ -320,7 +319,7 @@ public class LancamentoResourceTest {
         existente.setId(id);
         existente.setUsuario(usuarioMock);
 
-        when(lancamentoService.obterPorId(id)).thenReturn(Optional.of(existente));
+        when(lancamentoService.obterPorIdLancamento(, id)).thenReturn(Optional.of(existente));
 
         mvc.perform(delete(API + "/{id}/deletar", id))
                 .andExpect(status().isNoContent());
@@ -329,7 +328,7 @@ public class LancamentoResourceTest {
     @Test
     public void naoDeveDeletarQuandoLancamentoNaoEncontrado() throws Exception {
         Long id = 44L;
-        when(lancamentoService.obterPorId(id)).thenReturn(Optional.empty());
+        when(lancamentoService.obterPorIdLancamento(, id)).thenReturn(Optional.empty());
 
         mvc.perform(delete(API + "/{id}/deletar", id))
                 .andExpect(status().isBadRequest())
@@ -403,7 +402,7 @@ public class LancamentoResourceTest {
         l.setTipoLancamento(TipoLancamento.DESPESA);
         l.setStatusLancamento(StatusLancamento.EFETIVADO);
 
-        when(lancamentoService.obterPorId(77L)).thenReturn(Optional.of(l));
+        when(lancamentoService.obterPorIdLancamento(, 77L)).thenReturn(Optional.of(l));
 
         mvc.perform(get(API + "/{id}/buscar", 77L))
                 .andExpect(status().isOk())
@@ -416,7 +415,7 @@ public class LancamentoResourceTest {
 
     @Test
     public void deveRetornarNotFoundQuandoLancamentoNaoExiste() throws Exception {
-        when(lancamentoService.obterPorId(321L)).thenReturn(Optional.empty());
+        when(lancamentoService.obterPorIdLancamento(, 321L)).thenReturn(Optional.empty());
 
         mvc.perform(get(API + "/{id}/buscar", 321L))
                 .andExpect(status().isNotFound());

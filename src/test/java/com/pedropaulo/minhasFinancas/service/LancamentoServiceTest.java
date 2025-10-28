@@ -89,7 +89,7 @@ public class LancamentoServiceTest {
 
         Mockito.doNothing().when(service).validar(lancamentoSalvo);
         Mockito.when(repository.save(lancamentoSalvo)).thenReturn(lancamentoSalvo);
-        service.atualizar(lancamentoSalvo);
+        service.atualizar(, lancamentoSalvo, );
         Mockito.verify(repository, Mockito.times(1)).save(lancamentoSalvo);
     }
 
@@ -104,7 +104,7 @@ public class LancamentoServiceTest {
                 statusLancamento(StatusLancamento.PENDENTE).
                 dataCadastro(LocalDate.now()).build();
 
-        Assertions.catchThrowableOfType(() -> service.atualizar(lancamentoASalvar), NullPointerException.class);
+        Assertions.catchThrowableOfType(() -> service.atualizar(, lancamentoASalvar, ), NullPointerException.class);
         Mockito.verify(repository, Mockito.never()).save(lancamentoASalvar);
     }
 
@@ -170,10 +170,10 @@ public class LancamentoServiceTest {
                 dataCadastro(LocalDate.now()).build();
 
         StatusLancamento novoStatus = StatusLancamento.EFETIVADO;
-        Mockito.doReturn(lancamento).when(service).atualizar(lancamento);
+        Mockito.doReturn(lancamento).when(service).atualizar(, lancamento, );
         service.atualizarStatus(lancamento, novoStatus);
         Assertions.assertThat(lancamento.getStatusLancamento()).isEqualTo(novoStatus);
-        Mockito.verify(service).atualizar(lancamento);
+        Mockito.verify(service).atualizar(, lancamento, );
     }
 
     @Test
@@ -189,7 +189,12 @@ public class LancamentoServiceTest {
                 dataCadastro(LocalDate.now()).build();
         Long id = 1l;
         Mockito.when(repository.findById(id)).thenReturn(java.util.Optional.of(lancamento));
-        java.util.Optional<Lancamento> resultado = service.obterPorId(id);
+        java.util.Optional<Lancamento> resultado = null;
+        try {
+            resultado = service.obterPorIdLancamento(, id);
+        } catch (RegraNegocioException e) {
+            throw new RuntimeException(e);
+        }
         Assertions.assertThat(resultado.isPresent()).isTrue();
     }
 
@@ -197,7 +202,12 @@ public class LancamentoServiceTest {
     public void deveRetornarVazioQuandoOLancamentoNaoExistir() {
         Long id = 1l;
         Mockito.when(repository.findById(id)).thenReturn(java.util.Optional.empty());
-        java.util.Optional<Lancamento> resultado = service.obterPorId(id);
+        java.util.Optional<Lancamento> resultado = null;
+        try {
+            resultado = service.obterPorIdLancamento(, id);
+        } catch (RegraNegocioException e) {
+            throw new RuntimeException(e);
+        }
         Assertions.assertThat(resultado.isPresent()).isFalse();
     }
 
