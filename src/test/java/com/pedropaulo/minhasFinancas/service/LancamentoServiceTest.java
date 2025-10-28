@@ -6,6 +6,10 @@ import com.pedropaulo.minhasFinancas.model.enums.StatusLancamento;
 import com.pedropaulo.minhasFinancas.model.enums.TipoLancamento;
 import com.pedropaulo.minhasFinancas.model.repository.LancamentoRepository;
 import com.pedropaulo.minhasFinancas.service.impl.LancamentoServiceImpl;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -15,11 +19,6 @@ import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.data.domain.Example;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.Arrays;
-import java.util.List;
 
 @RunWith(SpringRunner.class)
 @ActiveProfiles("test")

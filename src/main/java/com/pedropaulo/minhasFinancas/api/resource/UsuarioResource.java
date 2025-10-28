@@ -20,45 +20,48 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/usuarios")
 @RequiredArgsConstructor
 public class UsuarioResource {
-    private final UsuarioService service;
-    private final LancamentoService lancamentoService;
-    private final JwtServiceImpl jwtService;
+  private final UsuarioService service;
+  private final LancamentoService lancamentoService;
+  private final JwtServiceImpl jwtService;
 
-    @PostMapping
-    public ResponseEntity salvar (@RequestBody UsuarioDTO dto){
-        Usuario usuario = Usuario.builder()
-                .nome(dto.getNome())
-                .email(dto.getEmail())
-                .senha(dto.getSenha())
-                .dataCadastro(LocalDate.now())
-                .build();
-        try{
-            Usuario usuarioSalvo = service.salvarUsuario(usuario);
-            return new ResponseEntity(usuarioSalvo, HttpStatus.CREATED);
-        }catch (RegraNegocioException error){
-            return ResponseEntity.badRequest().body(error.getMessage());
-        }
+  @PostMapping
+  public ResponseEntity salvar(@RequestBody UsuarioDTO dto) {
+    Usuario usuario =
+        Usuario.builder()
+            .nome(dto.getNome())
+            .email(dto.getEmail())
+            .senha(dto.getSenha())
+            .dataCadastro(LocalDate.now())
+            .build();
+    try {
+      Usuario usuarioSalvo = service.salvarUsuario(usuario);
+      return new ResponseEntity(usuarioSalvo, HttpStatus.CREATED);
+    } catch (RegraNegocioException error) {
+      return ResponseEntity.badRequest().body(error.getMessage());
     }
+  }
 
-    @PostMapping("/autenticar")
-    public ResponseEntity<?> autenticar(@RequestBody UsuarioDTO dto){
-        try{
-            Usuario usuarioAutenticado = service.autenticar(dto.getEmail(), dto.getSenha());
-            String token = jwtService.gerarToken(usuarioAutenticado);
-            TokenDTO tokenDTO = new TokenDTO(usuarioAutenticado.getNome(), token);
-            return new ResponseEntity(tokenDTO, HttpStatus.OK);
-        }catch (AutenticacaoException | RegraNegocioException error){
-            return ResponseEntity.badRequest().body(error.getMessage());
-        }
+  @PostMapping("/autenticar")
+  public ResponseEntity<?> autenticar(@RequestBody UsuarioDTO dto) {
+    try {
+      Usuario usuarioAutenticado = service.autenticar(dto.getEmail(), dto.getSenha());
+      String token = jwtService.gerarToken(usuarioAutenticado);
+      TokenDTO tokenDTO = new TokenDTO(usuarioAutenticado.getNome(), token);
+      return new ResponseEntity(tokenDTO, HttpStatus.OK);
+    } catch (AutenticacaoException | RegraNegocioException error) {
+      return ResponseEntity.badRequest().body(error.getMessage());
     }
+  }
 
-    @GetMapping("{id}/saldo")
-    public ResponseEntity obterSaldo(@PathVariable("id") Long idUsuario) throws RegraNegocioException {
-        Optional<Usuario> usuario = service.obterPorId(idUsuario);
-        if(!usuario.isPresent()){
-            return new ResponseEntity("Usuário não encontrado para o ID informado.", HttpStatus.NOT_FOUND);
-        }
-        BigDecimal saldo = lancamentoService.obterSaldoPorUsuario(idUsuario);
-        return ResponseEntity.ok(saldo);
+  @GetMapping("{id}/saldo")
+  public ResponseEntity obterSaldo(@PathVariable("id") Long idUsuario)
+      throws RegraNegocioException {
+    Optional<Usuario> usuario = service.obterPorId(idUsuario);
+    if (!usuario.isPresent()) {
+      return new ResponseEntity(
+          "Usuário não encontrado para o ID informado.", HttpStatus.NOT_FOUND);
     }
+    BigDecimal saldo = lancamentoService.obterSaldoPorUsuario(idUsuario);
+    return ResponseEntity.ok(saldo);
+  }
 }

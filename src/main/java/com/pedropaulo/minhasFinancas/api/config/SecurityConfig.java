@@ -1,4 +1,5 @@
 package com.pedropaulo.minhasFinancas.api.config;
+
 import com.pedropaulo.minhasFinancas.api.JwtTokenFilter;
 import com.pedropaulo.minhasFinancas.service.JwtService;
 import com.pedropaulo.minhasFinancas.service.impl.SecurityUserDetailsServiceImpl;
@@ -25,58 +26,60 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Autowired
-    private SecurityUserDetailsServiceImpl userDetailsService;
+  @Autowired private SecurityUserDetailsServiceImpl userDetailsService;
 
-    @Autowired
-    private JwtService jwtService;
+  @Autowired private JwtService jwtService;
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+  @Bean
+  public PasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder();
+  }
 
-    @Bean
-    public JwtTokenFilter jwtTokenFilter() {
-        return new JwtTokenFilter(jwtService, userDetailsService);
-    }
+  @Bean
+  public JwtTokenFilter jwtTokenFilter() {
+    return new JwtTokenFilter(jwtService, userDetailsService);
+  }
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-                // 1. Use a nova sintaxe do Lambda
-                .csrf(AbstractHttpConfigurer::disable)
+  @Bean
+  public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    http
+        // 1. Use a nova sintaxe do Lambda
+        .csrf(AbstractHttpConfigurer::disable)
 
-                // 2. ADICIONE ISTO para integrar o CORS ao Spring Security
-                .cors(Customizer.withDefaults())
+        // 2. ADICIONE ISTO para integrar o CORS ao Spring Security
+        .cors(Customizer.withDefaults())
+        .authorizeHttpRequests(
+            authorize ->
+                authorize
+                    .requestMatchers(HttpMethod.POST, "/api/usuarios")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/usuarios/autenticar")
+                    .permitAll()
+                    .anyRequest()
+                    .authenticated())
+        .sessionManagement(
+            session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .addFilterBefore(jwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
 
-                .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(HttpMethod.POST, "/api/usuarios").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/usuarios/autenticar").permitAll()
-                        .anyRequest().authenticated()
-                ).sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .addFilterBefore(jwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
+    return http.build();
+  }
 
-        return http.build();
-    }
+  // 3. REMOVA o bean 'FilterRegistrationBean'
 
-    // 3. REMOVA o bean 'FilterRegistrationBean'
+  // 4. ADICIONE este bean. O .cors() acima irá procurá-lo
+  @Bean
+  public CorsConfigurationSource corsConfigurationSource() {
+    CorsConfiguration config = new CorsConfiguration();
 
-    // 4. ADICIONE este bean. O .cors() acima irá procurá-lo
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
+    // Use as mesmas configurações que você tinha:
+    config.setAllowedOrigins(List.of("http://localhost:3000"));
+    config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+    config.setAllowedHeaders(List.of("*")); // "all" é ["*"]
+    config.setAllowCredentials(true);
 
-        // Use as mesmas configurações que você tinha:
-        config.setAllowedOrigins(List.of("http://localhost:3000"));
-        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*")); // "all" é ["*"]
-        config.setAllowCredentials(true);
+    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    source.registerCorsConfiguration("/**", config);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-
-        return source;
-    }
+    return source;
+  }
 }

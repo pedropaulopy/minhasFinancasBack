@@ -2,10 +2,9 @@ package com.pedropaulo.minhasFinancas.model.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import java.time.LocalDate;
 import lombok.*;
 import org.springframework.data.jpa.convert.threeten.Jsr310JpaConverters;
-
-import java.time.LocalDate;
 
 @Entity
 @Table(name = "usuario", schema = "financas")

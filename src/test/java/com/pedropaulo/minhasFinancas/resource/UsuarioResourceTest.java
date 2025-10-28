@@ -1,7 +1,6 @@
 package com.pedropaulo.minhasFinancas.resource;
 
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pedropaulo.minhasFinancas.api.dto.UsuarioDTO;
 import com.pedropaulo.minhasFinancas.api.resource.UsuarioResource;
@@ -11,10 +10,13 @@ import com.pedropaulo.minhasFinancas.model.entity.Usuario;
 import com.pedropaulo.minhasFinancas.service.LancamentoService;
 import com.pedropaulo.minhasFinancas.service.UsuarioService;
 import com.pedropaulo.minhasFinancas.service.impl.JwtServiceImpl;
+import java.math.BigDecimal;
+import java.util.Optional;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -22,15 +24,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MockMvcBuilder;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import java.math.BigDecimal;
-import java.util.Optional;
 
 @RunWith(SpringRunner.class)
 @ActiveProfiles("test")

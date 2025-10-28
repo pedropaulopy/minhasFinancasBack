@@ -4,22 +4,17 @@ import com.pedropaulo.minhasFinancas.exception.AutenticacaoException;
 import com.pedropaulo.minhasFinancas.exception.RegraNegocioException;
 import com.pedropaulo.minhasFinancas.model.entity.Usuario;
 import com.pedropaulo.minhasFinancas.model.repository.UsuarioRepository;
-import com.pedropaulo.minhasFinancas.service.UsuarioService;
-import com.pedropaulo.minhasFinancas.service.impl.UsuarioServiceImpl;
+import java.util.Optional;
 import org.assertj.core.api.Assertions;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
-
-import java.util.Optional;
 
 @SpringBootTest
 @RunWith(SpringRunner.class)

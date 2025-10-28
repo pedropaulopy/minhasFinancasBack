@@ -9,12 +9,19 @@ import java.util.Optional;
 
 public interface LancamentoService {
 
-    Lancamento salvar(Lancamento lancamento) throws RegraNegocioException;
-    Lancamento atualizar(Lancamento lancamento) throws RegraNegocioException;
-    void deletar(Lancamento lancamento);
-    List<Lancamento> buscar(Lancamento lancamentoFiltro);
-    void atualizarStatus(Lancamento lancamento, StatusLancamento status) throws RegraNegocioException;
-    void validar(Lancamento lancamento) throws RegraNegocioException;
-    Optional<Lancamento> obterPorId(Long id);
-    BigDecimal obterSaldoPorUsuario(Long id);
+  Lancamento salvar(Lancamento lancamento) throws RegraNegocioException;
+
+  Lancamento atualizar(Lancamento lancamento) throws RegraNegocioException;
+
+  void deletar(Lancamento lancamento);
+
+  List<Lancamento> buscar(Lancamento lancamentoFiltro);
+
+  void atualizarStatus(Lancamento lancamento, StatusLancamento status) throws RegraNegocioException;
+
+  void validar(Lancamento lancamento) throws RegraNegocioException;
+
+  Optional<Lancamento> obterPorId(Long id);
+
+  BigDecimal obterSaldoPorUsuario(Long id);
 }

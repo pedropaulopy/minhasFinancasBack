@@ -3,6 +3,9 @@ package com.pedropaulo.minhasFinancas.model.repository;
 import com.pedropaulo.minhasFinancas.model.entity.Lancamento;
 import com.pedropaulo.minhasFinancas.model.enums.StatusLancamento;
 import com.pedropaulo.minhasFinancas.model.enums.TipoLancamento;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Optional;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -12,10 +15,6 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.Optional;
 
 @RunWith(SpringRunner.class)
 @DataJpaTest

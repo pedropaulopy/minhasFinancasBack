@@ -2,15 +2,14 @@ package com.pedropaulo.minhasFinancas.service.impl;
 
 import com.pedropaulo.minhasFinancas.exception.AutenticacaoException;
 import com.pedropaulo.minhasFinancas.exception.RegraNegocioException;
-import com.pedropaulo.minhasFinancas.service.UsuarioService;
 import com.pedropaulo.minhasFinancas.model.entity.Usuario;
 import com.pedropaulo.minhasFinancas.model.repository.UsuarioRepository;
+import com.pedropaulo.minhasFinancas.service.UsuarioService;
+import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Optional;
 
 @Service
 public class UsuarioServiceImpl implements UsuarioService {
