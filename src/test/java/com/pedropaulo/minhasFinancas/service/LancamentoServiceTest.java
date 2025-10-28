@@ -255,7 +255,7 @@ public class LancamentoServiceTest {
     }
 
     @Test
-    public void deveObterSaldoDeUmUsuario() {
+    public void deveObterSaldoDeUmUsuario() throws RegraNegocioException {
         Long idUsuario = 1l;
         Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.RECEITA, StatusLancamento.valueOf(StatusLancamento.EFETIVADO.name()))).thenReturn(BigDecimal.valueOf(100));
         Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.DESPESA, StatusLancamento.valueOf(StatusLancamento.EFETIVADO.name()))).thenReturn(BigDecimal.valueOf(50));

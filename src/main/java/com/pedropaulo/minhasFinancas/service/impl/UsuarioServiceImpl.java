@@ -9,6 +9,8 @@ import com.pedropaulo.minhasFinancas.service.UsuarioService;
 import java.time.LocalDate;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -66,6 +68,10 @@ public class UsuarioServiceImpl implements UsuarioService {
 
   @Override
   public Optional<Usuario> obterPorId(Long id) throws RegraNegocioException {
-    return repository.findById(id);
+      if (!repository.findById(id).isPresent()) {
+          throw new RegraNegocioException(
+          "Usuário não encontrado para o ID informado.");
+      }
+      return repository.findById(id);
   }
 }
