@@ -31,7 +31,6 @@ public class UsuarioResource {
             .nome(dto.getNome())
             .email(dto.getEmail())
             .senha(dto.getSenha())
-            .dataCadastro(LocalDate.now())
             .build();
     try {
       Usuario usuarioSalvo = service.salvarUsuario(usuario);

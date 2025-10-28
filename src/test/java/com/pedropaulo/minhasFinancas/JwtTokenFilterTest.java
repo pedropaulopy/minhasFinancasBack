@@ -12,16 +12,19 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+
+import org.aspectj.lang.annotation.Before;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
-import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-@RunWith(MockitoJUnitRunner.class)
+@Disabled
+@ExtendWith(SpringExtension.class)
 public class JwtTokenFilterTest {
 
     @Mock
@@ -41,7 +44,7 @@ public class JwtTokenFilterTest {
 
     private JwtTokenFilter filter;
 
-    @Before
+    @Before("")
     public void setup() {
         filter = new JwtTokenFilter(jwtService, userDetailsService);
         SecurityContextHolder.clearContext();

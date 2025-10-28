@@ -5,6 +5,8 @@ import com.pedropaulo.minhasFinancas.exception.RegraNegocioException;
 import com.pedropaulo.minhasFinancas.model.entity.Usuario;
 import com.pedropaulo.minhasFinancas.model.repository.UsuarioRepository;
 import com.pedropaulo.minhasFinancas.service.UsuarioService;
+
+import java.time.LocalDate;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -50,6 +52,7 @@ public class UsuarioServiceImpl implements UsuarioService {
   public Usuario salvarUsuario(Usuario usuario) throws RegraNegocioException {
     validarEmail(usuario.getEmail());
     criptografarSenha(usuario);
+    usuario.setDataCadastro(LocalDate.now());
     return repository.save(usuario);
   }
 

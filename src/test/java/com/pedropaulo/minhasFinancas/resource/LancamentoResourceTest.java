@@ -1,7 +1,11 @@
 package com.pedropaulo.minhasFinancas.resource;
 
+import static com.jayway.jsonpath.internal.path.PathCompiler.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.util.AssertionErrors.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -21,9 +25,10 @@ import com.pedropaulo.minhasFinancas.service.LancamentoService;
 import com.pedropaulo.minhasFinancas.service.UsuarioService;
 import java.math.BigDecimal;
 import java.util.Optional;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+
+import io.jsonwebtoken.lang.Assert;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -31,10 +36,10 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 
-@RunWith(SpringRunner.class)
+@ExtendWith(SpringExtension.class)
 @ActiveProfiles("test")
 @WebMvcTest(controllers = LancamentoResource.class, excludeAutoConfiguration =  { SecurityAutoConfiguration.class })
 @AutoConfigureMockMvc
@@ -370,7 +375,7 @@ public class LancamentoResourceTest {
         try {
             mvc.perform(get(API + "/buscar").param("usuario", "1"))
                     .andReturn();
-            Assert.fail("Deveria ter lançado RegraNegocioException");
+            fail("Deveria ter lançado RegraNegocioException");
         } catch (Exception e) {
             Throwable causa = e;
             // percorre a cadeia de causas até encontrar RegraNegocioException
@@ -378,9 +383,9 @@ public class LancamentoResourceTest {
                 causa = causa.getCause();
             }
 
-            Assert.assertNotNull("RegraNegocioException não encontrada na cadeia de exceções", causa);
-            Assert.assertTrue(true);
-            Assert.assertEquals("Usuário não encontrado para o ID informado.", causa.getMessage());
+            assertNotNull("RegraNegocioException não encontrada na cadeia de exceções", causa);
+            assertTrue(true);
+            assertEquals("Usuário não encontrado para o ID informado.", causa.getMessage());
         }
     }
 
