@@ -1,7 +1,7 @@
 package com.pedropaulo.minhasFinancas.api.config;
 import com.pedropaulo.minhasFinancas.api.JwtTokenFilter;
 import com.pedropaulo.minhasFinancas.service.JwtService;
-import com.pedropaulo.minhasFinancas.service.impl.SecurityUserDetailsService;
+import com.pedropaulo.minhasFinancas.service.impl.SecurityUserDetailsServiceImpl;
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +26,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     @Autowired
-    private SecurityUserDetailsService userDetailsService;
+    private SecurityUserDetailsServiceImpl userDetailsService;
 
     @Autowired
     private JwtService jwtService;
