@@ -12,4 +12,7 @@ public interface UsuarioService {
   void validarEmail(String email) throws RegraNegocioException;
 
   Optional<Usuario> obterPorId(Long id) throws RegraNegocioException;
+
+  Usuario obterIdUsuarioPorEmail(String email) throws RegraNegocioException;
+
 }

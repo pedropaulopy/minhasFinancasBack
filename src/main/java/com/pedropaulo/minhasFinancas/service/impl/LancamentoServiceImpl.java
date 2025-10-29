@@ -1,6 +1,7 @@
 package com.pedropaulo.minhasFinancas.service.impl;
 
 import com.pedropaulo.minhasFinancas.api.dto.LancamentoDTO;
+import com.pedropaulo.minhasFinancas.api.dto.LancamentoStatusDTO;
 import com.pedropaulo.minhasFinancas.exception.RegraNegocioException;
 import com.pedropaulo.minhasFinancas.model.entity.Lancamento;
 import com.pedropaulo.minhasFinancas.model.entity.Usuario;
@@ -15,6 +16,7 @@ import java.util.List;
 import com.pedropaulo.minhasFinancas.service.UsuarioService;
 import org.springframework.data.domain.Example;
 import org.springframework.data.domain.ExampleMatcher;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,9 +38,10 @@ public class LancamentoServiceImpl implements LancamentoService {
     return repository.save(lancamento);
   }
 
+  //TODO - CHECAR SE O ID DE USUARIO NO BODY É DO USUARIO AUTENTICADO
   @Transactional
-  public Lancamento atualizar(Long id, LancamentoDTO dto) throws RegraNegocioException {
-      Lancamento lancamento = this.obterPorIdLancamento(id);
+  public Lancamento atualizar(Long id, Authentication authentication, LancamentoDTO dto) throws RegraNegocioException {
+      Lancamento lancamento = this.obterPorIdLancamento(id, authentication);
 
       lancamento.setDescricao(dto.getDescricao());
       lancamento.setValor(dto.getValor());
@@ -51,8 +54,8 @@ public class LancamentoServiceImpl implements LancamentoService {
   }
 
   @Override
-  public void deletar(Long id) throws RegraNegocioException {
-      Lancamento lancamento = this.obterPorIdLancamento(id);
+  public void deletar(Long id, Authentication authentication) throws RegraNegocioException {
+      Lancamento lancamento = this.obterPorIdLancamento(id, authentication);
       repository.delete(lancamento);
   }
 
@@ -71,9 +74,9 @@ public class LancamentoServiceImpl implements LancamentoService {
 
   @Override
   @Transactional
-  public void atualizarStatus(Long id, StatusLancamento status)
+  public void atualizarStatus(Long id, Authentication authentication, StatusLancamento status)
       throws RegraNegocioException {
-      Lancamento lancamento = this.obterPorIdLancamento(id);
+      Lancamento lancamento = this.obterPorIdLancamento(id, authentication);
         if(status==null){
             throw new RegraNegocioException("Não foi possível atualizar o status do lançamento, envie um status válido.");
         }
@@ -102,9 +105,10 @@ public class LancamentoServiceImpl implements LancamentoService {
     }
   }
 
-    public Lancamento obterPorIdLancamento(Long id) throws RegraNegocioException {
-        return repository.findById(id)
-                .orElseThrow(() -> new RegraNegocioException("Lançamento não encontrado para o ID informado."));
+    public Lancamento obterPorIdLancamento(Long idLancamento, Authentication authentication) throws RegraNegocioException {
+      Usuario usuario = usuarioService.obterIdUsuarioPorEmail(authentication.getName());
+      Long idUsuario = usuario.getId();
+      return repository.findLancamentoByUsuario_IdAndId(idUsuario, idLancamento).orElseThrow(() -> new RegraNegocioException("Lançamento não encontrado para o ID informado."));
     }
 
   @Override
@@ -131,19 +135,14 @@ public class LancamentoServiceImpl implements LancamentoService {
   }
 
     @Override
-    public Lancamento converterDTO(LancamentoDTO dto) throws RegraNegocioException {
+    public Lancamento converterDTO(LancamentoDTO dto, Authentication authentication) throws RegraNegocioException {
         Lancamento lancamento = new Lancamento();
         lancamento.setDescricao(dto.getDescricao());
         lancamento.setMes(dto.getMes());
         lancamento.setAno(dto.getAno());
         lancamento.setValor(dto.getValor());
         lancamento.setDataCadastro(LocalDate.now());
-        Usuario usuario =
-                usuarioService
-                        .obterPorId(dto.getUsuario())
-                        .orElseThrow(
-                                () -> new RegraNegocioException("Usuário não encontrado com o ID informado."));
-
+        Usuario usuario = usuarioService.obterIdUsuarioPorEmail(authentication.getName());
         lancamento.setUsuario(usuario);
         lancamento.setTipoLancamento(TipoLancamento.valueOf(dto.getTipoLancamento()));
         lancamento.setStatusLancamento(StatusLancamento.valueOf(dto.getStatusLancamento()));

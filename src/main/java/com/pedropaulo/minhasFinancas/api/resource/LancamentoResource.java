@@ -15,6 +15,7 @@ import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -25,9 +26,9 @@ public class LancamentoResource {
   private final UsuarioService usuarioService;
 
   @PostMapping("/salvar")
-  public ResponseEntity salvar(@RequestBody LancamentoDTO dto) {
+  public ResponseEntity salvar(@RequestBody LancamentoDTO dto, Authentication authentication) {
     try {
-      Lancamento entidade = service.converterDTO(dto);
+      Lancamento entidade = service.converterDTO(dto, authentication);
       entidade = service.salvar(entidade);
       return new ResponseEntity(entidade, HttpStatus.CREATED);
     } catch (RegraNegocioException e) {
@@ -36,9 +37,9 @@ public class LancamentoResource {
   }
 
   @PutMapping("{id}/atualizar")
-  public ResponseEntity atualizar(@PathVariable Long id, @RequestBody LancamentoDTO dto){
+  public ResponseEntity atualizar(@PathVariable Long id, @RequestBody LancamentoDTO dto, Authentication authentication){
       try {
-          Lancamento lancamentoAtualizado = service.atualizar(id, dto);
+          Lancamento lancamentoAtualizado = service.atualizar(id,authentication, dto);
           return ResponseEntity.ok(lancamentoAtualizado);
 
       } catch (RegraNegocioException e) {
@@ -48,19 +49,19 @@ public class LancamentoResource {
 
   @PutMapping("{id}/atualizar_status")
   public ResponseEntity atualizarStatus(
-      @PathVariable Long id, @RequestBody LancamentoStatusDTO dto){
+      @PathVariable Long id, @RequestBody LancamentoStatusDTO dto, Authentication authentication){
         try{
-            service.atualizarStatus(id, StatusLancamento.valueOf(dto.getStatus()));
+            service.atualizarStatus(id, authentication, StatusLancamento.valueOf(dto.getStatus()));
             return new ResponseEntity(HttpStatus.CREATED);
         }catch(RegraNegocioException e){
             return new ResponseEntity(e.getMessage(), HttpStatus.BAD_REQUEST);
         }
     }
 
-  @DeleteMapping("{id}/deletar")
-  public ResponseEntity deletar(@PathVariable Long id) {
+    @DeleteMapping("{id}/deletar")
+  public ResponseEntity deletar(@PathVariable Long id, Authentication authentication){
       try{
-          service.deletar(id);
+          service.deletar(id, authentication);
           return new ResponseEntity(HttpStatus.NO_CONTENT);
       }catch (RegraNegocioException e){
           return new ResponseEntity(e.getMessage(), HttpStatus.NOT_FOUND);
@@ -89,11 +90,13 @@ public class LancamentoResource {
     return service.buscar(lancamentoFiltro);
   }
 
-  @GetMapping("{id}/buscar")
-  public ResponseEntity<?> obterLancamento(@PathVariable("id") Long id){
+
+
+    @GetMapping("{id}/buscar")
+  public ResponseEntity<?> obterLancamento(@PathVariable("id") Long id, Authentication authentication){
       try{
-          service.obterPorIdLancamento(id);
-          return new ResponseEntity(HttpStatus.OK);
+          Lancamento lancamento = service.obterPorIdLancamento(id, authentication);
+          return new ResponseEntity(lancamento, HttpStatus.OK);
       }catch(RegraNegocioException e){
           return new ResponseEntity(e.getMessage(), HttpStatus.NOT_FOUND);
       }
