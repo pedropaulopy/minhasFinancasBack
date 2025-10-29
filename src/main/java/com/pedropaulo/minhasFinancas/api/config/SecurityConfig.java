@@ -43,10 +43,8 @@ public class SecurityConfig {
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http
-        // 1. Use a nova sintaxe do Lambda
         .csrf(AbstractHttpConfigurer::disable)
 
-        // 2. ADICIONE ISTO para integrar o CORS ao Spring Security
         .cors(Customizer.withDefaults())
         .authorizeHttpRequests(
             authorize ->
@@ -64,14 +62,11 @@ public class SecurityConfig {
     return http.build();
   }
 
-  // 3. REMOVA o bean 'FilterRegistrationBean'
 
-  // 4. ADICIONE este bean. O .cors() acima irá procurá-lo
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration config = new CorsConfiguration();
 
-    // Use as mesmas configurações que você tinha:
     config.setAllowedOrigins(List.of("http://localhost:3000"));
     config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
     config.setAllowedHeaders(List.of("*")); // "all" é ["*"]

@@ -14,6 +14,7 @@ import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -23,8 +24,9 @@ public class UsuarioResource {
   private final UsuarioService service;
   private final LancamentoService lancamentoService;
   private final JwtServiceImpl jwtService;
+    private final UsuarioService usuarioService;
 
-  @PostMapping
+    @PostMapping
   public ResponseEntity salvar(@RequestBody UsuarioDTO dto) {
     Usuario usuario =
         Usuario.builder()
@@ -52,11 +54,14 @@ public class UsuarioResource {
     }
   }
 
-  @GetMapping("{id}/saldo")
-  public ResponseEntity obterSaldo(@PathVariable("id") Long idUsuario) {
+  //id que vem da autenticacao eh usado no lugar da url
+  @GetMapping("/saldo")
+  public ResponseEntity obterSaldo(Authentication authtentication) {
       try{
+          String email = authtentication.getName();
+          Long idUsuario = usuarioService.obterIdPorEmail(email);
           BigDecimal saldo = lancamentoService.obterSaldoPorUsuario(idUsuario);
-          return ResponseEntity.ok(saldo);
+          return new ResponseEntity(saldo, HttpStatus.OK);
       }catch (RegraNegocioException e){
           return new ResponseEntity(e.getMessage(), HttpStatus.NOT_FOUND);
       }

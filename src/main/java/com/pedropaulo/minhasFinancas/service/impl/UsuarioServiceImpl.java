@@ -74,4 +74,9 @@ public class UsuarioServiceImpl implements UsuarioService {
       }
       return repository.findById(id);
   }
+
+  public Long obterIdPorEmail(String email) throws RegraNegocioException {
+      Usuario usuario = repository.findByEmail(email).orElseThrow(() -> new RegraNegocioException("Usuário não encontrado para o email informado"));
+      return usuario.getId();
+  }
 }
