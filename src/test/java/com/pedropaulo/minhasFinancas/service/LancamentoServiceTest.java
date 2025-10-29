@@ -39,7 +39,6 @@ public class LancamentoServiceTest {
 
     @BeforeEach
     public void setUp() {
-        // cria spy manual injetando os mocks
         service = Mockito.spy(new LancamentoServiceImpl(repository, usuarioService));
     }
 
@@ -301,7 +300,6 @@ public class LancamentoServiceTest {
     @Test
     public void deveObterSaldoDeUmUsuario() throws RegraNegocioException {
         Long idUsuario = 1L;
-        // usuarioService.obterPorId retorna Optional<Usuario> em outras partes do código
         Mockito.when(usuarioService.obterPorId(idUsuario)).thenReturn(Optional.of(new Usuario()));
         Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.RECEITA, StatusLancamento.EFETIVADO))
                 .thenReturn(BigDecimal.valueOf(100));
@@ -310,4 +308,166 @@ public class LancamentoServiceTest {
         BigDecimal saldo = service.obterSaldoPorUsuario(idUsuario);
         Assertions.assertThat(saldo).isEqualTo(BigDecimal.valueOf(50));
     }
+
+    @Test
+    public void deveConverterUmLancamentoDTOEmUmLancamento() throws RegraNegocioException {
+        LocalDate dataCadastro = LocalDate.now();
+
+        LancamentoDTO dto = new LancamentoDTO();
+        dto.setDescricao("Teste DTO");
+        dto.setMes(10);
+        dto.setAno(2025);
+        dto.setValor(BigDecimal.TEN);
+        dto.setTipoLancamento(TipoLancamento.RECEITA.name());
+        dto.setStatusLancamento(StatusLancamento.PENDENTE.name());
+
+        Usuario usuario = new Usuario();
+        usuario.setId(1L);
+        usuario.setEmail("usuario@teste.com");
+
+        Mockito.when(authentication.getName()).thenReturn("usuario@teste.com");
+        Mockito.when(usuarioService.obterIdUsuarioPorEmail("usuario@teste.com")).thenReturn(usuario);
+
+        Lancamento lancamento = service.converterDTO(dto, authentication);
+
+        Assertions.assertThat(lancamento.getDescricao()).isEqualTo(dto.getDescricao());
+        Assertions.assertThat(lancamento.getMes()).isEqualTo(dto.getMes());
+        Assertions.assertThat(lancamento.getAno()).isEqualTo(dto.getAno());
+        Assertions.assertThat(lancamento.getValor()).isEqualTo(dto.getValor());
+        Assertions.assertThat(lancamento.getTipoLancamento().name()).isEqualTo(dto.getTipoLancamento());
+        Assertions.assertThat(lancamento.getStatusLancamento().name()).isEqualTo(dto.getStatusLancamento());
+        Assertions.assertThat(lancamento.getUsuario()).isEqualTo(usuario);
+        Assertions.assertThat(lancamento.getDataCadastro()).isEqualTo(dataCadastro);
+    }
+
+    @Test
+    public void deveLancarErroAoConverterDTOComUsuarioInvalido() throws RegraNegocioException {
+        LancamentoDTO dto = new LancamentoDTO();
+        dto.setDescricao("Teste DTO");
+        dto.setMes(10);
+        dto.setAno(2025);
+        dto.setValor(BigDecimal.TEN);
+        dto.setTipoLancamento(TipoLancamento.RECEITA.name());
+        dto.setStatusLancamento(StatusLancamento.PENDENTE.name());
+
+        Mockito.when(authentication.getName()).thenReturn("usuario@teste.com");
+        Mockito.when(usuarioService.obterIdUsuarioPorEmail("usuario@teste.com"))
+                .thenThrow(new RegraNegocioException("Usuário não encontrado"));
+
+        Throwable erro = Assertions.catchThrowable(() -> service.converterDTO(dto, authentication));
+        Assertions.assertThat(erro)
+                .isInstanceOf(RegraNegocioException.class)
+                .hasMessage("Usuário não encontrado");
+    }
+
+    @Test
+    public void deveLancarErroAoConverterDTOComTipoInvalido() throws RegraNegocioException {
+        LancamentoDTO dto = new LancamentoDTO();
+        dto.setDescricao("Teste DTO");
+        dto.setMes(10);
+        dto.setAno(2025);
+        dto.setValor(BigDecimal.TEN);
+        dto.setTipoLancamento("TIPO_INVALIDO"); // Inválido
+        dto.setStatusLancamento(StatusLancamento.PENDENTE.name());
+
+        Usuario usuario = new Usuario();
+        usuario.setId(1L);
+        usuario.setEmail("usuario@teste.com");
+
+        Mockito.when(authentication.getName()).thenReturn("usuario@teste.com");
+        Mockito.when(usuarioService.obterIdUsuarioPorEmail("usuario@teste.com")).thenReturn(usuario);
+
+        Assertions.catchThrowableOfType(
+                () -> service.converterDTO(dto, authentication),
+                IllegalArgumentException.class
+        );
+    }
+
+    @Test
+    public void deveLancarErroAoConverterDTOComStatusInvalido() throws RegraNegocioException {
+        LancamentoDTO dto = new LancamentoDTO();
+        dto.setDescricao("Teste DTO");
+        dto.setMes(10);
+        dto.setAno(2025);
+        dto.setValor(BigDecimal.TEN);
+        dto.setTipoLancamento(TipoLancamento.RECEITA.name());
+        dto.setStatusLancamento("STATUS_INVALIDO");
+
+        Usuario usuario = new Usuario();
+        usuario.setId(1L);
+        usuario.setEmail("usuario@teste.com");
+
+        Mockito.when(authentication.getName()).thenReturn("usuario@teste.com");
+        Mockito.when(usuarioService.obterIdUsuarioPorEmail("usuario@teste.com")).thenReturn(usuario);
+
+        Assertions.catchThrowableOfType(
+                () -> service.converterDTO(dto, authentication),
+                IllegalArgumentException.class
+        );
+    }
+
+    @Test
+    public void deveObterSaldoDeUmUsuarioOndeReceitasEhNull() throws RegraNegocioException {
+        Long idUsuario = 1L;
+
+        Mockito.when(usuarioService.obterPorId(idUsuario)).thenReturn(Optional.of(new Usuario()));
+
+        Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.RECEITA, StatusLancamento.EFETIVADO))
+                .thenReturn(null); // Receitas null
+        Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.DESPESA, StatusLancamento.EFETIVADO))
+                .thenReturn(BigDecimal.valueOf(50));
+
+        BigDecimal saldo = service.obterSaldoPorUsuario(idUsuario);
+
+        Assertions.assertThat(saldo).isEqualTo(BigDecimal.valueOf(-50));
+    }
+
+    @Test
+    public void deveObterSaldoDeUmUsuarioOndeDespesasEhNull() throws RegraNegocioException {
+        Long idUsuario = 1L;
+
+        Mockito.when(usuarioService.obterPorId(idUsuario)).thenReturn(Optional.of(new Usuario()));
+
+        Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.RECEITA, StatusLancamento.EFETIVADO))
+                .thenReturn(BigDecimal.valueOf(100));
+        Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.DESPESA, StatusLancamento.EFETIVADO))
+                .thenReturn(null);
+
+        BigDecimal saldo = service.obterSaldoPorUsuario(idUsuario);
+
+        Assertions.assertThat(saldo).isEqualTo(BigDecimal.valueOf(100));
+    }
+
+    @Test
+    public void deveObterSaldoDeUmUsuarioOndeAmbosSaoNull() throws RegraNegocioException {
+        Long idUsuario = 1L;
+
+        Mockito.when(usuarioService.obterPorId(idUsuario)).thenReturn(Optional.of(new Usuario()));
+
+        Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.RECEITA, StatusLancamento.EFETIVADO))
+                .thenReturn(null);
+        Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.DESPESA, StatusLancamento.EFETIVADO))
+                .thenReturn(null);
+
+        BigDecimal saldo = service.obterSaldoPorUsuario(idUsuario);
+
+        Assertions.assertThat(saldo).isEqualByComparingTo(BigDecimal.ZERO);
+    }
+
+    @Test
+    public void deveLancarErroAoObterSaldoDeUsuarioInexistente() throws RegraNegocioException {
+        Long idUsuario = 1L;
+
+        Mockito.when(usuarioService.obterPorId(idUsuario))
+                .thenThrow(new RegraNegocioException("Usuário não encontrado"));
+
+        Throwable erro = Assertions.catchThrowable(() -> service.obterSaldoPorUsuario(idUsuario));
+
+        Assertions.assertThat(erro)
+                .isInstanceOf(RegraNegocioException.class)
+                .hasMessage("Usuário não encontrado");
+
+        Mockito.verify(repository, Mockito.never()).obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(Mockito.anyLong(), Mockito.any(TipoLancamento.class), Mockito.any(StatusLancamento.class));
+    }
+
 }

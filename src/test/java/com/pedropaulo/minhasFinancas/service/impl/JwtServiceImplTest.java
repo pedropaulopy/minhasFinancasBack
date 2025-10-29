@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -85,12 +86,13 @@ public class JwtServiceImplTest {
         assertFalse(verificadorComOutraChave.isTokenValido(tokenAssinado));
     }
 
-    @Disabled
     @Test
     public void deveLancarExpiredAoObterClaimsDeTokenExpirado() {
         JwtServiceImpl svc = buildService("-2", strongBase64Key());
         String token = svc.gerarToken(usuario());
-        svc.obterClaims(token);
+        Assertions.assertThrows(ExpiredJwtException.class, () -> {
+            svc.obterClaims(token);
+        });
     }
 
     @Test

@@ -68,6 +68,7 @@ public class LancamentoResource {
       }
   }
 
+  //TODO - TESTAR
   @GetMapping("/buscar")
   public List<Lancamento> buscar(
       @RequestParam(value = "descricao", required = false) String descricao,
