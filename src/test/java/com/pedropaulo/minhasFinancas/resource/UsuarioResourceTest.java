@@ -12,7 +12,10 @@ import com.pedropaulo.minhasFinancas.service.UsuarioService;
 import com.pedropaulo.minhasFinancas.service.impl.JwtServiceImpl;
 import java.math.BigDecimal;
 import java.util.Optional;
-
+import com.pedropaulo.minhasFinancas.api.config.SecurityConfig;
+import com.pedropaulo.minhasFinancas.service.impl.SecurityUserDetailsServiceImpl;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
@@ -31,8 +34,9 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 @ExtendWith(SpringExtension.class)
 @ActiveProfiles("test")
-@WebMvcTest(controllers = UsuarioResource.class, excludeAutoConfiguration =  { SecurityAutoConfiguration.class })
+@WebMvcTest(controllers = UsuarioResource.class)
 @AutoConfigureMockMvc
+@Import(SecurityConfig.class)
 public class UsuarioResourceTest {
     static final String API = "/api/usuarios";
     static final String JSON = MediaType.APPLICATION_JSON_VALUE;
@@ -50,6 +54,10 @@ public class UsuarioResourceTest {
     @SuppressWarnings("removal")
     @MockBean
     JwtServiceImpl jwtService;
+
+    @SuppressWarnings("removal")
+    @MockBean
+    private SecurityUserDetailsServiceImpl userDetailsService;
 
     @Test
     public void deveAutenticarUmUsuario() throws Exception {
@@ -135,16 +143,22 @@ public class UsuarioResourceTest {
     }
 
     @Test
+    @WithMockUser(username = "email@email.com")
     public void deveRetornarSaldoDeUmUsuario() throws Exception {
         Long idUsuario = 1L;
+        String email = "email@email.com";
         BigDecimal saldo = BigDecimal.valueOf(1000);
 
-        Usuario usuario = Usuario.builder().id(idUsuario).nome("nome").email("email@email.com").build();
+        Usuario usuario = Usuario.builder().id(idUsuario).nome("nome").email(email).build();
+
+        Mockito.when(service.obterIdUsuarioPorEmail(email)).thenReturn(usuario);
+
         Mockito.when(service.obterPorId(idUsuario)).thenReturn(java.util.Optional.of(usuario));
 
         Mockito.when(lancamentoService.obterSaldoPorUsuario(idUsuario)).thenReturn(saldo);
 
-        MockHttpServletRequestBuilder request = MockMvcRequestBuilders.get(API.concat("/").concat(idUsuario.toString()).concat("/saldo"))
+        MockHttpServletRequestBuilder request = MockMvcRequestBuilders
+                .get(API.concat("/saldo"))
                 .contentType(JSON)
                 .accept(JSON);
 
@@ -153,19 +167,21 @@ public class UsuarioResourceTest {
     }
 
     @Test
+    @WithMockUser(username = "outro@email.com") // 1. Add mocked user to avoid NPE
     public void naoDeveRetornarSaldoDeUmUsuario() throws Exception {
         Long idUsuario = 1L;
+        String email = "outro@email.com";
 
-        Mockito.when(service.obterPorId(idUsuario)).thenReturn(Optional.empty());
+        Mockito.when(service.obterIdUsuarioPorEmail(email))
+                .thenThrow(new RegraNegocioException("Usuário não encontrado"));
 
-        MockHttpServletRequestBuilder request = MockMvcRequestBuilders.get(API.concat("/").concat(idUsuario.toString()).concat("/saldo"))
+        MockHttpServletRequestBuilder request = MockMvcRequestBuilders
+                .get(API.concat("/saldo"))
                 .contentType(JSON)
                 .accept(JSON);
 
-        // Alinha o teste com o comportamento atual do controller (retorna 200 OK com corpo vazio)
         mvc.perform(request)
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.content().string(""));
+                .andExpect(MockMvcResultMatchers.status().isNotFound());
     }
 
 

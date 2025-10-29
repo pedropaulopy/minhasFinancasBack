@@ -38,7 +38,6 @@ public class LancamentoServiceImpl implements LancamentoService {
     return repository.save(lancamento);
   }
 
-  //TODO - CHECAR SE O ID DE USUARIO NO BODY É DO USUARIO AUTENTICADO
   @Transactional
   public Lancamento atualizar(Long id, Authentication authentication, LancamentoDTO dto) throws RegraNegocioException {
       Lancamento lancamento = this.obterPorIdLancamento(id, authentication);

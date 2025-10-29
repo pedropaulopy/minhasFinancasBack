@@ -21,6 +21,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.Authentication;
 
 @ExtendWith(MockitoExtension.class)
 public class LancamentoServiceTest {
@@ -32,6 +33,9 @@ public class LancamentoServiceTest {
     UsuarioService usuarioService;
 
     LancamentoServiceImpl service;
+
+    @Mock
+    Authentication authentication;
 
     @BeforeEach
     public void setUp() {
@@ -98,14 +102,13 @@ public class LancamentoServiceTest {
                 .statusLancamento(StatusLancamento.PENDENTE)
                 .dataCadastro(LocalDate.now()).build();
 
-        // prepara DTO com novos valores (usa a fábrica no mesmo pacote do DTO)
         LancamentoDTO dto = LancamentoDTOFactory.create(1L, "Lançamento teste", 11, 2025, BigDecimal.valueOf(100),
                 TipoLancamento.DESPESA.name(), StatusLancamento.PENDENTE.name());
 
-        Mockito.doReturn(lancamentoSalvo).when(service).obterPorIdLancamento(1L);
+        Mockito.doReturn(lancamentoSalvo).when(service).obterPorIdLancamento(1L, authentication);
         Mockito.when(repository.save(lancamentoSalvo)).thenReturn(lancamentoSalvo);
 
-        Lancamento atualizado = service.atualizar(1L, dto);
+        Lancamento atualizado = service.atualizar(1L, authentication, dto);
 
         Mockito.verify(repository, Mockito.times(1)).save(lancamentoSalvo);
         Assertions.assertThat(atualizado).isEqualTo(lancamentoSalvo);
@@ -116,9 +119,9 @@ public class LancamentoServiceTest {
         LancamentoDTO dto = LancamentoDTOFactory.create(1L, "Lançamento teste", 11, 2025, BigDecimal.valueOf(100),
                 TipoLancamento.DESPESA.name(), StatusLancamento.PENDENTE.name());
 
-        Mockito.doThrow(new RegraNegocioException("Lançamento não encontrado para o ID informado.")).when(service).obterPorIdLancamento(1L);
+        Mockito.doThrow(new RegraNegocioException("Lançamento não encontrado para o ID informado.")).when(service).obterPorIdLancamento(1L, authentication);
 
-        Assertions.catchThrowableOfType(() -> service.atualizar(1L, dto), RegraNegocioException.class);
+        Assertions.catchThrowableOfType(() -> service.atualizar(1L, authentication, dto), RegraNegocioException.class);
         Mockito.verify(repository, Mockito.never()).save(Mockito.any());
     }
 
@@ -134,16 +137,16 @@ public class LancamentoServiceTest {
                 .statusLancamento(StatusLancamento.PENDENTE)
                 .dataCadastro(LocalDate.now()).build();
 
-        Mockito.doReturn(lancamento).when(service).obterPorIdLancamento(1L);
-        service.deletar(1L);
+        Mockito.doReturn(lancamento).when(service).obterPorIdLancamento(1L, authentication);
+        service.deletar(1L, authentication);
         Mockito.verify(repository).delete(lancamento);
     }
 
     @Test
     public void deveLancarErroAoTentarDeletarUmLancamentoQueAindaNaoFoiSalvo() throws RegraNegocioException {
-        Mockito.doThrow(new RegraNegocioException("Lançamento não encontrado para o ID informado.")).when(service).obterPorIdLancamento(1L);
+        Mockito.doThrow(new RegraNegocioException("Lançamento não encontrado para o ID informado.")).when(service).obterPorIdLancamento(1L, authentication);
 
-        Assertions.catchThrowableOfType(() -> service.deletar(1L), RegraNegocioException.class);
+        Assertions.catchThrowableOfType(() -> service.deletar(1L, authentication), RegraNegocioException.class);
         Mockito.verify(repository, Mockito.never()).delete(Mockito.any());
     }
 
@@ -178,40 +181,68 @@ public class LancamentoServiceTest {
                 .dataCadastro(LocalDate.now()).build();
 
         StatusLancamento novoStatus = StatusLancamento.EFETIVADO;
-        Mockito.doReturn(lancamento).when(service).obterPorIdLancamento(1L);
-        service.atualizarStatus(1L, novoStatus);
+        Mockito.doReturn(lancamento).when(service).obterPorIdLancamento(1L, authentication);
+        service.atualizarStatus(1L, authentication, novoStatus);
         Assertions.assertThat(lancamento.getStatusLancamento()).isEqualTo(novoStatus);
-        Mockito.verify(service).obterPorIdLancamento(1L);
+        Mockito.verify(service).obterPorIdLancamento(1L, authentication);
     }
 
     @Test
-    public void deveObterUmLancamentoPorId() {
+    public void deveObterUmLancamentoPorId() throws RegraNegocioException {
+        Long idLancamento = 1L;
+        Long idUsuario = 1L;
+        String emailUsuario = "usuario@teste.com";
+
+        Usuario usuario = new Usuario();
+        usuario.setId(idUsuario);
+        usuario.setEmail(emailUsuario);
+
         Lancamento lancamento = Lancamento.builder()
-                .id(1L)
+                .id(idLancamento)
                 .ano(2025)
                 .mes(11)
                 .descricao("Lançamento teste")
                 .valor(BigDecimal.valueOf(100))
                 .tipoLancamento(TipoLancamento.DESPESA)
                 .statusLancamento(StatusLancamento.PENDENTE)
-                .dataCadastro(LocalDate.now()).build();
-        Long id = 1L;
-        Mockito.when(repository.findById(id)).thenReturn(Optional.of(lancamento));
-        Lancamento resultado = null;
-        try {
-            resultado = service.obterPorIdLancamento(id);
-        } catch (RegraNegocioException e) {
-            throw new RuntimeException(e);
-        }
+                .dataCadastro(LocalDate.now())
+                .usuario(usuario)
+                .build();
+
+        Mockito.when(authentication.getName()).thenReturn(emailUsuario);
+
+        Mockito.when(usuarioService.obterIdUsuarioPorEmail(emailUsuario)).thenReturn(usuario);
+
+        Mockito.when(repository.findLancamentoByUsuario_IdAndId(idUsuario, idLancamento))
+                .thenReturn(Optional.of(lancamento));
+
+        Lancamento resultado = service.obterPorIdLancamento(idLancamento, authentication);
+
         Assertions.assertThat(resultado).isNotNull();
+        Assertions.assertThat(resultado.getId()).isEqualTo(idLancamento);
     }
 
     @Test
-    public void deveRetornarErroQuandoOLancamentoNaoExistir() {
-        Long id = 1L;
-        Mockito.when(repository.findById(id)).thenReturn(Optional.empty());
+    public void deveRetornarErroQuandoOLancamentoNaoExistir() throws RegraNegocioException {
+        Long idLancamento = 1L;
+        Long idUsuario = 1L;
+        String emailUsuario = "usuario@teste.com";
 
-        Assertions.catchThrowableOfType(() -> service.obterPorIdLancamento(id), RegraNegocioException.class);
+        Usuario usuario = new Usuario();
+        usuario.setId(idUsuario);
+        usuario.setEmail(emailUsuario);
+
+        Mockito.when(authentication.getName()).thenReturn(emailUsuario);
+
+        Mockito.when(usuarioService.obterIdUsuarioPorEmail(emailUsuario)).thenReturn(usuario);
+
+        Mockito.when(repository.findLancamentoByUsuario_IdAndId(idUsuario, idLancamento))
+                .thenReturn(Optional.empty());
+
+        Assertions.catchThrowableOfType(
+                () -> service.obterPorIdLancamento(idLancamento, authentication),
+                RegraNegocioException.class
+        );
     }
 
     @Test

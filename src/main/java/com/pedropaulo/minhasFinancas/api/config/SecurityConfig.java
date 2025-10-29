@@ -2,6 +2,7 @@ package com.pedropaulo.minhasFinancas.api.config;
 
 import com.pedropaulo.minhasFinancas.api.JwtTokenFilter;
 import com.pedropaulo.minhasFinancas.service.JwtService;
+import com.pedropaulo.minhasFinancas.service.impl.JwtServiceImpl;
 import com.pedropaulo.minhasFinancas.service.impl.SecurityUserDetailsServiceImpl;
 import java.util.Arrays;
 import java.util.List;
@@ -28,7 +29,7 @@ public class SecurityConfig {
 
   @Autowired private SecurityUserDetailsServiceImpl userDetailsService;
 
-  @Autowired private JwtService jwtService;
+  @Autowired private JwtServiceImpl jwtService;
 
   @Bean
   public PasswordEncoder passwordEncoder() {
