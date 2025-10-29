@@ -24,6 +24,7 @@ public class LancamentoResource {
   private final LancamentoService service;
   private final UsuarioService usuarioService;
 
+  //TODO BLINDAR
   @PostMapping("/salvar")
   public ResponseEntity salvar(@RequestBody LancamentoDTO dto) {
     try {
@@ -35,6 +36,7 @@ public class LancamentoResource {
     }
   }
 
+  //TODO BLINDAR
   @PutMapping("{id}/atualizar")
   public ResponseEntity atualizar(@PathVariable Long id, @RequestBody LancamentoDTO dto){
       try {
@@ -46,6 +48,7 @@ public class LancamentoResource {
       }
   }
 
+  //TODO BLINDAR
   @PutMapping("{id}/atualizar_status")
   public ResponseEntity atualizarStatus(
       @PathVariable Long id, @RequestBody LancamentoStatusDTO dto){
@@ -57,7 +60,8 @@ public class LancamentoResource {
         }
     }
 
-  @DeleteMapping("{id}/deletar")
+    //TODO BLINDAR
+    @DeleteMapping("{id}/deletar")
   public ResponseEntity deletar(@PathVariable Long id) {
       try{
           service.deletar(id);
@@ -67,6 +71,7 @@ public class LancamentoResource {
       }
   }
 
+  //TODO BLINDAR
   @GetMapping("/buscar")
   public List<Lancamento> buscar(
       @RequestParam(value = "descricao", required = false) String descricao,
@@ -89,6 +94,7 @@ public class LancamentoResource {
     return service.buscar(lancamentoFiltro);
   }
 
+  //TODO BLINDAR
   @GetMapping("{id}/buscar")
   public ResponseEntity<?> obterLancamento(@PathVariable("id") Long id){
       try{
