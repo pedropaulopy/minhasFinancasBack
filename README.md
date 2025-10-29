@@ -27,7 +27,7 @@ customizadas.
 src/
  └── main/
      ├── java/
-     │   └── .com.pedropaulo.minhasFinancas/
+     │   └── .com.pedropaulo.minhas_financas/
      │       ├── model/
      │       │   ├── Lancamento.java
      │       │   ├── Usuario.java

@@ -11,7 +11,7 @@
     </parent>
 
     <groupId>com.pedropaulo</groupId>
-    <artifactId>minhasFinancas</artifactId>
+    <artifactId>minhasfinancas</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>minhasFinancas</name>
     <description>Projeto para gerenciamento de finanças pessoais.</description>

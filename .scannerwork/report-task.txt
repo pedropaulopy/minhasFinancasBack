@@ -2,5 +2,5 @@ projectKey=Programa-de-Est-gio---Pedro-Paulo
 serverUrl=http://sonar.muralis.com.br
 serverVersion=10.4.1.88267
 dashboardUrl=http://sonar.muralis.com.br/dashboard?id=Programa-de-Est-gio---Pedro-Paulo
-ceTaskId=0d8e1683-3f5f-4672-8ecc-e3bc2ae840ec
-ceTaskUrl=http://sonar.muralis.com.br/api/ce/task?id=0d8e1683-3f5f-4672-8ecc-e3bc2ae840ec
+ceTaskId=7c18148e-9b2a-481f-96a1-83fdeb6cd0da
+ceTaskUrl=http://sonar.muralis.com.br/api/ce/task?id=7c18148e-9b2a-481f-96a1-83fdeb6cd0da
