@@ -353,4 +353,51 @@ public class LancamentoResourceTest {
 		return dto;
 	}
 
+	@Test
+	public void deveRetornarUnprocessableEntityAoTentarAtualizarLancamentoNaoPendente() throws Exception {
+		Long id = 1L;
+		LancamentoDTO dto = criarDtoValido();
+		String mensagemErro = "Lançamentos efetivados ou cancelados não podem ser editados.";
+
+		Mockito.when(lancamentoService.atualizar(id, authentication, dto))
+			.thenThrow(new com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException(mensagemErro));
+
+		ResponseEntity response = resource.atualizar(id, dto, authentication);
+
+		Assertions.assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+		Assertions.assertThat(response.getBody()).isEqualTo(mensagemErro);
+	}
+
+	@Test
+	public void deveRetornarUnprocessableEntityAoTentarAtualizarStatus() throws Exception {
+		Long id = 1L;
+		LancamentoStatusDTO dto = new LancamentoStatusDTO();
+		dto.setStatus("EFETIVADO");
+		String mensagemErro = "Lançamentos efetivados ou cancelados não podem ser editados.";
+
+		Mockito.doThrow(new com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException(mensagemErro))
+			.when(lancamentoService)
+			.atualizarStatus(Mockito.eq(id), Mockito.any(Authentication.class), Mockito.any(StatusLancamento.class));
+
+		ResponseEntity response = resource.atualizarStatus(id, dto, authentication);
+
+		Assertions.assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+		Assertions.assertThat(response.getBody()).isEqualTo(mensagemErro);
+	}
+
+	@Test
+	public void deveRetornarUnprocessableEntityAoTentarDeletarLancamentoNaoPendente() throws Exception {
+		Long id = 1L;
+		String mensagemErro = "Lançamentos efetivados ou cancelados não podem ser editados.";
+
+		Mockito.doThrow(new com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException(mensagemErro))
+			.when(lancamentoService)
+			.deletar(id, authentication);
+
+		ResponseEntity response = resource.deletar(id, authentication);
+
+		Assertions.assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+		Assertions.assertThat(response.getBody()).isEqualTo(mensagemErro);
+	}
+
 }

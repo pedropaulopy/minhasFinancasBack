@@ -194,7 +194,7 @@ public class LancamentoServiceTest {
 		Mockito.doReturn(lancamento).when(service).obterPorIdLancamento(1L, authentication);
 		service.atualizarStatus(1L, authentication, novoStatus);
 		Assertions.assertThat(lancamento.getStatusLancamento()).isEqualTo(novoStatus);
-		Mockito.verify(service).obterPorIdLancamento(1L, authentication);
+		Mockito.verify(service, Mockito.times(2)).obterPorIdLancamento(1L, authentication);
 	}
 
 	@Test
@@ -484,6 +484,60 @@ public class LancamentoServiceTest {
 		Mockito.verify(repository, Mockito.never())
 			.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(Mockito.anyLong(), Mockito.any(TipoLancamento.class),
 					Mockito.any(StatusLancamento.class));
+	}
+
+	@Test
+	public void deveValidarStatusLancamentoQuandoEstiverPendente() throws RegraNegocioException {
+		Long idLancamento = 1L;
+		Lancamento lancamento = Lancamento.builder()
+			.id(idLancamento)
+			.statusLancamento(StatusLancamento.PENDENTE)
+			.build();
+
+		Mockito.doReturn(lancamento).when(service).obterPorIdLancamento(idLancamento, authentication);
+
+		Assertions.assertThatCode(() -> service.validarStatusLancamento(idLancamento, authentication))
+			.doesNotThrowAnyException();
+
+		Mockito.verify(service, Mockito.times(1)).obterPorIdLancamento(idLancamento, authentication);
+	}
+
+	@Test
+	public void deveLancarErroAoValidarStatusLancamentoQuandoEstiverEfetivado() throws RegraNegocioException {
+		Long idLancamento = 1L;
+		Lancamento lancamento = Lancamento.builder()
+			.id(idLancamento)
+			.statusLancamento(StatusLancamento.EFETIVADO)
+			.build();
+
+		Mockito.doReturn(lancamento).when(service).obterPorIdLancamento(idLancamento, authentication);
+
+		Throwable erro = Assertions.catchThrowable(() -> service.validarStatusLancamento(idLancamento, authentication));
+
+		Assertions.assertThat(erro)
+			.isInstanceOf(com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException.class)
+			.hasMessage("Lançamentos efetivados ou cancelados não podem ser editados.");
+
+		Mockito.verify(service, Mockito.times(1)).obterPorIdLancamento(idLancamento, authentication);
+	}
+
+	@Test
+	public void deveLancarErroAoValidarStatusLancamentoQuandoEstiverCancelado() throws RegraNegocioException {
+		Long idLancamento = 1L;
+		Lancamento lancamento = Lancamento.builder()
+			.id(idLancamento)
+			.statusLancamento(StatusLancamento.CANCELADO)
+			.build();
+
+		Mockito.doReturn(lancamento).when(service).obterPorIdLancamento(idLancamento, authentication);
+
+		Throwable erro = Assertions.catchThrowable(() -> service.validarStatusLancamento(idLancamento, authentication));
+
+		Assertions.assertThat(erro)
+			.isInstanceOf(com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException.class)
+			.hasMessage("Lançamentos efetivados ou cancelados não podem ser editados.");
+
+		Mockito.verify(service, Mockito.times(1)).obterPorIdLancamento(idLancamento, authentication);
 	}
 
 }

@@ -46,9 +46,10 @@ public class LancamentoResource {
 			Lancamento lancamentoAtualizado = service.atualizar(id, authentication, dto);
 			return ResponseEntity.ok(lancamentoAtualizado);
 		}
-        catch (EntidadeNaoProcessavelException e) {
-            return new ResponseEntity(e.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY); // Retorna 422
-        }
+		catch (EntidadeNaoProcessavelException e) {
+			return new ResponseEntity(e.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY); // Retorna
+																						// 422
+		}
 		catch (RegraNegocioException e) {
 			return ResponseEntity.badRequest().body(e.getMessage());
 		}
@@ -60,9 +61,11 @@ public class LancamentoResource {
 		try {
 			service.atualizarStatus(id, authentication, StatusLancamento.valueOf(dto.getStatus()));
 			return new ResponseEntity(HttpStatus.CREATED);
-		}catch (EntidadeNaoProcessavelException e) {
-            return new ResponseEntity(e.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY); // Retorna 422
-        }
+		}
+		catch (EntidadeNaoProcessavelException e) {
+			return new ResponseEntity(e.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY); // Retorna
+																						// 422
+		}
 		catch (RegraNegocioException e) {
 			return new ResponseEntity(e.getMessage(), HttpStatus.BAD_REQUEST);
 		}
@@ -74,9 +77,10 @@ public class LancamentoResource {
 			service.deletar(id, authentication);
 			return new ResponseEntity(HttpStatus.NO_CONTENT);
 		}
-        catch (EntidadeNaoProcessavelException e) {
-            return new ResponseEntity(e.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY); // Retorna 422
-        }
+		catch (EntidadeNaoProcessavelException e) {
+			return new ResponseEntity(e.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY); // Retorna
+																						// 422
+		}
 		catch (RegraNegocioException e) {
 			return new ResponseEntity(e.getMessage(), HttpStatus.NOT_FOUND);
 		}
