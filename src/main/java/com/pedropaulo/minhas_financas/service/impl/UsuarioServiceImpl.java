@@ -65,11 +65,13 @@ public class UsuarioServiceImpl implements UsuarioService {
 
   @Override
   public Optional<Usuario> obterPorId(Long id) throws RegraNegocioException {
-      if (!repository.findById(id).isPresent()) {
-          throw new RegraNegocioException(
-          "Usuário não encontrado para o ID informado.");
+      Optional<Usuario> usuario = repository.findById(id);
+
+      if (usuario.isEmpty()) {
+          throw new RegraNegocioException("Usuário não encontrado para o ID informado.");
       }
-      return repository.findById(id);
+
+      return usuario;
   }
 
     public Usuario obterIdUsuarioPorEmail(String email) throws RegraNegocioException {
