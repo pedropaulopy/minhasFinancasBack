@@ -22,7 +22,7 @@ public class UsuarioRepositoryTest {
     @Autowired
     TestEntityManager entityManager;
 
-    public static Usuario criaUsuario() {
+    public Usuario criaUsuario() {
         return Usuario.builder()
                 .nome("usuario")
                 .email("email@email.com")
