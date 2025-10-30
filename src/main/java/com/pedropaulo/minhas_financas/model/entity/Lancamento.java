@@ -15,36 +15,38 @@ import org.springframework.data.jpa.convert.threeten.Jsr310JpaConverters;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Lancamento {
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "id")
-  private Long id;
 
-  @Column(name = "descricao")
-  private String descricao;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Column(name = "id")
+	private Long id;
 
-  @Column(name = "mes")
-  private Integer mes;
+	@Column(name = "descricao")
+	private String descricao;
 
-  @Column(name = "ano")
-  private Integer ano;
+	@Column(name = "mes")
+	private Integer mes;
 
-  @ManyToOne
-  @JoinColumn(name = "id_usuario")
-  private Usuario usuario;
+	@Column(name = "ano")
+	private Integer ano;
 
-  @Column(name = "valor")
-  private BigDecimal valor;
+	@ManyToOne
+	@JoinColumn(name = "id_usuario")
+	private Usuario usuario;
 
-  @Column(name = "data_cadastro")
-  @Convert(converter = Jsr310JpaConverters.LocalDateConverter.class)
-  private LocalDate dataCadastro;
+	@Column(name = "valor")
+	private BigDecimal valor;
 
-  @Column(name = "tipo")
-  @Enumerated(EnumType.STRING)
-  private TipoLancamento tipoLancamento;
+	@Column(name = "data_cadastro")
+	@Convert(converter = Jsr310JpaConverters.LocalDateConverter.class)
+	private LocalDate dataCadastro;
 
-  @Column(name = "status")
-  @Enumerated(EnumType.STRING)
-  private StatusLancamento statusLancamento;
+	@Column(name = "tipo")
+	@Enumerated(EnumType.STRING)
+	private TipoLancamento tipoLancamento;
+
+	@Column(name = "status")
+	@Enumerated(EnumType.STRING)
+	private StatusLancamento statusLancamento;
+
 }

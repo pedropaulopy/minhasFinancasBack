@@ -23,183 +23,170 @@ import org.springframework.test.context.ActiveProfiles;
 @ExtendWith(MockitoExtension.class)
 @ActiveProfiles("test")
 public class UsuarioServiceTest {
-        UsuarioServiceImpl service; // Testando a implementação
-        @Mock
-        UsuarioRepository repository;
 
-        @Mock
-        PasswordEncoder passwordEncoder;
+	UsuarioServiceImpl service; // Testando a implementação
 
-        @BeforeEach
-        public void setUp(){
-        service = Mockito.spy(new UsuarioServiceImpl(repository, passwordEncoder));
-        }
+	@Mock
+	UsuarioRepository repository;
 
-        @Test
-        public void deveValidarEmail() throws RegraNegocioException {
-            Mockito.when(repository.existsByEmail("email@email.com")).thenReturn(false);
-            service.validarEmail("email@email.com");
-        }
+	@Mock
+	PasswordEncoder passwordEncoder;
 
-        @Test
-        public void deveValidarEmailRetornaErro(){
-            Mockito.when(repository.existsByEmail(Mockito.anyString())).thenReturn(true);
-            Throwable erro = Assertions.catchThrowable(() -> service.validarEmail("email@email.com"));
+	@BeforeEach
+	public void setUp() {
+		service = Mockito.spy(new UsuarioServiceImpl(repository, passwordEncoder));
+	}
 
-            Assertions.assertThat(erro)
-                    .isInstanceOf(RegraNegocioException.class)
-                    .hasMessage("Um usuário já foi cadastrado com este email.");
-        }
+	@Test
+	public void deveValidarEmail() throws RegraNegocioException {
+		Mockito.when(repository.existsByEmail("email@email.com")).thenReturn(false);
+		service.validarEmail("email@email.com");
+	}
 
-    @Test
-    public void deveSalvarUsuario() throws RegraNegocioException {
-        Mockito.doNothing().when(service).validarEmail(Mockito.anyString());
+	@Test
+	public void deveValidarEmailRetornaErro() {
+		Mockito.when(repository.existsByEmail(Mockito.anyString())).thenReturn(true);
+		Throwable erro = Assertions.catchThrowable(() -> service.validarEmail("email@email.com"));
 
-        Usuario usuarioSalvo = Usuario.builder()
-                .id(1L)
-                .nome("nome")
-                .email("email@email.com")
-                .senha("senha-criptografada")
-                .build();
+		Assertions.assertThat(erro)
+			.isInstanceOf(RegraNegocioException.class)
+			.hasMessage("Um usuário já foi cadastrado com este email.");
+	}
 
-        Mockito.when(repository.save(Mockito.any(Usuario.class))).thenReturn(usuarioSalvo);
+	@Test
+	public void deveSalvarUsuario() throws RegraNegocioException {
+		Mockito.doNothing().when(service).validarEmail(Mockito.anyString());
 
-        Usuario usuarioParaSalvar = Usuario.builder()
-                .nome("nome")
-                .email("email@email.com")
-                .senha("senha123")
-                .build();
+		Usuario usuarioSalvo = Usuario.builder()
+			.id(1L)
+			.nome("nome")
+			.email("email@email.com")
+			.senha("senha-criptografada")
+			.build();
 
-        Usuario result = service.salvarUsuario(usuarioParaSalvar);
+		Mockito.when(repository.save(Mockito.any(Usuario.class))).thenReturn(usuarioSalvo);
 
-        Assertions.assertThat(result).isNotNull();
-        Assertions.assertThat(result.getId()).isEqualTo(1L);
-        Assertions.assertThat(result.getNome()).isEqualTo("nome");
-        Assertions.assertThat(result.getEmail()).isEqualTo("email@email.com");
-        Assertions.assertThat(result.getSenha()).isNotEqualTo("senha123");
-    }
+		Usuario usuarioParaSalvar = Usuario.builder().nome("nome").email("email@email.com").senha("senha123").build();
 
+		Usuario result = service.salvarUsuario(usuarioParaSalvar);
 
-    @Test
-    public void deveAutenticarComSucesso() throws RegraNegocioException {
-        String email = "email@email.com";
-        String senha = "123";
-        String senhaDoBanco = "hash-salvo-no-banco";
+		Assertions.assertThat(result).isNotNull();
+		Assertions.assertThat(result.getId()).isEqualTo(1L);
+		Assertions.assertThat(result.getNome()).isEqualTo("nome");
+		Assertions.assertThat(result.getEmail()).isEqualTo("email@email.com");
+		Assertions.assertThat(result.getSenha()).isNotEqualTo("senha123");
+	}
 
-        Usuario usuario = Usuario.builder()
-                .id(1L)
-                .email(email)
-                .senha(senhaDoBanco)
-                .build();
+	@Test
+	public void deveAutenticarComSucesso() throws RegraNegocioException {
+		String email = "email@email.com";
+		String senha = "123";
+		String senhaDoBanco = "hash-salvo-no-banco";
 
-        Mockito.when(repository.findByEmail(email)).thenReturn(Optional.of(usuario));
+		Usuario usuario = Usuario.builder().id(1L).email(email).senha(senhaDoBanco).build();
 
-        Mockito.when(passwordEncoder.matches(senha, senhaDoBanco)).thenReturn(true);
+		Mockito.when(repository.findByEmail(email)).thenReturn(Optional.of(usuario));
 
-        Usuario result = service.autenticar(email, senha);
+		Mockito.when(passwordEncoder.matches(senha, senhaDoBanco)).thenReturn(true);
 
+		Usuario result = service.autenticar(email, senha);
 
-        Assertions.assertThat(result).isNotNull();
-        Assertions.assertThat(result.getEmail()).isEqualTo(email);
-    }
+		Assertions.assertThat(result).isNotNull();
+		Assertions.assertThat(result.getEmail()).isEqualTo(email);
+	}
 
-        @Test
-        public void naoDeveSalvarUsuarioComEmailJaCadastrado() throws RegraNegocioException {
-            String email = "email@email.com";
-            Usuario usuario = Usuario.builder().email(email).build();
-            Mockito.doThrow(RegraNegocioException.class).when(service).validarEmail(email);
+	@Test
+	public void naoDeveSalvarUsuarioComEmailJaCadastrado() throws RegraNegocioException {
+		String email = "email@email.com";
+		Usuario usuario = Usuario.builder().email(email).build();
+		Mockito.doThrow(RegraNegocioException.class).when(service).validarEmail(email);
 
-            Throwable erro = Assertions.catchThrowable(() -> service.salvarUsuario(usuario));
+		Throwable erro = Assertions.catchThrowable(() -> service.salvarUsuario(usuario));
 
-            Assertions.assertThat(erro).isInstanceOf(RegraNegocioException.class);
-            Mockito.verify(repository, Mockito.never()).save(usuario);
+		Assertions.assertThat(erro).isInstanceOf(RegraNegocioException.class);
+		Mockito.verify(repository, Mockito.never()).save(usuario);
 
-        }
+	}
 
+	@Test
+	public void deveLancarErroQuandoNaoExistirUsuarioCadastradoComOEmailInformado() {
+		Mockito.when(repository.findByEmail(Mockito.anyString())).thenReturn(Optional.empty());
+		Throwable erro = Assertions.catchThrowable(() -> service.autenticar("email.com", "123"));
 
-        @Test
-        public void deveLancarErroQuandoNaoExistirUsuarioCadastradoComOEmailInformado(){
-            Mockito.when(repository.findByEmail(Mockito.anyString())).thenReturn(Optional.empty());
-            Throwable erro = Assertions.catchThrowable(() -> service.autenticar("email.com", "123"));
+		Assertions.assertThat(erro)
+			.isInstanceOf(AutenticacaoException.class)
+			.hasMessage("Usuário não encontrado para o email informado.");
+	}
 
-            Assertions.assertThat(erro)
-                    .isInstanceOf(AutenticacaoException.class)
-                    .hasMessage("Usuário não encontrado para o email informado.");
-        }
+	@Test
+	public void deveLancarErroQuandoExistirUsuarioCadastradoComOEmailInformadoMasSenhaErrada()
+			throws RegraNegocioException {
+		String email = "email@emai.com";
+		String senhaCorreta = "123";
+		String senhaDigitadaErrada = "456";
 
-        @Test
-        public void deveLancarErroQuandoExistirUsuarioCadastradoComOEmailInformadoMasSenhaErrada() throws RegraNegocioException {
-            String email = "email@emai.com";
-            String senhaCorreta = "123";
-            String senhaDigitadaErrada = "456";
+		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+		String senhaCriptografada = encoder.encode(senhaCorreta);
 
-            BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-            String senhaCriptografada = encoder.encode(senhaCorreta);
+		Usuario usuario = Usuario.builder().email(email).senha(senhaCriptografada).id(1L).build();
 
-            Usuario usuario = Usuario.builder()
-                    .email(email)
-                    .senha(senhaCriptografada)
-                    .id(1L).build();
+		Mockito.when(repository.findByEmail(email)).thenReturn(Optional.of(usuario));
 
-            Mockito.when(repository.findByEmail(email)).thenReturn(Optional.of(usuario));
+		Throwable erro = Assertions.catchThrowable(() -> service.autenticar(email, senhaDigitadaErrada));
 
-            Throwable erro = Assertions.catchThrowable(() -> service.autenticar(email, senhaDigitadaErrada));
+		Assertions.assertThat(erro).isInstanceOf(AutenticacaoException.class).hasMessage("Senha inválida.");
+	}
 
-            Assertions.assertThat(erro)
-                    .isInstanceOf(AutenticacaoException.class)
-                    .hasMessage("Senha inválida.");
-        }
+	@Test
+	public void deveObterUsuarioPorId() throws RegraNegocioException {
+		Long id = 1L;
+		Usuario usuarioMock = Usuario.builder()
+			.id(id)
+			.nome("usuario teste")
+			.email("teste@email.com")
+			.senha("123")
+			.build();
 
-    @Test
-    public void deveObterUsuarioPorId() throws RegraNegocioException {
-        Long id = 1L;
-        Usuario usuarioMock = Usuario.builder()
-                .id(id)
-                .nome("usuario teste")
-                .email("teste@email.com")
-                .senha("123")
-                .build();
+		Mockito.when(repository.findById(id)).thenReturn(Optional.of(usuarioMock));
 
-        Mockito.when(repository.findById(id)).thenReturn(Optional.of(usuarioMock));
+		Optional<Usuario> result = service.obterPorId(id);
 
-        Optional<Usuario> result = service.obterPorId(id);
+		Assertions.assertThat(result).isPresent();
+		Assertions.assertThat(result.get()).isEqualTo(usuarioMock);
+		Mockito.verify(repository, Mockito.times(1)).findById(id);
+	}
 
-        Assertions.assertThat(result).isPresent();
-        Assertions.assertThat(result.get()).isEqualTo(usuarioMock);
-        Mockito.verify(repository, Mockito.times(1)).findById(id);
-    }
+	@Test
+	public void deveLancarErroAoNaoEncontrarUsuarioPorId() {
+		Long id = 1L;
+		Mockito.when(repository.findById(id)).thenReturn(Optional.empty());
 
-    @Test
-    public void deveLancarErroAoNaoEncontrarUsuarioPorId() {
-        Long id = 1L;
-        Mockito.when(repository.findById(id)).thenReturn(Optional.empty());
+		Throwable erro = Assertions.catchThrowable(() -> service.obterPorId(id));
 
-        Throwable erro = Assertions.catchThrowable(() -> service.obterPorId(id));
+		Assertions.assertThat(erro)
+			.isInstanceOf(RegraNegocioException.class)
+			.hasMessage("Usuário não encontrado para o ID informado.");
 
-        Assertions.assertThat(erro)
-                .isInstanceOf(RegraNegocioException.class)
-                .hasMessage("Usuário não encontrado para o ID informado.");
+		Mockito.verify(repository, Mockito.times(1)).findById(id);
+	}
 
-        Mockito.verify(repository, Mockito.times(1)).findById(id);
-    }
+	@Test
+	public void deveLancarErroAoNaoEncontrarUsuarioPorEmail() {
+		Long id = 1L;
+		Usuario usuarioMock = Usuario.builder()
+			.id(id)
+			.nome("usuario teste")
+			.email("teste@email.com")
+			.senha("123")
+			.build();
 
-    @Test
-    public void deveLancarErroAoNaoEncontrarUsuarioPorEmail() {
-        Long id = 1L;
-        Usuario usuarioMock = Usuario.builder()
-                .id(id)
-                .nome("usuario teste")
-                .email("teste@email.com")
-                .senha("123")
-                .build();
+		Throwable erro = Assertions.catchThrowable(() -> service.obterIdUsuarioPorEmail(usuarioMock.getEmail()));
 
-    Throwable erro =
-        Assertions.catchThrowable(() -> service.obterIdUsuarioPorEmail(usuarioMock.getEmail()));
+		Assertions.assertThat(erro)
+			.isInstanceOf(RegraNegocioException.class)
+			.hasMessage("Usuário não encontrado para o email informado");
 
-        Assertions.assertThat(erro)
-                .isInstanceOf(RegraNegocioException.class)
-                .hasMessage("Usuário não encontrado para o email informado");
+		Mockito.verify(repository, Mockito.times(1)).findByEmail(usuarioMock.getEmail());
+	}
 
-    Mockito.verify(repository, Mockito.times(1)).findByEmail(usuarioMock.getEmail());
-    }
 }

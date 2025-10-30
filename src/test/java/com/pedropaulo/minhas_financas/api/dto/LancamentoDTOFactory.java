@@ -8,17 +8,20 @@ import java.math.BigDecimal;
 */
 public final class LancamentoDTOFactory {
 
-    private LancamentoDTOFactory() {}
+	private LancamentoDTOFactory() {
+	}
 
-    public static LancamentoDTO create(Long usuarioId, String descricao, Integer mes, Integer ano, BigDecimal valor, String tipo, String status) {
-        LancamentoDTO dto = new LancamentoDTO();
-        dto.setDescricao(descricao);
-        dto.setMes(mes);
-        dto.setAno(ano);
-        dto.setValor(valor);
-        dto.setUsuario(usuarioId);
-        dto.setTipoLancamento(tipo);
-        dto.setStatusLancamento(status);
-        return dto;
-    }
+	public static LancamentoDTO create(Long usuarioId, String descricao, Integer mes, Integer ano, BigDecimal valor,
+			String tipo, String status) {
+		LancamentoDTO dto = new LancamentoDTO();
+		dto.setDescricao(descricao);
+		dto.setMes(mes);
+		dto.setAno(ano);
+		dto.setValor(valor);
+		dto.setUsuario(usuarioId);
+		dto.setTipoLancamento(tipo);
+		dto.setStatusLancamento(status);
+		return dto;
+	}
+
 }

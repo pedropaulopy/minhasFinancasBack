@@ -11,12 +11,21 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class LancamentoDTO {
-  private Long id;
-  private String descricao;
-  private Integer mes;
-  private Integer ano;
-  private BigDecimal valor;
-  private Long usuario; // id
-  private String tipoLancamento;
-  private String statusLancamento;
+
+	private Long id;
+
+	private String descricao;
+
+	private Integer mes;
+
+	private Integer ano;
+
+	private BigDecimal valor;
+
+	private Long usuario; // id
+
+	private String tipoLancamento;
+
+	private String statusLancamento;
+
 }

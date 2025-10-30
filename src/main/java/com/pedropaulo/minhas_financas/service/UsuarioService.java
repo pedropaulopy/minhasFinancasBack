@@ -5,13 +5,15 @@ import com.pedropaulo.minhas_financas.model.entity.Usuario;
 import java.util.Optional;
 
 public interface UsuarioService {
-  Usuario autenticar(String email, String senha) throws RegraNegocioException;
 
-  Usuario salvarUsuario(Usuario usuario) throws RegraNegocioException;
+	Usuario autenticar(String email, String senha) throws RegraNegocioException;
 
-  void validarEmail(String email) throws RegraNegocioException;
+	Usuario salvarUsuario(Usuario usuario) throws RegraNegocioException;
 
-  Optional<Usuario> obterPorId(Long id) throws RegraNegocioException;
+	void validarEmail(String email) throws RegraNegocioException;
 
-  Usuario obterIdUsuarioPorEmail(String email) throws RegraNegocioException;
+	Optional<Usuario> obterPorId(Long id) throws RegraNegocioException;
+
+	Usuario obterIdUsuarioPorEmail(String email) throws RegraNegocioException;
+
 }

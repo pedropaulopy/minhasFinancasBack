@@ -20,129 +20,130 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class LancamentoServiceImpl implements LancamentoService {
-  private final LancamentoRepository repository;
-  private final UsuarioService usuarioService;
 
-  public LancamentoServiceImpl(LancamentoRepository repository, UsuarioService usuarioService) {
-    this.repository = repository;
-    this.usuarioService = usuarioService;
-  }
+	private final LancamentoRepository repository;
 
-  @Override
-  @Transactional
-  public Lancamento salvar(Lancamento lancamento) throws RegraNegocioException {
-    validar(lancamento);
-    lancamento.setStatusLancamento(StatusLancamento.PENDENTE);
-    return repository.save(lancamento);
-  }
+	private final UsuarioService usuarioService;
 
-  @Transactional
-  public Lancamento atualizar(Long id, Authentication authentication, LancamentoDTO dto) throws RegraNegocioException {
-      Lancamento lancamento = this.obterPorIdLancamento(id, authentication);
+	public LancamentoServiceImpl(LancamentoRepository repository, UsuarioService usuarioService) {
+		this.repository = repository;
+		this.usuarioService = usuarioService;
+	}
 
-      lancamento.setDescricao(dto.getDescricao());
-      lancamento.setValor(dto.getValor());
-      lancamento.setMes(dto.getMes());
-      lancamento.setAno(dto.getAno());
-      lancamento.setTipoLancamento(TipoLancamento.valueOf(dto.getTipoLancamento()));
-      lancamento.setStatusLancamento(StatusLancamento.valueOf(dto.getStatusLancamento()));
+	@Override
+	@Transactional
+	public Lancamento salvar(Lancamento lancamento) throws RegraNegocioException {
+		validar(lancamento);
+		lancamento.setStatusLancamento(StatusLancamento.PENDENTE);
+		return repository.save(lancamento);
+	}
 
-      return repository.save(lancamento);
-  }
+	@Transactional
+	public Lancamento atualizar(Long id, Authentication authentication, LancamentoDTO dto)
+			throws RegraNegocioException {
+		Lancamento lancamento = this.obterPorIdLancamento(id, authentication);
 
-  @Override
-  public void deletar(Long id, Authentication authentication) throws RegraNegocioException {
-      Lancamento lancamento = this.obterPorIdLancamento(id, authentication);
-      repository.delete(lancamento);
-  }
+		lancamento.setDescricao(dto.getDescricao());
+		lancamento.setValor(dto.getValor());
+		lancamento.setMes(dto.getMes());
+		lancamento.setAno(dto.getAno());
+		lancamento.setTipoLancamento(TipoLancamento.valueOf(dto.getTipoLancamento()));
+		lancamento.setStatusLancamento(StatusLancamento.valueOf(dto.getStatusLancamento()));
 
-  @Override
-  @Transactional(readOnly = true)
-  public List<Lancamento> buscar(Lancamento lancamentoFiltro) {
-    Example example =
-        Example.of(
-            lancamentoFiltro,
-            ExampleMatcher.matching()
-                .withIgnoreCase()
-                .withIgnoreCase()
-                .withStringMatcher(ExampleMatcher.StringMatcher.CONTAINING));
-    return repository.findAll(example);
-  }
+		return repository.save(lancamento);
+	}
 
-  @Override
-  @Transactional
-  public void atualizarStatus(Long id, Authentication authentication, StatusLancamento status)
-      throws RegraNegocioException {
-      Lancamento lancamento = this.obterPorIdLancamento(id, authentication);
-        if(status==null){
-            throw new RegraNegocioException("Não foi possível atualizar o status do lançamento, envie um status válido.");
-        }
-        lancamento.setStatusLancamento(status);
-  }
+	@Override
+	public void deletar(Long id, Authentication authentication) throws RegraNegocioException {
+		Lancamento lancamento = this.obterPorIdLancamento(id, authentication);
+		repository.delete(lancamento);
+	}
 
-  @Override
-  public void validar(Lancamento lancamento) throws RegraNegocioException {
-    if (lancamento.getDescricao() == null || lancamento.getDescricao().trim().equals("")) {
-      throw new RegraNegocioException("Insira uma descrição válida.");
-    }
-    if (lancamento.getMes() == null || lancamento.getMes() > 12 || lancamento.getMes() < 1) {
-      throw new RegraNegocioException("Insira um mês válido.");
-    }
-    if (lancamento.getAno() == null || lancamento.getAno().toString().length() != 4) {
-      throw new RegraNegocioException("Insira um ano válido.");
-    }
-    if (lancamento.getValor() == null || lancamento.getValor().doubleValue() < 1) {
-      throw new RegraNegocioException("Insira um valor válido.");
-    }
-    if (lancamento.getTipoLancamento() == null) {
-      throw new RegraNegocioException("Insira um tipo de transação válido.");
-    }
-    if (lancamento.getUsuario() == null || lancamento.getUsuario().getId() == null) {
-      throw new RegraNegocioException("Informe um usuário válido.");
-    }
-  }
+	@Override
+	@Transactional(readOnly = true)
+	public List<Lancamento> buscar(Lancamento lancamentoFiltro) {
+		Example example = Example.of(lancamentoFiltro,
+				ExampleMatcher.matching()
+					.withIgnoreCase()
+					.withIgnoreCase()
+					.withStringMatcher(ExampleMatcher.StringMatcher.CONTAINING));
+		return repository.findAll(example);
+	}
 
-    public Lancamento obterPorIdLancamento(Long idLancamento, Authentication authentication) throws RegraNegocioException {
-      Usuario usuario = usuarioService.obterIdUsuarioPorEmail(authentication.getName());
-      Long idUsuario = usuario.getId();
-      return repository.findLancamentoByIdAndUsuarioId(idLancamento, idUsuario).orElseThrow(() -> new RegraNegocioException("Lançamento não encontrado para o ID informado."));
-    }
+	@Override
+	@Transactional
+	public void atualizarStatus(Long id, Authentication authentication, StatusLancamento status)
+			throws RegraNegocioException {
+		Lancamento lancamento = this.obterPorIdLancamento(id, authentication);
+		if (status == null) {
+			throw new RegraNegocioException(
+					"Não foi possível atualizar o status do lançamento, envie um status válido.");
+		}
+		lancamento.setStatusLancamento(status);
+	}
 
-  @Override
-  @Transactional(readOnly = true)
-  public BigDecimal obterSaldoPorUsuario(Long id) throws RegraNegocioException {
-      usuarioService.obterPorId(id);
-      BigDecimal receitas =
-        repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(
-            id,
-            TipoLancamento.valueOf(TipoLancamento.RECEITA.name()),
-            StatusLancamento.valueOf(StatusLancamento.EFETIVADO.name()));
-    BigDecimal despesas =
-        repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(
-            id,
-            TipoLancamento.valueOf(TipoLancamento.DESPESA.name()),
-            StatusLancamento.valueOf(StatusLancamento.EFETIVADO.name()));
-    if (receitas == null) {
-      receitas = BigDecimal.ZERO;
-    }
-    if (despesas == null) {
-      despesas = BigDecimal.ZERO;
-    }
-    return receitas.subtract(despesas);
-  }
+	@Override
+	public void validar(Lancamento lancamento) throws RegraNegocioException {
+		if (lancamento.getDescricao() == null || lancamento.getDescricao().trim().equals("")) {
+			throw new RegraNegocioException("Insira uma descrição válida.");
+		}
+		if (lancamento.getMes() == null || lancamento.getMes() > 12 || lancamento.getMes() < 1) {
+			throw new RegraNegocioException("Insira um mês válido.");
+		}
+		if (lancamento.getAno() == null || lancamento.getAno().toString().length() != 4) {
+			throw new RegraNegocioException("Insira um ano válido.");
+		}
+		if (lancamento.getValor() == null || lancamento.getValor().doubleValue() < 1) {
+			throw new RegraNegocioException("Insira um valor válido.");
+		}
+		if (lancamento.getTipoLancamento() == null) {
+			throw new RegraNegocioException("Insira um tipo de transação válido.");
+		}
+		if (lancamento.getUsuario() == null || lancamento.getUsuario().getId() == null) {
+			throw new RegraNegocioException("Informe um usuário válido.");
+		}
+	}
 
-    @Override
-    public Lancamento converterDTO(LancamentoDTO dto, Authentication authentication) throws RegraNegocioException {
-        Lancamento lancamento = new Lancamento();
-        lancamento.setDescricao(dto.getDescricao());
-        lancamento.setMes(dto.getMes());
-        lancamento.setAno(dto.getAno());
-        lancamento.setValor(dto.getValor());
-        lancamento.setDataCadastro(LocalDate.now());
-        Usuario usuario = usuarioService.obterIdUsuarioPorEmail(authentication.getName());
-        lancamento.setUsuario(usuario);
-        lancamento.setTipoLancamento(TipoLancamento.valueOf(dto.getTipoLancamento()));
-        lancamento.setStatusLancamento(StatusLancamento.valueOf(dto.getStatusLancamento()));
-        return lancamento;
-    }
+	public Lancamento obterPorIdLancamento(Long idLancamento, Authentication authentication)
+			throws RegraNegocioException {
+		Usuario usuario = usuarioService.obterIdUsuarioPorEmail(authentication.getName());
+		Long idUsuario = usuario.getId();
+		return repository.findLancamentoByIdAndUsuarioId(idLancamento, idUsuario)
+			.orElseThrow(() -> new RegraNegocioException("Lançamento não encontrado para o ID informado."));
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public BigDecimal obterSaldoPorUsuario(Long id) throws RegraNegocioException {
+		usuarioService.obterPorId(id);
+		BigDecimal receitas = repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(id,
+				TipoLancamento.valueOf(TipoLancamento.RECEITA.name()),
+				StatusLancamento.valueOf(StatusLancamento.EFETIVADO.name()));
+		BigDecimal despesas = repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(id,
+				TipoLancamento.valueOf(TipoLancamento.DESPESA.name()),
+				StatusLancamento.valueOf(StatusLancamento.EFETIVADO.name()));
+		if (receitas == null) {
+			receitas = BigDecimal.ZERO;
+		}
+		if (despesas == null) {
+			despesas = BigDecimal.ZERO;
+		}
+		return receitas.subtract(despesas);
+	}
+
+	@Override
+	public Lancamento converterDTO(LancamentoDTO dto, Authentication authentication) throws RegraNegocioException {
+		Lancamento lancamento = new Lancamento();
+		lancamento.setDescricao(dto.getDescricao());
+		lancamento.setMes(dto.getMes());
+		lancamento.setAno(dto.getAno());
+		lancamento.setValor(dto.getValor());
+		lancamento.setDataCadastro(LocalDate.now());
+		Usuario usuario = usuarioService.obterIdUsuarioPorEmail(authentication.getName());
+		lancamento.setUsuario(usuario);
+		lancamento.setTipoLancamento(TipoLancamento.valueOf(dto.getTipoLancamento()));
+		lancamento.setStatusLancamento(StatusLancamento.valueOf(dto.getStatusLancamento()));
+		return lancamento;
+	}
+
 }

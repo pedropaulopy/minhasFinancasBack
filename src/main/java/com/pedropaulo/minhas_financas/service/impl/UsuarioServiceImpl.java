@@ -15,66 +15,69 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class UsuarioServiceImpl implements UsuarioService {
 
-  private final UsuarioRepository repository;
-  private final PasswordEncoder encoder;
+	private final UsuarioRepository repository;
 
-  @Autowired
-  public UsuarioServiceImpl(UsuarioRepository repository, PasswordEncoder encoder) {
-    super();
-    this.repository = repository;
-    this.encoder = encoder;
-  }
+	private final PasswordEncoder encoder;
 
-  @Override
-  public Usuario autenticar(String email, String senha) throws RegraNegocioException {
-    Optional<Usuario> usuario = repository.findByEmail(email);
-    if (!usuario.isPresent()) {
-      throw new AutenticacaoException("Usuário não encontrado para o email informado.");
-    }
+	@Autowired
+	public UsuarioServiceImpl(UsuarioRepository repository, PasswordEncoder encoder) {
+		super();
+		this.repository = repository;
+		this.encoder = encoder;
+	}
 
-    boolean samePassword = encoder.matches(senha, usuario.get().getSenha());
+	@Override
+	public Usuario autenticar(String email, String senha) throws RegraNegocioException {
+		Optional<Usuario> usuario = repository.findByEmail(email);
+		if (!usuario.isPresent()) {
+			throw new AutenticacaoException("Usuário não encontrado para o email informado.");
+		}
 
-    if (!samePassword) {
-      throw new AutenticacaoException("Senha inválida.");
-    }
-    return usuario.get();
-  }
+		boolean samePassword = encoder.matches(senha, usuario.get().getSenha());
 
-  public void criptografarSenha(Usuario usuario) {
-    String senha = usuario.getSenha();
-    String senhaCripto = encoder.encode(senha);
-    usuario.setSenha(senhaCripto);
-  }
+		if (!samePassword) {
+			throw new AutenticacaoException("Senha inválida.");
+		}
+		return usuario.get();
+	}
 
-  @Override
-  @Transactional
-  public Usuario salvarUsuario(Usuario usuario) throws RegraNegocioException {
-    validarEmail(usuario.getEmail());
-    criptografarSenha(usuario);
-    usuario.setDataCadastro(LocalDate.now());
-    return repository.save(usuario);
-  }
+	public void criptografarSenha(Usuario usuario) {
+		String senha = usuario.getSenha();
+		String senhaCripto = encoder.encode(senha);
+		usuario.setSenha(senhaCripto);
+	}
 
-  @Override
-  public void validarEmail(String email) throws RegraNegocioException {
-    boolean exists = repository.existsByEmail(email);
-    if (exists) {
-      throw new RegraNegocioException("Um usuário já foi cadastrado com este email.");
-    }
-  }
+	@Override
+	@Transactional
+	public Usuario salvarUsuario(Usuario usuario) throws RegraNegocioException {
+		validarEmail(usuario.getEmail());
+		criptografarSenha(usuario);
+		usuario.setDataCadastro(LocalDate.now());
+		return repository.save(usuario);
+	}
 
-  @Override
-  public Optional<Usuario> obterPorId(Long id) throws RegraNegocioException {
-      Optional<Usuario> usuario = repository.findById(id);
+	@Override
+	public void validarEmail(String email) throws RegraNegocioException {
+		boolean exists = repository.existsByEmail(email);
+		if (exists) {
+			throw new RegraNegocioException("Um usuário já foi cadastrado com este email.");
+		}
+	}
 
-      if (usuario.isEmpty()) {
-          throw new RegraNegocioException("Usuário não encontrado para o ID informado.");
-      }
+	@Override
+	public Optional<Usuario> obterPorId(Long id) throws RegraNegocioException {
+		Optional<Usuario> usuario = repository.findById(id);
 
-      return usuario;
-  }
+		if (usuario.isEmpty()) {
+			throw new RegraNegocioException("Usuário não encontrado para o ID informado.");
+		}
 
-    public Usuario obterIdUsuarioPorEmail(String email) throws RegraNegocioException {
-        return repository.findByEmail(email).orElseThrow(() -> new RegraNegocioException("Usuário não encontrado para o email informado"));
-    }
+		return usuario;
+	}
+
+	public Usuario obterIdUsuarioPorEmail(String email) throws RegraNegocioException {
+		return repository.findByEmail(email)
+			.orElseThrow(() -> new RegraNegocioException("Usuário não encontrado para o email informado"));
+	}
+
 }

@@ -21,36 +21,36 @@ import org.springframework.web.bind.annotation.RestController;
 @ActiveProfiles("test")
 public class MinhasFinancasApplicationTest {
 
-    @Autowired
-    private MockMvc mvc;
+	@Autowired
+	private MockMvc mvc;
 
-    @Test
-    public void contextoDeveCarregarSemErros() {
-    }
+	@Test
+	public void contextoDeveCarregarSemErros() {
+	}
 
-    @Test
-    public void devePermitirCorsParaLocalhost3000() throws Exception {
-        mvc.perform(options("/api/test")
-                        .header("Origin", "http://localhost:3000")
-                        .header("Access-Control-Request-Method", "GET"))
-                .andExpect(status().isOk())
-                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:3000"))
-                .andExpect(header().string("Access-Control-Allow-Methods", is("GET,POST,PUT,DELETE,OPTIONS")));
-    }
+	@Test
+	public void devePermitirCorsParaLocalhost3000() throws Exception {
+		mvc.perform(options("/api/test").header("Origin", "http://localhost:3000")
+			.header("Access-Control-Request-Method", "GET"))
+			.andExpect(status().isOk())
+			.andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:3000"))
+			.andExpect(header().string("Access-Control-Allow-Methods", is("GET,POST,PUT,DELETE,OPTIONS")));
+	}
 
-    @Test
-    public void deveNegarCorsParaOrigemNaoPermitida() throws Exception {
-        mvc.perform(options("/api/test")
-                        .header("Origin", "http://malicioso.com")
-                        .header("Access-Control-Request-Method", "GET"))
-                .andExpect(status().isForbidden());
-    }
+	@Test
+	public void deveNegarCorsParaOrigemNaoPermitida() throws Exception {
+		mvc.perform(options("/api/test").header("Origin", "http://malicioso.com")
+			.header("Access-Control-Request-Method", "GET")).andExpect(status().isForbidden());
+	}
 
-    @RestController
-    static class DummyController {
-        @GetMapping("/api/test")
-        public String test() {
-            return "ok";
-        }
-    }
+	@RestController
+	static class DummyController {
+
+		@GetMapping("/api/test")
+		public String test() {
+			return "ok";
+		}
+
+	}
+
 }

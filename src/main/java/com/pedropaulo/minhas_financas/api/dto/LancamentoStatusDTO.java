@@ -8,9 +8,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LancamentoStatusDTO {
-  private String status;
 
-  public String getStatus() {
-    return status;
-  }
+	private String status;
+
+	public String getStatus() {
+		return status;
+	}
+
 }

@@ -16,34 +16,34 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 public class JwtTokenFilter extends OncePerRequestFilter {
 
-  private final JwtService jwtService;
-  private final UserDetailsService userDetailsService;
+	private final JwtService jwtService;
 
-  public JwtTokenFilter(JwtService jwtService, UserDetailsService userDetailsService) {
-    this.jwtService = jwtService;
-    this.userDetailsService = userDetailsService;
-  }
+	private final UserDetailsService userDetailsService;
 
-  @Override
-  public void doFilterInternal(
-      HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-      throws ServletException, IOException {
-    String authorization = request.getHeader("Authorization");
+	public JwtTokenFilter(JwtService jwtService, UserDetailsService userDetailsService) {
+		this.jwtService = jwtService;
+		this.userDetailsService = userDetailsService;
+	}
 
-    if (authorization != null && authorization.startsWith("Bearer ")) {
-      String token = authorization.split(" ")[1];
-      boolean isValid = jwtService.isTokenValido(token);
+	@Override
+	public void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+			throws ServletException, IOException {
+		String authorization = request.getHeader("Authorization");
 
-      if (isValid) {
-        String login = jwtService.obterLoginUsuario(token);
-        UserDetails usuarioAutenticado = userDetailsService.loadUserByUsername(login);
-        UsernamePasswordAuthenticationToken user =
-            new UsernamePasswordAuthenticationToken(
-                usuarioAutenticado, null, usuarioAutenticado.getAuthorities());
-        user.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-        SecurityContextHolder.getContext().setAuthentication(user);
-      }
-    }
-    filterChain.doFilter(request, response);
-  }
+		if (authorization != null && authorization.startsWith("Bearer ")) {
+			String token = authorization.split(" ")[1];
+			boolean isValid = jwtService.isTokenValido(token);
+
+			if (isValid) {
+				String login = jwtService.obterLoginUsuario(token);
+				UserDetails usuarioAutenticado = userDetailsService.loadUserByUsername(login);
+				UsernamePasswordAuthenticationToken user = new UsernamePasswordAuthenticationToken(usuarioAutenticado,
+						null, usuarioAutenticado.getAuthorities());
+				user.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+				SecurityContextHolder.getContext().setAuthentication(user);
+			}
+		}
+		filterChain.doFilter(request, response);
+	}
+
 }

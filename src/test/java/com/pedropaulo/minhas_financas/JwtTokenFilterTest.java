@@ -25,82 +25,80 @@ import org.springframework.security.core.userdetails.UserDetails;
 @ExtendWith(MockitoExtension.class)
 public class JwtTokenFilterTest {
 
-    @Mock
-    private JwtService jwtService;
+	@Mock
+	private JwtService jwtService;
 
-    @Mock
-    private SecurityUserDetailsServiceImpl userDetailsService;
+	@Mock
+	private SecurityUserDetailsServiceImpl userDetailsService;
 
-    @Mock
-    private HttpServletRequest request;
+	@Mock
+	private HttpServletRequest request;
 
-    @Mock
-    private HttpServletResponse response;
+	@Mock
+	private HttpServletResponse response;
 
-    @Mock
-    private FilterChain filterChain;
+	@Mock
+	private FilterChain filterChain;
 
-    private JwtTokenFilter filter;
+	private JwtTokenFilter filter;
 
-   @BeforeEach
-    public void setup() {
-        filter = new JwtTokenFilter(jwtService, userDetailsService);
-        SecurityContextHolder.clearContext();
-    }
+	@BeforeEach
+	public void setup() {
+		filter = new JwtTokenFilter(jwtService, userDetailsService);
+		SecurityContextHolder.clearContext();
+	}
 
-    @Test
-    public void deveAutenticarQuandoTokenValido() throws ServletException, IOException {
-        when(request.getHeader("Authorization")).thenReturn("Bearer token-valido");
-        when(jwtService.isTokenValido("token-valido")).thenReturn(true);
-        when(jwtService.obterLoginUsuario("token-valido")).thenReturn("usuario@teste.com");
+	@Test
+	public void deveAutenticarQuandoTokenValido() throws ServletException, IOException {
+		when(request.getHeader("Authorization")).thenReturn("Bearer token-valido");
+		when(jwtService.isTokenValido("token-valido")).thenReturn(true);
+		when(jwtService.obterLoginUsuario("token-valido")).thenReturn("usuario@teste.com");
 
-        UserDetails userDetails = User.withUsername("usuario@teste.com")
-                .password("123")
-                .roles("USER")
-                .build();
+		UserDetails userDetails = User.withUsername("usuario@teste.com").password("123").roles("USER").build();
 
-        when(userDetailsService.loadUserByUsername("usuario@teste.com")).thenReturn(userDetails);
+		when(userDetailsService.loadUserByUsername("usuario@teste.com")).thenReturn(userDetails);
 
-        filter.doFilterInternal(request, response, filterChain);
+		filter.doFilterInternal(request, response, filterChain);
 
-        verify(userDetailsService).loadUserByUsername("usuario@teste.com");
-        verify(filterChain).doFilter(request, response);
-        assert SecurityContextHolder.getContext().getAuthentication() != null;
-        assert SecurityContextHolder.getContext().getAuthentication().getName().equals("usuario@teste.com");
-    }
+		verify(userDetailsService).loadUserByUsername("usuario@teste.com");
+		verify(filterChain).doFilter(request, response);
+		assert SecurityContextHolder.getContext().getAuthentication() != null;
+		assert SecurityContextHolder.getContext().getAuthentication().getName().equals("usuario@teste.com");
+	}
 
-    @Test
-    public void deveIgnorarQuandoNaoHaHeaderAuthorization() throws ServletException, IOException {
-        when(request.getHeader("Authorization")).thenReturn(null);
+	@Test
+	public void deveIgnorarQuandoNaoHaHeaderAuthorization() throws ServletException, IOException {
+		when(request.getHeader("Authorization")).thenReturn(null);
 
-        filter.doFilterInternal(request, response, filterChain);
+		filter.doFilterInternal(request, response, filterChain);
 
-        verify(jwtService, never()).isTokenValido(any());
-        verify(filterChain).doFilter(request, response);
-        assert SecurityContextHolder.getContext().getAuthentication() == null;
-    }
+		verify(jwtService, never()).isTokenValido(any());
+		verify(filterChain).doFilter(request, response);
+		assert SecurityContextHolder.getContext().getAuthentication() == null;
+	}
 
-    @Test
-    public void deveIgnorarQuandoHeaderNaoComecaComBearer() throws ServletException, IOException {
-        when(request.getHeader("Authorization")).thenReturn("TokenInvalido 123");
+	@Test
+	public void deveIgnorarQuandoHeaderNaoComecaComBearer() throws ServletException, IOException {
+		when(request.getHeader("Authorization")).thenReturn("TokenInvalido 123");
 
-        filter.doFilterInternal(request, response, filterChain);
+		filter.doFilterInternal(request, response, filterChain);
 
-        verify(jwtService, never()).isTokenValido(any());
-        verify(filterChain).doFilter(request, response);
-        assert SecurityContextHolder.getContext().getAuthentication() == null;
-    }
+		verify(jwtService, never()).isTokenValido(any());
+		verify(filterChain).doFilter(request, response);
+		assert SecurityContextHolder.getContext().getAuthentication() == null;
+	}
 
-    @Test
-    public void deveIgnorarQuandoTokenInvalido() throws ServletException, IOException {
-        when(request.getHeader("Authorization")).thenReturn("Bearer token-invalido");
-        when(jwtService.isTokenValido("token-invalido")).thenReturn(false);
+	@Test
+	public void deveIgnorarQuandoTokenInvalido() throws ServletException, IOException {
+		when(request.getHeader("Authorization")).thenReturn("Bearer token-invalido");
+		when(jwtService.isTokenValido("token-invalido")).thenReturn(false);
 
-        filter.doFilterInternal(request, response, filterChain);
+		filter.doFilterInternal(request, response, filterChain);
 
-        verify(jwtService).isTokenValido(eq("token-invalido"));
-        verify(userDetailsService, never()).loadUserByUsername(any());
-        verify(filterChain).doFilter(request, response);
-        assert SecurityContextHolder.getContext().getAuthentication() == null;
-    }
+		verify(jwtService).isTokenValido(eq("token-invalido"));
+		verify(userDetailsService, never()).loadUserByUsername(any());
+		verify(filterChain).doFilter(request, response);
+		assert SecurityContextHolder.getContext().getAuthentication() == null;
+	}
+
 }

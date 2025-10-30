@@ -10,21 +10,22 @@ import org.springframework.security.core.Authentication;
 
 public interface LancamentoService {
 
-  Lancamento salvar(Lancamento lancamento) throws RegraNegocioException;
+	Lancamento salvar(Lancamento lancamento) throws RegraNegocioException;
 
-  Lancamento atualizar(Long id, Authentication authentication, LancamentoDTO dto) throws RegraNegocioException;
+	Lancamento atualizar(Long id, Authentication authentication, LancamentoDTO dto) throws RegraNegocioException;
 
-  void deletar(Long id, Authentication authentication) throws RegraNegocioException;
+	void deletar(Long id, Authentication authentication) throws RegraNegocioException;
 
-  List<Lancamento> buscar(Lancamento lancamentoFiltro);
+	List<Lancamento> buscar(Lancamento lancamentoFiltro);
 
-  void atualizarStatus(Long id, Authentication authentication, StatusLancamento dto) throws RegraNegocioException;
+	void atualizarStatus(Long id, Authentication authentication, StatusLancamento dto) throws RegraNegocioException;
 
-  void validar(Lancamento lancamento) throws RegraNegocioException;
+	void validar(Lancamento lancamento) throws RegraNegocioException;
 
-  Lancamento obterPorIdLancamento(Long idLancamento, Authentication authentication) throws RegraNegocioException;
+	Lancamento obterPorIdLancamento(Long idLancamento, Authentication authentication) throws RegraNegocioException;
 
-  BigDecimal obterSaldoPorUsuario(Long id) throws RegraNegocioException;
+	BigDecimal obterSaldoPorUsuario(Long id) throws RegraNegocioException;
 
-  Lancamento converterDTO(LancamentoDTO dto, Authentication authentication) throws  RegraNegocioException;
+	Lancamento converterDTO(LancamentoDTO dto, Authentication authentication) throws RegraNegocioException;
+
 }

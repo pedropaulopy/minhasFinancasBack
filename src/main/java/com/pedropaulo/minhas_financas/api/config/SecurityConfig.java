@@ -28,48 +28,45 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableWebSecurity
 public class SecurityConfig {
 
-  @Bean
-  public PasswordEncoder passwordEncoder() {
-    return new BCryptPasswordEncoder();
-  }
+	@Bean
+	public PasswordEncoder passwordEncoder() {
+		return new BCryptPasswordEncoder();
+	}
 
-  @Bean
-  public JwtTokenFilter jwtTokenFilter(JwtService jwtService, UserDetailsService userDetailsService) {
-    return new JwtTokenFilter(jwtService, userDetailsService);
-  }
+	@Bean
+	public JwtTokenFilter jwtTokenFilter(JwtService jwtService, UserDetailsService userDetailsService) {
+		return new JwtTokenFilter(jwtService, userDetailsService);
+	}
 
-  @Bean
-  public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtTokenFilter jwtTokenFilter) throws Exception {
-    http.csrf(AbstractHttpConfigurer::disable)
-        .cors(Customizer.withDefaults())
-        .authorizeHttpRequests(
-            authorize ->
-                authorize
-                    .requestMatchers(HttpMethod.POST, "/api/usuarios")
-                    .permitAll()
-                    .requestMatchers(HttpMethod.POST, "/api/usuarios/autenticar")
-                    .permitAll()
-                    .anyRequest()
-                    .authenticated())
-        .sessionManagement(
-            session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class);
+	@Bean
+	public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtTokenFilter jwtTokenFilter) throws Exception {
+		http.csrf(AbstractHttpConfigurer::disable)
+			.cors(Customizer.withDefaults())
+			.authorizeHttpRequests(authorize -> authorize.requestMatchers(HttpMethod.POST, "/api/usuarios")
+				.permitAll()
+				.requestMatchers(HttpMethod.POST, "/api/usuarios/autenticar")
+				.permitAll()
+				.anyRequest()
+				.authenticated())
+			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+			.addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class);
 
-    return http.build();
-  }
+		return http.build();
+	}
 
-  @Bean
-  public CorsConfigurationSource corsConfigurationSource() {
-    CorsConfiguration config = new CorsConfiguration();
+	@Bean
+	public CorsConfigurationSource corsConfigurationSource() {
+		CorsConfiguration config = new CorsConfiguration();
 
-    config.setAllowedOrigins(List.of("http://localhost:3000"));
-    config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-    config.setAllowedHeaders(List.of("*")); // "all" é ["*"]
-    config.setAllowCredentials(true);
+		config.setAllowedOrigins(List.of("http://localhost:3000"));
+		config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+		config.setAllowedHeaders(List.of("*")); // "all" é ["*"]
+		config.setAllowCredentials(true);
 
-    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-    source.registerCorsConfiguration("/**", config);
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", config);
 
-    return source;
-  }
+		return source;
+	}
+
 }

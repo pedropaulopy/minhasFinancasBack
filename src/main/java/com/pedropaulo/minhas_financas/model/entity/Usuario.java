@@ -13,22 +13,24 @@ import org.springframework.data.jpa.convert.threeten.Jsr310JpaConverters;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Usuario {
-  @Id
-  @Column(name = "id")
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
 
-  @Column(name = "nome")
-  private String nome;
+	@Id
+	@Column(name = "id")
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-  @Column(name = "email")
-  private String email;
+	@Column(name = "nome")
+	private String nome;
 
-  @JsonIgnore
-  @Column(name = "senha")
-  private String senha;
+	@Column(name = "email")
+	private String email;
 
-  @Column(name = "data_cadastro")
-  @Convert(converter = Jsr310JpaConverters.LocalDateConverter.class)
-  private LocalDate dataCadastro;
+	@JsonIgnore
+	@Column(name = "senha")
+	private String senha;
+
+	@Column(name = "data_cadastro")
+	@Convert(converter = Jsr310JpaConverters.LocalDateConverter.class)
+	private LocalDate dataCadastro;
+
 }
