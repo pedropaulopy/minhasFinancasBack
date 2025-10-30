@@ -38,7 +38,7 @@ public class LancamentoResource {
 		}
 	}
 
-    //TODO PROTEGER DE EDICOES
+	// TODO PROTEGER DE EDICOES
 	@PutMapping("{id}/atualizar")
 	public ResponseEntity atualizar(@PathVariable Long id, @RequestBody LancamentoDTO dto,
 			Authentication authentication) {
@@ -51,7 +51,7 @@ public class LancamentoResource {
 		}
 	}
 
-    //TODO PROTEGER DE EDICOES
+	// TODO PROTEGER DE EDICOES
 	@PutMapping("{id}/atualizar_status")
 	public ResponseEntity atualizarStatus(@PathVariable Long id, @RequestBody LancamentoStatusDTO dto,
 			Authentication authentication) {
@@ -64,7 +64,7 @@ public class LancamentoResource {
 		}
 	}
 
-    //TODO PROTEGER DE EDICOES
+	// TODO PROTEGER DE EDICOES
 	@DeleteMapping("{id}/deletar")
 	public ResponseEntity deletar(@PathVariable Long id, Authentication authentication) {
 		try {

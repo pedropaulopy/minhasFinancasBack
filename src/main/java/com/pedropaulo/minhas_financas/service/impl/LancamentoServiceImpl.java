@@ -41,7 +41,7 @@ public class LancamentoServiceImpl implements LancamentoService {
 	@Transactional
 	public Lancamento atualizar(Long id, Authentication authentication, LancamentoDTO dto)
 			throws RegraNegocioException {
-        Lancamento lancamento = this.obterPorIdLancamento(id, authentication);
+		Lancamento lancamento = this.obterPorIdLancamento(id, authentication);
 
 		lancamento.setDescricao(dto.getDescricao());
 		lancamento.setValor(dto.getValor());
@@ -55,7 +55,7 @@ public class LancamentoServiceImpl implements LancamentoService {
 
 	@Override
 	public void deletar(Long id, Authentication authentication) throws RegraNegocioException {
-        Lancamento lancamento = this.obterPorIdLancamento(id, authentication);
+		Lancamento lancamento = this.obterPorIdLancamento(id, authentication);
 		repository.delete(lancamento);
 	}
 
@@ -74,7 +74,7 @@ public class LancamentoServiceImpl implements LancamentoService {
 	@Transactional
 	public void atualizarStatus(Long id, Authentication authentication, StatusLancamento status)
 			throws RegraNegocioException {
-        Lancamento lancamento = this.obterPorIdLancamento(id, authentication);
+		Lancamento lancamento = this.obterPorIdLancamento(id, authentication);
 		if (status == null) {
 			throw new RegraNegocioException(
 					"Não foi possível atualizar o status do lançamento, envie um status válido.");
