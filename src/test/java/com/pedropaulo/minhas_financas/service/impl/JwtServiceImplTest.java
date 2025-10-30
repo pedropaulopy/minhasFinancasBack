@@ -23,22 +23,6 @@ import org.springframework.test.util.ReflectionTestUtils;
 @ActiveProfiles("test")
 public class JwtServiceImplTest {
 
-    private JwtServiceImpl buildService(String expiracaoMinutos, String base64Key) {
-        JwtServiceImpl svc = new JwtServiceImpl();
-        ReflectionTestUtils.setField(svc, "expiracao", expiracaoMinutos);
-        ReflectionTestUtils.setField(svc, "chaveAssinatura", base64Key);
-        return svc;
-    }
-
-    private String strongBase64Key() {
-        byte[] key = "01234567890123456789012345678901".getBytes(StandardCharsets.UTF_8);
-        return Base64.getEncoder().encodeToString(key);
-    }
-
-    private Usuario usuario() {
-        return Usuario.builder().id(42L).nome("Pedro").email("pedro@exemplo.com").build();
-    }
-
     @Test
     public void deveGerarTokenComClaims() {
         JwtServiceImpl svc = buildService("5", strongBase64Key());
@@ -103,5 +87,21 @@ public class JwtServiceImplTest {
         String esperado = LocalDateTime.now().plusMinutes(1).format(DateTimeFormatter.ofPattern("HH:mm"));
         assertThat((String) claims.get("horaExpiracao"), hasLength(5));
         assertThat(((String) claims.get("horaExpiracao")).charAt(2), is(':'));
+    }
+
+    private JwtServiceImpl buildService(String expiracaoMinutos, String base64Key) {
+        JwtServiceImpl svc = new JwtServiceImpl();
+        ReflectionTestUtils.setField(svc, "expiracao", expiracaoMinutos);
+        ReflectionTestUtils.setField(svc, "chaveAssinatura", base64Key);
+        return svc;
+    }
+
+    private String strongBase64Key() {
+        byte[] key = "01234567890123456789012345678901".getBytes(StandardCharsets.UTF_8);
+        return Base64.getEncoder().encodeToString(key);
+    }
+
+    private Usuario usuario() {
+        return Usuario.builder().id(42L).nome("Pedro").email("pedro@exemplo.com").build();
     }
 }

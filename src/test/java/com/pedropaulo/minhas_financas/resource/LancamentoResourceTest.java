@@ -125,33 +125,6 @@ public class LancamentoResourceTest {
         executarTesteDeValidacaoDoServico("Insira um tipo de transação válido.");
     }
 
-    private void executarTesteDeValidacaoDoServico(String mensagemErro) throws Exception {
-        LancamentoDTO dto = criarDtoValido();
-        Usuario usuarioMock = Usuario.builder().id(1L).nome("Pedro").build();
-
-        Mockito.when(usuarioService.obterPorId(1L)).thenReturn(Optional.of(usuarioMock));
-        Mockito.when(lancamentoService.converterDTO(Mockito.any(LancamentoDTO.class), Mockito.any(Authentication.class))).thenReturn(new Lancamento());
-        Mockito.when(lancamentoService.salvar(Mockito.any(Lancamento.class)))
-                .thenThrow(new RegraNegocioException(mensagemErro));
-
-        ResponseEntity response = resource.salvar(dto, authentication);
-
-        Assertions.assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        Assertions.assertThat(response.getBody()).isEqualTo(mensagemErro);
-    }
-
-    private LancamentoDTO criarDtoValido() {
-        LancamentoDTO dto = new LancamentoDTO();
-        dto.setUsuario(1L);
-        dto.setDescricao("Salário");
-        dto.setValor(BigDecimal.valueOf(5000));
-        dto.setMes(10);
-        dto.setAno(2025);
-        dto.setTipoLancamento("RECEITA");
-        dto.setStatusLancamento("PENDENTE");
-        return dto;
-    }
-
     @Test
     public void deveAtualizarUmLancamentoERetornarOk() throws Exception {
         Long id = 1L;
@@ -337,5 +310,32 @@ public class LancamentoResourceTest {
 
         Assertions.assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         Assertions.assertThat(response.getBody()).isEqualTo("Lançamento não encontrado.");
+    }
+
+    private void executarTesteDeValidacaoDoServico(String mensagemErro) throws Exception {
+        LancamentoDTO dto = criarDtoValido();
+        Usuario usuarioMock = Usuario.builder().id(1L).nome("Pedro").build();
+
+        Mockito.when(usuarioService.obterPorId(1L)).thenReturn(Optional.of(usuarioMock));
+        Mockito.when(lancamentoService.converterDTO(Mockito.any(LancamentoDTO.class), Mockito.any(Authentication.class))).thenReturn(new Lancamento());
+        Mockito.when(lancamentoService.salvar(Mockito.any(Lancamento.class)))
+                .thenThrow(new RegraNegocioException(mensagemErro));
+
+        ResponseEntity response = resource.salvar(dto, authentication);
+
+        Assertions.assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        Assertions.assertThat(response.getBody()).isEqualTo(mensagemErro);
+    }
+
+    private LancamentoDTO criarDtoValido() {
+        LancamentoDTO dto = new LancamentoDTO();
+        dto.setUsuario(1L);
+        dto.setDescricao("Salário");
+        dto.setValor(BigDecimal.valueOf(5000));
+        dto.setMes(10);
+        dto.setAno(2025);
+        dto.setTipoLancamento("RECEITA");
+        dto.setStatusLancamento("PENDENTE");
+        return dto;
     }
 }
