@@ -15,7 +15,6 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 @ExtendWith(SpringExtension.class)
 @DataJpaTest
@@ -57,7 +56,7 @@ public class LancamentoRepositoryTest {
 			.build();
 
 		Lancamento salvo = repository.save(lancamento);
-		assertThat(salvo.getId()).isNotNull();
+		Assertions.assertThat(salvo.getId()).isNotNull();
 	}
 
 	@Test
