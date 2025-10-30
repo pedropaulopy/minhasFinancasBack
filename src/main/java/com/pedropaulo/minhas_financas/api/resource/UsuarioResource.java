@@ -22,7 +22,6 @@ public class UsuarioResource {
   private final UsuarioService service;
   private final LancamentoService lancamentoService;
   private final JwtServiceImpl jwtService;
-  private final UsuarioService usuarioService;
 
   @PostMapping
   public ResponseEntity salvar(@RequestBody UsuarioDTO dto) {
@@ -54,7 +53,7 @@ public class UsuarioResource {
 
     try {
       String email = authtentication.getName();
-      Usuario usuario = usuarioService.obterIdUsuarioPorEmail(email);
+      Usuario usuario = service.obterIdUsuarioPorEmail(email);
       Long idUsuario = usuario.getId();
       BigDecimal saldo = lancamentoService.obterSaldoPorUsuario(idUsuario);
       return new ResponseEntity(saldo, HttpStatus.OK);

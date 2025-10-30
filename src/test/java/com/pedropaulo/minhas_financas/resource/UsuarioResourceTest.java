@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 
 import com.pedropaulo.minhas_financas.api.config.SecurityConfig;
 import com.pedropaulo.minhas_financas.service.impl.SecurityUserDetailsServiceImpl;
+import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.junit.jupiter.api.Test;
@@ -33,7 +34,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 @ExtendWith(SpringExtension.class)
 @ActiveProfiles("test")
-@WebMvcTest(controllers = UsuarioResource.class)
+@WebMvcTest(controllers = UsuarioResource.class, excludeAutoConfiguration = {UserDetailsServiceAutoConfiguration.class})
 @AutoConfigureMockMvc
 @Import(SecurityConfig.class)
 public class UsuarioResourceTest {

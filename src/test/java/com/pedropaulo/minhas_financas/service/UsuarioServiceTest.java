@@ -166,7 +166,7 @@ public class UsuarioServiceTest {
 
         Assertions.assertThat(result).isPresent();
         Assertions.assertThat(result.get()).isEqualTo(usuarioMock);
-        Mockito.verify(repository, Mockito.times(2)).findById(id);
+        Mockito.verify(repository, Mockito.times(1)).findById(id);
     }
 
     @Test
