@@ -154,7 +154,7 @@ public class LancamentoServiceImpl implements LancamentoService {
 	public void validarStatusLancamento(Long idLancamento, Authentication authentication) throws RegraNegocioException {
 		Lancamento lancamento = this.obterPorIdLancamento(idLancamento, authentication);
 		if (lancamento.getStatusLancamento() != StatusLancamento.PENDENTE) {
-			throw new EntidadeNaoProcessavelException("Lançamentos efetivados ou cancelados não podem ser editados.");
+			throw new EntidadeNaoProcessavelException("Lançamentos efetivados ou cancelados não podem ser editados ou deletados.");
 		}
 	}
 

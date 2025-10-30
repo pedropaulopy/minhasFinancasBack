@@ -516,7 +516,7 @@ public class LancamentoServiceTest {
 
 		Assertions.assertThat(erro)
 			.isInstanceOf(com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException.class)
-			.hasMessage("Lançamentos efetivados ou cancelados não podem ser editados.");
+			.hasMessage("Lançamentos efetivados ou cancelados não podem ser editados ou deletados.");
 
 		Mockito.verify(service, Mockito.times(1)).obterPorIdLancamento(idLancamento, authentication);
 	}
@@ -535,7 +535,7 @@ public class LancamentoServiceTest {
 
 		Assertions.assertThat(erro)
 			.isInstanceOf(com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException.class)
-			.hasMessage("Lançamentos efetivados ou cancelados não podem ser editados.");
+			.hasMessage("Lançamentos efetivados ou cancelados não podem ser editados ou deletados.");
 
 		Mockito.verify(service, Mockito.times(1)).obterPorIdLancamento(idLancamento, authentication);
 	}
