@@ -62,16 +62,19 @@ public class UsuarioServiceImpl implements UsuarioService {
       throw new RegraNegocioException("Um usuário já foi cadastrado com este email.");
     }
   }
-
+  //pensei em fazer isso por simplicidade, nao me liguei na performance, preferi a implementação anterior pois nao estava compreendendo mto bem como atribuir o resultado a uma variavel
   @Override
   public Optional<Usuario> obterPorId(Long id) throws RegraNegocioException {
-      if (!repository.findById(id).isPresent()) {
-          throw new RegraNegocioException(
-          "Usuário não encontrado para o ID informado.");
+      Optional<Usuario> usuario = repository.findById(id);
+
+      if (usuario.isEmpty()) {
+          throw new RegraNegocioException("Usuário não encontrado para o ID informado.");
       }
-      return repository.findById(id);
+
+      return usuario;
   }
 
+    @Override
     public Usuario obterIdUsuarioPorEmail(String email) throws RegraNegocioException {
         return repository.findByEmail(email).orElseThrow(() -> new RegraNegocioException("Usuário não encontrado para o email informado"));
     }
