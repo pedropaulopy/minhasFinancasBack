@@ -1,6 +1,7 @@
 package com.pedropaulo.minhas_financas.api.config;
 
 import com.pedropaulo.minhas_financas.api.JwtTokenFilter;
+import com.pedropaulo.minhas_financas.service.JwtService;
 import com.pedropaulo.minhas_financas.service.impl.JwtServiceImpl;
 import com.pedropaulo.minhas_financas.service.impl.SecurityUserDetailsServiceImpl;
 import java.util.Arrays;
@@ -14,6 +15,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -26,22 +28,18 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableWebSecurity
 public class SecurityConfig {
 
-  @Autowired private SecurityUserDetailsServiceImpl userDetailsService;
-
-  @Autowired private JwtServiceImpl jwtService;
-
   @Bean
   public PasswordEncoder passwordEncoder() {
     return new BCryptPasswordEncoder();
   }
 
   @Bean
-  public JwtTokenFilter jwtTokenFilter() {
+  public JwtTokenFilter jwtTokenFilter(JwtService jwtService, UserDetailsService userDetailsService) {
     return new JwtTokenFilter(jwtService, userDetailsService);
   }
 
   @Bean
-  public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+  public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtTokenFilter jwtTokenFilter) throws Exception {
     http.csrf(AbstractHttpConfigurer::disable)
         .cors(Customizer.withDefaults())
         .authorizeHttpRequests(
@@ -55,7 +53,7 @@ public class SecurityConfig {
                     .authenticated())
         .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .addFilterBefore(jwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
+        .addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
   }
