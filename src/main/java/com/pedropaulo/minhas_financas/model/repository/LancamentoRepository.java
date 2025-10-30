@@ -21,5 +21,5 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, Long> {
       @Param("tipo") TipoLancamento tipo,
       @Param("status") StatusLancamento status);
 
-  Optional<Lancamento> findLancamentoByUsuario_IdAndId(Long idUsuario, Long id);
+    Optional<Lancamento> findLancamentoByIdAndUsuarioId(Long id, Long usuarioId);
 }

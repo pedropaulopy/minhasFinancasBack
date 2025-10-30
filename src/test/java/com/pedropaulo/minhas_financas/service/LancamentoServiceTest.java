@@ -212,7 +212,7 @@ public class LancamentoServiceTest {
 
         Mockito.when(usuarioService.obterIdUsuarioPorEmail(emailUsuario)).thenReturn(usuario);
 
-        Mockito.when(repository.findLancamentoByUsuario_IdAndId(idUsuario, idLancamento))
+        Mockito.when(repository.findLancamentoByIdAndUsuarioId(idLancamento, idUsuario))
                 .thenReturn(Optional.of(lancamento));
 
         Lancamento resultado = service.obterPorIdLancamento(idLancamento, authentication);
@@ -235,7 +235,7 @@ public class LancamentoServiceTest {
 
         Mockito.when(usuarioService.obterIdUsuarioPorEmail(emailUsuario)).thenReturn(usuario);
 
-        Mockito.when(repository.findLancamentoByUsuario_IdAndId(idUsuario, idLancamento))
+        Mockito.when(repository.findLancamentoByIdAndUsuarioId(idLancamento, idUsuario))
                 .thenReturn(Optional.empty());
 
         Assertions.catchThrowableOfType(

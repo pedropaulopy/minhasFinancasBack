@@ -105,7 +105,7 @@ public class LancamentoServiceImpl implements LancamentoService {
     public Lancamento obterPorIdLancamento(Long idLancamento, Authentication authentication) throws RegraNegocioException {
       Usuario usuario = usuarioService.obterIdUsuarioPorEmail(authentication.getName());
       Long idUsuario = usuario.getId();
-      return repository.findLancamentoByUsuario_IdAndId(idUsuario, idLancamento).orElseThrow(() -> new RegraNegocioException("Lançamento não encontrado para o ID informado."));
+      return repository.findLancamentoByIdAndUsuarioId(idLancamento, idUsuario).orElseThrow(() -> new RegraNegocioException("Lançamento não encontrado para o ID informado."));
     }
 
   @Override
