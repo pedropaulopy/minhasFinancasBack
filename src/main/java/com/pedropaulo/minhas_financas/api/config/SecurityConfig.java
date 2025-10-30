@@ -2,6 +2,7 @@ package com.pedropaulo.minhas_financas.api.config;
 
 import com.pedropaulo.minhas_financas.api.JwtTokenFilter;
 import com.pedropaulo.minhas_financas.service.JwtService;
+import com.pedropaulo.minhas_financas.service.SecurityUserDetailsService;
 import com.pedropaulo.minhas_financas.service.impl.JwtServiceImpl;
 import com.pedropaulo.minhas_financas.service.impl.SecurityUserDetailsServiceImpl;
 import java.util.Arrays;
@@ -34,7 +35,7 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	public JwtTokenFilter jwtTokenFilter(JwtService jwtService, UserDetailsService userDetailsService) {
+	public JwtTokenFilter jwtTokenFilter(JwtService jwtService, SecurityUserDetailsService userDetailsService) {
 		return new JwtTokenFilter(jwtService, userDetailsService);
 	}
 

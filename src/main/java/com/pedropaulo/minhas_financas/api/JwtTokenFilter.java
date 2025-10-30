@@ -1,6 +1,7 @@
 package com.pedropaulo.minhas_financas.api;
 
 import com.pedropaulo.minhas_financas.service.JwtService;
+import com.pedropaulo.minhas_financas.service.SecurityUserDetailsService;
 import com.pedropaulo.minhas_financas.service.impl.SecurityUserDetailsServiceImpl;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -10,7 +11,6 @@ import java.io.IOException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -18,9 +18,9 @@ public class JwtTokenFilter extends OncePerRequestFilter {
 
 	private final JwtService jwtService;
 
-	private final UserDetailsService userDetailsService;
+	private final SecurityUserDetailsService userDetailsService;
 
-	public JwtTokenFilter(JwtService jwtService, UserDetailsService userDetailsService) {
+	public JwtTokenFilter(JwtService jwtService, SecurityUserDetailsService userDetailsService) {
 		this.jwtService = jwtService;
 		this.userDetailsService = userDetailsService;
 	}
