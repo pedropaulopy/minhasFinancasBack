@@ -40,7 +40,6 @@ public class LancamentoResource {
       try {
           Lancamento lancamentoAtualizado = service.atualizar(id,authentication, dto);
           return ResponseEntity.ok(lancamentoAtualizado);
-
       } catch (RegraNegocioException e) {
           return ResponseEntity.badRequest().body(e.getMessage());
       }
