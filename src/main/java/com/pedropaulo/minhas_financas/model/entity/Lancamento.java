@@ -5,6 +5,8 @@ import com.pedropaulo.minhas_financas.model.enums.TipoLancamento;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Set;
+
 import lombok.*;
 import org.springframework.data.jpa.convert.threeten.Jsr310JpaConverters;
 
@@ -48,5 +50,13 @@ public class Lancamento {
 	@Column(name = "status")
 	@Enumerated(EnumType.STRING)
 	private StatusLancamento statusLancamento;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "lancamento_categoria",
+            joinColumns = @JoinColumn(name = "id_lancamento"),
+            inverseJoinColumns = @JoinColumn(name = "id_categoria")
+    )
+    private Set<Categoria> categorias;
 
 }

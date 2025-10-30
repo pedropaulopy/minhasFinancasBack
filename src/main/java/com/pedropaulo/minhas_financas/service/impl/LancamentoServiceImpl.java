@@ -3,16 +3,20 @@ package com.pedropaulo.minhas_financas.service.impl;
 import com.pedropaulo.minhas_financas.api.dto.LancamentoDTO;
 import com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException;
 import com.pedropaulo.minhas_financas.exception.RegraNegocioException;
+import com.pedropaulo.minhas_financas.model.entity.Categoria;
 import com.pedropaulo.minhas_financas.model.entity.Lancamento;
 import com.pedropaulo.minhas_financas.model.entity.Usuario;
 import com.pedropaulo.minhas_financas.model.enums.StatusLancamento;
 import com.pedropaulo.minhas_financas.model.enums.TipoLancamento;
 import com.pedropaulo.minhas_financas.model.repository.LancamentoRepository;
+import com.pedropaulo.minhas_financas.service.CategoriaService;
 import com.pedropaulo.minhas_financas.service.LancamentoService;
 import com.pedropaulo.minhas_financas.service.UsuarioService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
+
 import org.springframework.data.domain.Example;
 import org.springframework.data.domain.ExampleMatcher;
 import org.springframework.security.core.Authentication;
@@ -26,10 +30,13 @@ public class LancamentoServiceImpl implements LancamentoService {
 
 	private final UsuarioService usuarioService;
 
-	public LancamentoServiceImpl(LancamentoRepository repository, UsuarioService usuarioService) {
+    private final CategoriaService categoriaService;
+
+	public LancamentoServiceImpl(LancamentoRepository repository, UsuarioService usuarioService, CategoriaService categoriaService) {
 		this.repository = repository;
-		this.usuarioService = usuarioService;
-	}
+        this.usuarioService = usuarioService;
+        this.categoriaService = categoriaService;
+    }
 
 	@Override
 	@Transactional
@@ -51,8 +58,9 @@ public class LancamentoServiceImpl implements LancamentoService {
 		lancamento.setAno(dto.getAno());
 		lancamento.setTipoLancamento(TipoLancamento.valueOf(dto.getTipoLancamento()));
 		lancamento.setStatusLancamento(StatusLancamento.valueOf(dto.getStatusLancamento()));
-
-		return repository.save(lancamento);
+        Set<Categoria> categorias = categoriaService.buscarOuCriarCategorias(dto.getCategorias(), lancamento.getUsuario());
+		lancamento.setCategorias(categorias);
+        return repository.save(lancamento);
 	}
 
 	@Override
@@ -137,17 +145,19 @@ public class LancamentoServiceImpl implements LancamentoService {
 
 	@Override
 	public Lancamento converterDTO(LancamentoDTO dto, Authentication authentication) throws RegraNegocioException {
-		Lancamento lancamento = new Lancamento();
-		lancamento.setDescricao(dto.getDescricao());
-		lancamento.setMes(dto.getMes());
-		lancamento.setAno(dto.getAno());
-		lancamento.setValor(dto.getValor());
-		lancamento.setDataCadastro(LocalDate.now());
-		Usuario usuario = usuarioService.obterIdUsuarioPorEmail(authentication.getName());
+        Usuario usuario = usuarioService.obterIdUsuarioPorEmail(authentication.getName());
+        Lancamento lancamento = new Lancamento();
+        lancamento.setDescricao(dto.getDescricao());
+        lancamento.setMes(dto.getMes());
+        lancamento.setAno(dto.getAno());
+        lancamento.setValor(dto.getValor());
+        lancamento.setDataCadastro(LocalDate.now());
 		lancamento.setUsuario(usuario);
 		lancamento.setTipoLancamento(TipoLancamento.valueOf(dto.getTipoLancamento()));
 		lancamento.setStatusLancamento(StatusLancamento.valueOf(dto.getStatusLancamento()));
-		return lancamento;
+        Set<Categoria> categorias = categoriaService.buscarOuCriarCategorias(dto.getCategorias(), usuario);
+		lancamento.setCategorias(categorias);
+        return lancamento;
 	}
 
 	@Override
