@@ -1,6 +1,7 @@
 package com.pedropaulo.minhas_financas.service.impl;
 
 import com.pedropaulo.minhas_financas.api.dto.LancamentoDTO;
+import com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException;
 import com.pedropaulo.minhas_financas.exception.RegraNegocioException;
 import com.pedropaulo.minhas_financas.model.entity.Lancamento;
 import com.pedropaulo.minhas_financas.model.entity.Usuario;
@@ -41,6 +42,7 @@ public class LancamentoServiceImpl implements LancamentoService {
 	@Transactional
 	public Lancamento atualizar(Long id, Authentication authentication, LancamentoDTO dto)
 			throws RegraNegocioException {
+        this.validarStatusLancamento(id, authentication);
 		Lancamento lancamento = this.obterPorIdLancamento(id, authentication);
 
 		lancamento.setDescricao(dto.getDescricao());
@@ -55,7 +57,8 @@ public class LancamentoServiceImpl implements LancamentoService {
 
 	@Override
 	public void deletar(Long id, Authentication authentication) throws RegraNegocioException {
-		Lancamento lancamento = this.obterPorIdLancamento(id, authentication);
+        this.validarStatusLancamento(id, authentication);
+        Lancamento lancamento = this.obterPorIdLancamento(id, authentication);
 		repository.delete(lancamento);
 	}
 
@@ -74,7 +77,8 @@ public class LancamentoServiceImpl implements LancamentoService {
 	@Transactional
 	public void atualizarStatus(Long id, Authentication authentication, StatusLancamento status)
 			throws RegraNegocioException {
-		Lancamento lancamento = this.obterPorIdLancamento(id, authentication);
+        this.validarStatusLancamento(id, authentication);
+        Lancamento lancamento = this.obterPorIdLancamento(id, authentication);
 		if (status == null) {
 			throw new RegraNegocioException(
 					"Não foi possível atualizar o status do lançamento, envie um status válido.");
@@ -145,5 +149,13 @@ public class LancamentoServiceImpl implements LancamentoService {
 		lancamento.setStatusLancamento(StatusLancamento.valueOf(dto.getStatusLancamento()));
 		return lancamento;
 	}
+
+    @Override
+    public void validarStatusLancamento(Long idLancamento, Authentication authentication) throws RegraNegocioException{
+        Lancamento lancamento = this.obterPorIdLancamento(idLancamento, authentication);
+        if(lancamento.getStatusLancamento() != StatusLancamento.PENDENTE){
+            throw new EntidadeNaoProcessavelException("Lançamentos efetivados ou cancelados não podem ser editados.");
+        }
+    }
 
 }

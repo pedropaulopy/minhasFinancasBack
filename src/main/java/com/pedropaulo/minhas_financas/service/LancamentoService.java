@@ -28,4 +28,5 @@ public interface LancamentoService {
 
 	Lancamento converterDTO(LancamentoDTO dto, Authentication authentication) throws RegraNegocioException;
 
+    void validarStatusLancamento(Long id, Authentication authentication) throws RegraNegocioException;
 }
