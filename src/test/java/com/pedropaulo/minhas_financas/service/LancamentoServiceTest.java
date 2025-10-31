@@ -9,22 +9,26 @@ import com.pedropaulo.minhas_financas.model.enums.StatusLancamento;
 import com.pedropaulo.minhas_financas.model.enums.TipoLancamento;
 import com.pedropaulo.minhas_financas.model.repository.LancamentoRepository;
 import com.pedropaulo.minhas_financas.service.impl.LancamentoServiceImpl;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mockito;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.security.core.Authentication;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.*;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.BDDMockito.*;
+
 @ExtendWith(MockitoExtension.class)
-public class LancamentoServiceTest {
+@MockitoSettings(strictness = Strictness.STRICT_STUBS)
+class LancamentoServiceTest {
 
 	@Mock
 	LancamentoRepository repository;
@@ -32,306 +36,275 @@ public class LancamentoServiceTest {
 	@Mock
 	UsuarioService usuarioService;
 
-	LancamentoServiceImpl service;
-
 	@Mock
 	CategoriaService categoriaService;
 
 	@Mock
 	Authentication authentication;
 
+	LancamentoServiceImpl service;
+
 	@BeforeEach
-	public void setUp() {
-		service = Mockito.spy(new LancamentoServiceImpl(repository, usuarioService, categoriaService));
+	void setUp() {
+		service = new LancamentoServiceImpl(repository, usuarioService, categoriaService);
+	}
+
+	private Usuario usuario(Long id, String email) {
+		Usuario u = new Usuario();
+		u.setId(id);
+		u.setEmail(email);
+		return u;
+	}
+
+	private Lancamento lancamentoValido(Usuario u) {
+		return Lancamento.builder()
+			.ano(2025)
+			.mes(11)
+			.descricao("Lançamento teste")
+			.valor(BigDecimal.valueOf(100))
+			.tipoLancamento(TipoLancamento.DESPESA)
+			.statusLancamento(StatusLancamento.PENDENTE)
+			.dataCadastro(LocalDate.now())
+			.usuario(u)
+			.build();
 	}
 
 	@Test
-	public void deveSalvarUmLancamento() throws RegraNegocioException {
-		Lancamento lancamentoASalvar = Lancamento.builder()
-			.ano(2025)
-			.mes(11)
-			.descricao("Lançamento teste")
-			.valor(BigDecimal.valueOf(100))
-			.tipoLancamento(TipoLancamento.DESPESA)
-			.statusLancamento(StatusLancamento.PENDENTE)
-			.dataCadastro(LocalDate.now())
-			.build();
+	void deveSalvarUmLancamento() throws Exception {
+		Usuario u = usuario(1L, "usuario@teste.com");
+		Lancamento aSalvar = lancamentoValido(u);
 
-		Mockito.doNothing().when(service).validar(lancamentoASalvar);
-		Lancamento lancamentoSalvo = Lancamento.builder()
-			.ano(2025)
-			.mes(11)
-			.descricao("Lançamento teste")
-			.valor(BigDecimal.valueOf(100))
-			.tipoLancamento(TipoLancamento.DESPESA)
-			.statusLancamento(StatusLancamento.PENDENTE)
-			.dataCadastro(LocalDate.now())
-			.build();
-		lancamentoSalvo.setId(1L);
-		lancamentoSalvo.setStatusLancamento(StatusLancamento.PENDENTE);
+		Lancamento salvo = lancamentoValido(u);
+		salvo.setId(1L);
 
-		Mockito.when(repository.save(lancamentoASalvar)).thenReturn(lancamentoSalvo);
+		given(repository.save(aSalvar)).willReturn(salvo);
 
-		Lancamento lancamento = service.salvar(lancamentoASalvar);
+		Lancamento out = service.salvar(aSalvar);
 
-		Assertions.assertThat(lancamento.getId()).isEqualTo(lancamentoSalvo.getId());
-		Assertions.assertThat(lancamento.getStatusLancamento()).isEqualTo(StatusLancamento.PENDENTE);
+		assertThat(out.getId()).isEqualTo(1L);
+		assertThat(out.getStatusLancamento()).isEqualTo(StatusLancamento.PENDENTE);
+		then(repository).should().save(aSalvar);
 	}
 
 	@Test
-	public void deveLancarErroAoTentarSalvarUmLancamentoInvalido() throws RegraNegocioException {
-		Lancamento lancamentoASalvar = Lancamento.builder()
-			.ano(2025)
-			.mes(11)
-			.descricao("Lançamento teste")
-			.valor(BigDecimal.valueOf(100))
-			.tipoLancamento(TipoLancamento.DESPESA)
-			.statusLancamento(StatusLancamento.PENDENTE)
-			.dataCadastro(LocalDate.now())
-			.build();
-
-		Mockito.doThrow(RegraNegocioException.class).when(service).validar(lancamentoASalvar);
-		Assertions.catchThrowableOfType(() -> service.salvar(lancamentoASalvar), RegraNegocioException.class);
-		Mockito.verify(repository, Mockito.never()).save(lancamentoASalvar);
+	void deveLancarErroAoTentarSalvarUmLancamentoInvalido() {
+		Lancamento invalido = new Lancamento();
+		assertThatThrownBy(() -> service.salvar(invalido)).isInstanceOf(RegraNegocioException.class);
+		then(repository).shouldHaveNoInteractions();
 	}
 
 	@Test
-	public void deveAtualizarUmLancamento() throws RegraNegocioException {
-		Lancamento lancamentoSalvo = Lancamento.builder()
-			.id(1L)
-			.ano(2025)
-			.mes(11)
-			.descricao("Lançamento teste")
-			.valor(BigDecimal.valueOf(100))
-			.tipoLancamento(TipoLancamento.DESPESA)
-			.statusLancamento(StatusLancamento.PENDENTE)
-			.dataCadastro(LocalDate.now())
-			.build();
+	void deveAtualizarUmLancamento() throws Exception {
+		Long id = 1L;
+		String email = "usuario@teste.com";
+		Usuario u = usuario(10L, email);
 
-		LancamentoDTO dto = LancamentoDTOFactory.create(1L, "Lançamento teste", 11, 2025, BigDecimal.valueOf(100),
+		Lancamento existente = lancamentoValido(u);
+		existente.setId(id);
+
+		LancamentoDTO dto = LancamentoDTOFactory.create(id, "Lançamento teste", 11, 2025, BigDecimal.valueOf(100),
 				TipoLancamento.DESPESA.name(), StatusLancamento.PENDENTE.name());
 
-		Mockito.doReturn(lancamentoSalvo).when(service).obterPorIdLancamento(1L, authentication);
-		Mockito.when(repository.save(lancamentoSalvo)).thenReturn(lancamentoSalvo);
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
+		given(repository.findLancamentoByIdAndUsuarioId(id, u.getId())).willReturn(Optional.of(existente));
+		given(categoriaService.buscarOuCriarCategorias(dto.getCategorias(), authentication))
+			.willReturn(Collections.emptySet());
+		given(repository.save(existente)).willReturn(existente);
 
-		Lancamento atualizado = service.atualizar(1L, authentication, dto);
+		Lancamento atualizado = service.atualizar(id, authentication, dto);
 
-		Mockito.verify(repository, Mockito.times(1)).save(lancamentoSalvo);
-		Assertions.assertThat(atualizado).isEqualTo(lancamentoSalvo);
+		then(repository).should().save(existente);
+		assertThat(atualizado).isEqualTo(existente);
 	}
 
 	@Test
-	public void deveLancarErroAoTentarAtualizarUmLancamentoQueAindaNaoFoiSalvo() throws RegraNegocioException {
-		LancamentoDTO dto = LancamentoDTOFactory.create(1L, "Lançamento teste", 11, 2025, BigDecimal.valueOf(100),
+	void deveLancarErroAoTentarAtualizarUmLancamentoQueAindaNaoFoiSalvo() throws Exception {
+		Long id = 1L;
+		String email = "usuario@teste.com";
+		Usuario u = usuario(10L, email);
+
+		LancamentoDTO dto = LancamentoDTOFactory.create(id, "Lançamento teste", 11, 2025, BigDecimal.valueOf(100),
 				TipoLancamento.DESPESA.name(), StatusLancamento.PENDENTE.name());
 
-		Mockito.doThrow(new RegraNegocioException("Lançamento não encontrado para o ID informado."))
-			.when(service)
-			.obterPorIdLancamento(1L, authentication);
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
+		given(repository.findLancamentoByIdAndUsuarioId(id, u.getId())).willReturn(Optional.empty());
 
-		Assertions.catchThrowableOfType(() -> service.atualizar(1L, authentication, dto), RegraNegocioException.class);
-		Mockito.verify(repository, Mockito.never()).save(Mockito.any());
+		assertThatThrownBy(() -> service.atualizar(id, authentication, dto)).isInstanceOf(RegraNegocioException.class)
+			.hasMessage("Lançamento não encontrado para o ID informado.");
+		then(repository).should(never()).save(any());
 	}
 
 	@Test
-	public void deveDeletarUmLancamento() throws RegraNegocioException {
-		Lancamento lancamento = Lancamento.builder()
-			.id(1L)
-			.ano(2025)
-			.mes(11)
-			.descricao("Lançamento teste")
-			.valor(BigDecimal.valueOf(100))
-			.tipoLancamento(TipoLancamento.DESPESA)
-			.statusLancamento(StatusLancamento.PENDENTE)
-			.dataCadastro(LocalDate.now())
-			.build();
+	void deveDeletarUmLancamento() throws Exception {
+		Long id = 1L;
+		String email = "usuario@teste.com";
+		Usuario u = usuario(7L, email);
+		Lancamento existente = lancamentoValido(u);
+		existente.setId(id);
 
-		Mockito.doReturn(lancamento).when(service).obterPorIdLancamento(1L, authentication);
-		service.deletar(1L, authentication);
-		Mockito.verify(repository).delete(lancamento);
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
+		given(repository.findLancamentoByIdAndUsuarioId(id, u.getId())).willReturn(Optional.of(existente));
+
+		service.deletar(id, authentication);
+
+		then(repository).should().delete(existente);
 	}
 
 	@Test
-	public void deveLancarErroAoTentarDeletarUmLancamentoQueAindaNaoFoiSalvo() throws RegraNegocioException {
-		Mockito.doThrow(new RegraNegocioException("Lançamento não encontrado para o ID informado."))
-			.when(service)
-			.obterPorIdLancamento(1L, authentication);
+	void deveLancarErroAoTentarDeletarUmLancamentoQueAindaNaoFoiSalvo() throws Exception {
+		Long id = 1L;
+		String email = "usuario@teste.com";
+		Usuario u = usuario(7L, email);
 
-		Assertions.catchThrowableOfType(() -> service.deletar(1L, authentication), RegraNegocioException.class);
-		Mockito.verify(repository, Mockito.never()).delete(Mockito.any());
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
+		given(repository.findLancamentoByIdAndUsuarioId(id, u.getId())).willReturn(Optional.empty());
+
+		assertThatThrownBy(() -> service.deletar(id, authentication)).isInstanceOf(RegraNegocioException.class)
+			.hasMessage("Lançamento não encontrado para o ID informado.");
+		then(repository).should(never()).delete(any());
 	}
 
 	@Test
-	public void deveFiltrarLancamentos() {
-		Lancamento lancamento = Lancamento.builder()
-			.id(1L)
-			.ano(2025)
-			.mes(11)
-			.descricao("Lançamento teste")
-			.valor(BigDecimal.valueOf(100))
-			.tipoLancamento(TipoLancamento.DESPESA)
-			.statusLancamento(StatusLancamento.PENDENTE)
-			.dataCadastro(LocalDate.now())
-			.build();
+	void deveFiltrarLancamentos() {
+		Lancamento l = new Lancamento();
+		l.setId(1L);
+		given(repository.findAll(any(org.springframework.data.domain.Example.class)))
+			.willReturn(Collections.singletonList(l));
 
-		List<Lancamento> lista = Arrays.asList(lancamento);
-		Mockito.when(repository.findAll(Mockito.any(org.springframework.data.domain.Example.class))).thenReturn(lista);
-		List<Lancamento> resultado = service.buscar(lancamento);
-		Assertions.assertThat(resultado).isNotEmpty().hasSize(1).contains(lancamento);
+		List<Lancamento> out = service.buscar(l);
+
+		assertThat(out).hasSize(1).containsExactly(l);
+		then(repository).should().findAll(any(org.springframework.data.domain.Example.class));
 	}
 
 	@Test
-	public void deveAtualizarOStatusDeUmLancamento() throws RegraNegocioException {
-		Lancamento lancamento = Lancamento.builder()
-			.id(1L)
-			.ano(2025)
-			.mes(11)
-			.descricao("Lançamento teste")
-			.valor(BigDecimal.valueOf(100))
-			.tipoLancamento(TipoLancamento.DESPESA)
-			.statusLancamento(StatusLancamento.PENDENTE)
-			.dataCadastro(LocalDate.now())
-			.build();
+	void deveAtualizarOStatusDeUmLancamento() throws Exception {
+		Long id = 1L;
+		String email = "usuario@teste.com";
+		Usuario u = usuario(3L, email);
+		Lancamento existente = lancamentoValido(u);
+		existente.setId(id);
+		existente.setStatusLancamento(StatusLancamento.PENDENTE);
 
-		StatusLancamento novoStatus = StatusLancamento.EFETIVADO;
-		Mockito.doReturn(lancamento).when(service).obterPorIdLancamento(1L, authentication);
-		service.atualizarStatus(1L, authentication, novoStatus);
-		Assertions.assertThat(lancamento.getStatusLancamento()).isEqualTo(novoStatus);
-		Mockito.verify(service, Mockito.times(2)).obterPorIdLancamento(1L, authentication);
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
+		given(repository.findLancamentoByIdAndUsuarioId(id, u.getId())).willReturn(Optional.of(existente));
+
+		service.atualizarStatus(id, authentication, StatusLancamento.EFETIVADO);
+
+		assertThat(existente.getStatusLancamento()).isEqualTo(StatusLancamento.EFETIVADO);
 	}
 
 	@Test
-	public void deveObterUmLancamentoPorId() throws RegraNegocioException {
-		Long idLancamento = 1L;
-		Long idUsuario = 1L;
-		String emailUsuario = "usuario@teste.com";
+	void deveObterUmLancamentoPorId() throws Exception {
+		Long idLanc = 1L;
+		String email = "usuario@teste.com";
+		Usuario u = usuario(1L, email);
+		Lancamento l = lancamentoValido(u);
+		l.setId(idLanc);
 
-		Usuario usuario = new Usuario();
-		usuario.setId(idUsuario);
-		usuario.setEmail(emailUsuario);
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
+		given(repository.findLancamentoByIdAndUsuarioId(idLanc, u.getId())).willReturn(Optional.of(l));
 
-		Lancamento lancamento = Lancamento.builder()
-			.id(idLancamento)
-			.ano(2025)
-			.mes(11)
-			.descricao("Lançamento teste")
-			.valor(BigDecimal.valueOf(100))
-			.tipoLancamento(TipoLancamento.DESPESA)
-			.statusLancamento(StatusLancamento.PENDENTE)
-			.dataCadastro(LocalDate.now())
-			.usuario(usuario)
-			.build();
+		Lancamento out = service.obterPorIdLancamento(idLanc, authentication);
 
-		Mockito.when(authentication.getName()).thenReturn(emailUsuario);
-
-		Mockito.when(usuarioService.obterIdUsuarioPorEmail(emailUsuario)).thenReturn(usuario);
-
-		Mockito.when(repository.findLancamentoByIdAndUsuarioId(idLancamento, idUsuario))
-			.thenReturn(Optional.of(lancamento));
-
-		Lancamento resultado = service.obterPorIdLancamento(idLancamento, authentication);
-
-		Assertions.assertThat(resultado).isNotNull();
-		Assertions.assertThat(resultado.getId()).isEqualTo(idLancamento);
+		assertThat(out).isNotNull();
+		assertThat(out.getId()).isEqualTo(idLanc);
 	}
 
 	@Test
-	public void deveRetornarErroQuandoOLancamentoNaoExistir() throws RegraNegocioException {
-		Long idLancamento = 1L;
-		Long idUsuario = 1L;
-		String emailUsuario = "usuario@teste.com";
+	void deveRetornarErroQuandoOLancamentoNaoExistir() throws Exception {
+		Long idLanc = 1L;
+		String email = "usuario@teste.com";
+		Usuario u = usuario(1L, email);
 
-		Usuario usuario = new Usuario();
-		usuario.setId(idUsuario);
-		usuario.setEmail(emailUsuario);
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
+		given(repository.findLancamentoByIdAndUsuarioId(idLanc, u.getId())).willReturn(Optional.empty());
 
-		Mockito.when(authentication.getName()).thenReturn(emailUsuario);
-
-		Mockito.when(usuarioService.obterIdUsuarioPorEmail(emailUsuario)).thenReturn(usuario);
-
-		Mockito.when(repository.findLancamentoByIdAndUsuarioId(idLancamento, idUsuario)).thenReturn(Optional.empty());
-
-		Assertions.catchThrowableOfType(() -> service.obterPorIdLancamento(idLancamento, authentication),
-				RegraNegocioException.class);
-	}
-
-	@Test
-	public void deveLancarErrosAoValidarUmLancamento() {
-		Lancamento lancamento = new Lancamento();
-
-		Throwable erro = Assertions.catchThrowable(() -> service.validar(lancamento));
-		Assertions.assertThat(erro)
+		assertThatThrownBy(() -> service.obterPorIdLancamento(idLanc, authentication))
 			.isInstanceOf(RegraNegocioException.class)
-			.hasMessage("Insira uma descrição válida.");
-
-		lancamento.setDescricao("");
-		erro = Assertions.catchThrowable(() -> service.validar(lancamento));
-		Assertions.assertThat(erro)
-			.isInstanceOf(RegraNegocioException.class)
-			.hasMessage("Insira uma descrição válida.");
-
-		lancamento.setDescricao("Salário");
-		erro = Assertions.catchThrowable(() -> service.validar(lancamento));
-		Assertions.assertThat(erro).isInstanceOf(RegraNegocioException.class).hasMessage("Insira um mês válido.");
-
-		lancamento.setMes(0);
-		erro = Assertions.catchThrowable(() -> service.validar(lancamento));
-		Assertions.assertThat(erro).isInstanceOf(RegraNegocioException.class).hasMessage("Insira um mês válido.");
-
-		lancamento.setMes(13);
-		erro = Assertions.catchThrowable(() -> service.validar(lancamento));
-		Assertions.assertThat(erro).isInstanceOf(RegraNegocioException.class).hasMessage("Insira um mês válido.");
-
-		lancamento.setMes(1);
-		erro = Assertions.catchThrowable(() -> service.validar(lancamento));
-		Assertions.assertThat(erro).isInstanceOf(RegraNegocioException.class).hasMessage("Insira um ano válido.");
-
-		lancamento.setAno(202);
-		erro = Assertions.catchThrowable(() -> service.validar(lancamento));
-		Assertions.assertThat(erro).isInstanceOf(RegraNegocioException.class).hasMessage("Insira um ano válido.");
-
-		lancamento.setAno(22025);
-		erro = Assertions.catchThrowable(() -> service.validar(lancamento));
-		Assertions.assertThat(erro).isInstanceOf(RegraNegocioException.class).hasMessage("Insira um ano válido.");
-
-		lancamento.setAno(2025);
-		lancamento.setValor(BigDecimal.ZERO);
-		erro = Assertions.catchThrowable(() -> service.validar(lancamento));
-		Assertions.assertThat(erro).isInstanceOf(RegraNegocioException.class).hasMessage("Insira um valor válido.");
-
-		lancamento.setValor(BigDecimal.valueOf(-1));
-		erro = Assertions.catchThrowable(() -> service.validar(lancamento));
-		Assertions.assertThat(erro).isInstanceOf(RegraNegocioException.class).hasMessage("Insira um valor válido.");
-
-		lancamento.setValor(BigDecimal.valueOf(1));
-		erro = Assertions.catchThrowable(() -> service.validar(lancamento));
-		Assertions.assertThat(erro)
-			.isInstanceOf(RegraNegocioException.class)
-			.hasMessage("Insira um tipo de transação válido.");
-
-		lancamento.setTipoLancamento(TipoLancamento.RECEITA);
-		erro = Assertions.catchThrowable(() -> service.validar(lancamento));
-		Assertions.assertThat(erro).isInstanceOf(RegraNegocioException.class).hasMessage("Informe um usuário válido.");
+			.hasMessage("Lançamento não encontrado para o ID informado.");
 	}
 
 	@Test
-	public void deveObterSaldoDeUmUsuario() throws RegraNegocioException {
+	void deveLancarErrosAoValidarUmLancamento() {
+		Lancamento l = new Lancamento();
+
+		Throwable t = catchThrowable(() -> service.validar(l));
+		assertThat(t).isInstanceOf(RegraNegocioException.class).hasMessage("Insira uma descrição válida.");
+
+		l.setDescricao("");
+		t = catchThrowable(() -> service.validar(l));
+		assertThat(t).hasMessage("Insira uma descrição válida.");
+
+		l.setDescricao("Salário");
+		t = catchThrowable(() -> service.validar(l));
+		assertThat(t).hasMessage("Insira um mês válido.");
+
+		l.setMes(0);
+		t = catchThrowable(() -> service.validar(l));
+		assertThat(t).hasMessage("Insira um mês válido.");
+
+		l.setMes(13);
+		t = catchThrowable(() -> service.validar(l));
+		assertThat(t).hasMessage("Insira um mês válido.");
+
+		l.setMes(1);
+		t = catchThrowable(() -> service.validar(l));
+		assertThat(t).hasMessage("Insira um ano válido.");
+
+		l.setAno(202);
+		t = catchThrowable(() -> service.validar(l));
+		assertThat(t).hasMessage("Insira um ano válido.");
+
+		l.setAno(22025);
+		t = catchThrowable(() -> service.validar(l));
+		assertThat(t).hasMessage("Insira um ano válido.");
+
+		l.setAno(2025);
+		l.setValor(BigDecimal.ZERO);
+		t = catchThrowable(() -> service.validar(l));
+		assertThat(t).hasMessage("Insira um valor válido.");
+
+		l.setValor(BigDecimal.valueOf(-1));
+		t = catchThrowable(() -> service.validar(l));
+		assertThat(t).hasMessage("Insira um valor válido.");
+
+		l.setValor(BigDecimal.ONE);
+		t = catchThrowable(() -> service.validar(l));
+		assertThat(t).hasMessage("Insira um tipo de transação válido.");
+
+		l.setTipoLancamento(TipoLancamento.RECEITA);
+		t = catchThrowable(() -> service.validar(l));
+		assertThat(t).hasMessage("Informe um usuário válido.");
+	}
+
+	@Test
+	void deveObterSaldoDeUmUsuario() throws Exception {
 		Long idUsuario = 1L;
-		Mockito.when(usuarioService.obterPorId(idUsuario)).thenReturn(Optional.of(new Usuario()));
-		Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.RECEITA,
+		given(usuarioService.obterPorId(idUsuario)).willReturn(Optional.of(new Usuario()));
+		given(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.RECEITA,
 				StatusLancamento.EFETIVADO))
-			.thenReturn(BigDecimal.valueOf(100));
-		Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.DESPESA,
+			.willReturn(BigDecimal.valueOf(100));
+		given(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.DESPESA,
 				StatusLancamento.EFETIVADO))
-			.thenReturn(BigDecimal.valueOf(50));
+			.willReturn(BigDecimal.valueOf(50));
+
 		BigDecimal saldo = service.obterSaldoPorUsuario(idUsuario);
-		Assertions.assertThat(saldo).isEqualTo(BigDecimal.valueOf(50));
+
+		assertThat(saldo).isEqualTo(BigDecimal.valueOf(50));
 	}
 
 	@Test
-	public void deveConverterUmLancamentoDTOEmUmLancamento() throws RegraNegocioException {
-		LocalDate dataCadastro = LocalDate.now();
-
+	void deveConverterUmLancamentoDTOEmUmLancamento() throws Exception {
+		String email = "usuario@teste.com";
+		Usuario u = usuario(1L, email);
 		LancamentoDTO dto = new LancamentoDTO();
 		dto.setDescricao("Teste DTO");
 		dto.setMes(10);
@@ -340,27 +313,28 @@ public class LancamentoServiceTest {
 		dto.setTipoLancamento(TipoLancamento.RECEITA.name());
 		dto.setStatusLancamento(StatusLancamento.PENDENTE.name());
 
-		Usuario usuario = new Usuario();
-		usuario.setId(1L);
-		usuario.setEmail("usuario@teste.com");
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
+		given(categoriaService.buscarOuCriarCategorias(dto.getCategorias(), authentication))
+			.willReturn(Collections.emptySet());
 
-		Mockito.when(authentication.getName()).thenReturn("usuario@teste.com");
-		Mockito.when(usuarioService.obterIdUsuarioPorEmail("usuario@teste.com")).thenReturn(usuario);
+		LocalDate hoje = LocalDate.now();
+		Lancamento l = service.converterDTO(dto, authentication);
 
-		Lancamento lancamento = service.converterDTO(dto, authentication);
-
-		Assertions.assertThat(lancamento.getDescricao()).isEqualTo(dto.getDescricao());
-		Assertions.assertThat(lancamento.getMes()).isEqualTo(dto.getMes());
-		Assertions.assertThat(lancamento.getAno()).isEqualTo(dto.getAno());
-		Assertions.assertThat(lancamento.getValor()).isEqualTo(dto.getValor());
-		Assertions.assertThat(lancamento.getTipoLancamento().name()).isEqualTo(dto.getTipoLancamento());
-		Assertions.assertThat(lancamento.getStatusLancamento().name()).isEqualTo(dto.getStatusLancamento());
-		Assertions.assertThat(lancamento.getUsuario()).isEqualTo(usuario);
-		Assertions.assertThat(lancamento.getDataCadastro()).isEqualTo(dataCadastro);
+		assertThat(l.getDescricao()).isEqualTo(dto.getDescricao());
+		assertThat(l.getMes()).isEqualTo(dto.getMes());
+		assertThat(l.getAno()).isEqualTo(dto.getAno());
+		assertThat(l.getValor()).isEqualTo(dto.getValor());
+		assertThat(l.getTipoLancamento().name()).isEqualTo(dto.getTipoLancamento());
+		assertThat(l.getStatusLancamento().name()).isEqualTo(dto.getStatusLancamento());
+		assertThat(l.getUsuario()).isEqualTo(u);
+		assertThat(l.getDataCadastro()).isEqualTo(hoje);
+		then(categoriaService).should().buscarOuCriarCategorias(dto.getCategorias(), authentication);
 	}
 
 	@Test
-	public void deveLancarErroAoConverterDTOComUsuarioInvalido() throws RegraNegocioException {
+	void deveLancarErroAoConverterDTOComUsuarioInvalido() throws Exception {
+		String email = "usuario@teste.com";
 		LancamentoDTO dto = new LancamentoDTO();
 		dto.setDescricao("Teste DTO");
 		dto.setMes(10);
@@ -369,37 +343,40 @@ public class LancamentoServiceTest {
 		dto.setTipoLancamento(TipoLancamento.RECEITA.name());
 		dto.setStatusLancamento(StatusLancamento.PENDENTE.name());
 
-		Mockito.when(authentication.getName()).thenReturn("usuario@teste.com");
-		Mockito.when(usuarioService.obterIdUsuarioPorEmail("usuario@teste.com"))
-			.thenThrow(new RegraNegocioException("Usuário não encontrado"));
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email))
+			.willThrow(new RegraNegocioException("Usuário não encontrado"));
 
-		Throwable erro = Assertions.catchThrowable(() -> service.converterDTO(dto, authentication));
-		Assertions.assertThat(erro).isInstanceOf(RegraNegocioException.class).hasMessage("Usuário não encontrado");
+		assertThatThrownBy(() -> service.converterDTO(dto, authentication)).isInstanceOf(RegraNegocioException.class)
+			.hasMessage("Usuário não encontrado");
+		then(categoriaService).shouldHaveNoInteractions();
 	}
 
 	@Test
-	public void deveLancarErroAoConverterDTOComTipoInvalido() throws RegraNegocioException {
+	void deveLancarErroAoConverterDTOComTipoInvalido() throws Exception {
+		String email = "usuario@teste.com";
+		Usuario u = usuario(1L, email);
+
 		LancamentoDTO dto = new LancamentoDTO();
 		dto.setDescricao("Teste DTO");
 		dto.setMes(10);
 		dto.setAno(2025);
 		dto.setValor(BigDecimal.TEN);
-		dto.setTipoLancamento("TIPO_INVALIDO"); // Inválido
+		dto.setTipoLancamento("TIPO_INVALIDO");
 		dto.setStatusLancamento(StatusLancamento.PENDENTE.name());
 
-		Usuario usuario = new Usuario();
-		usuario.setId(1L);
-		usuario.setEmail("usuario@teste.com");
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
 
-		Mockito.when(authentication.getName()).thenReturn("usuario@teste.com");
-		Mockito.when(usuarioService.obterIdUsuarioPorEmail("usuario@teste.com")).thenReturn(usuario);
-
-		Assertions.catchThrowableOfType(() -> service.converterDTO(dto, authentication),
-				IllegalArgumentException.class);
+		assertThatThrownBy(() -> service.converterDTO(dto, authentication))
+			.isInstanceOf(IllegalArgumentException.class);
 	}
 
 	@Test
-	public void deveLancarErroAoConverterDTOComStatusInvalido() throws RegraNegocioException {
+	void deveLancarErroAoConverterDTOComStatusInvalido() throws Exception {
+		String email = "usuario@teste.com";
+		Usuario u = usuario(1L, email);
+
 		LancamentoDTO dto = new LancamentoDTO();
 		dto.setDescricao("Teste DTO");
 		dto.setMes(10);
@@ -408,139 +385,127 @@ public class LancamentoServiceTest {
 		dto.setTipoLancamento(TipoLancamento.RECEITA.name());
 		dto.setStatusLancamento("STATUS_INVALIDO");
 
-		Usuario usuario = new Usuario();
-		usuario.setId(1L);
-		usuario.setEmail("usuario@teste.com");
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
 
-		Mockito.when(authentication.getName()).thenReturn("usuario@teste.com");
-		Mockito.when(usuarioService.obterIdUsuarioPorEmail("usuario@teste.com")).thenReturn(usuario);
-
-		Assertions.catchThrowableOfType(() -> service.converterDTO(dto, authentication),
-				IllegalArgumentException.class);
+		assertThatThrownBy(() -> service.converterDTO(dto, authentication))
+			.isInstanceOf(IllegalArgumentException.class);
 	}
 
 	@Test
-	public void deveObterSaldoDeUmUsuarioOndeReceitasEhNull() throws RegraNegocioException {
+	void deveObterSaldoDeUmUsuarioOndeReceitasEhNull() throws Exception {
 		Long idUsuario = 1L;
-
-		Mockito.when(usuarioService.obterPorId(idUsuario)).thenReturn(Optional.of(new Usuario()));
-
-		Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.RECEITA,
+		given(usuarioService.obterPorId(idUsuario)).willReturn(Optional.of(new Usuario()));
+		given(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.RECEITA,
 				StatusLancamento.EFETIVADO))
-			.thenReturn(null); // Receitas null
-		Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.DESPESA,
+			.willReturn(null);
+		given(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.DESPESA,
 				StatusLancamento.EFETIVADO))
-			.thenReturn(BigDecimal.valueOf(50));
+			.willReturn(BigDecimal.valueOf(50));
 
 		BigDecimal saldo = service.obterSaldoPorUsuario(idUsuario);
 
-		Assertions.assertThat(saldo).isEqualTo(BigDecimal.valueOf(-50));
+		assertThat(saldo).isEqualTo(BigDecimal.valueOf(-50));
 	}
 
 	@Test
-	public void deveObterSaldoDeUmUsuarioOndeDespesasEhNull() throws RegraNegocioException {
+	void deveObterSaldoDeUmUsuarioOndeDespesasEhNull() throws Exception {
 		Long idUsuario = 1L;
-
-		Mockito.when(usuarioService.obterPorId(idUsuario)).thenReturn(Optional.of(new Usuario()));
-
-		Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.RECEITA,
+		given(usuarioService.obterPorId(idUsuario)).willReturn(Optional.of(new Usuario()));
+		given(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.RECEITA,
 				StatusLancamento.EFETIVADO))
-			.thenReturn(BigDecimal.valueOf(100));
-		Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.DESPESA,
+			.willReturn(BigDecimal.valueOf(100));
+		given(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.DESPESA,
 				StatusLancamento.EFETIVADO))
-			.thenReturn(null);
+			.willReturn(null);
 
 		BigDecimal saldo = service.obterSaldoPorUsuario(idUsuario);
 
-		Assertions.assertThat(saldo).isEqualTo(BigDecimal.valueOf(100));
+		assertThat(saldo).isEqualTo(BigDecimal.valueOf(100));
 	}
 
 	@Test
-	public void deveObterSaldoDeUmUsuarioOndeAmbosSaoNull() throws RegraNegocioException {
+	void deveObterSaldoDeUmUsuarioOndeAmbosSaoNull() throws Exception {
 		Long idUsuario = 1L;
-
-		Mockito.when(usuarioService.obterPorId(idUsuario)).thenReturn(Optional.of(new Usuario()));
-
-		Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.RECEITA,
+		given(usuarioService.obterPorId(idUsuario)).willReturn(Optional.of(new Usuario()));
+		given(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.RECEITA,
 				StatusLancamento.EFETIVADO))
-			.thenReturn(null);
-		Mockito.when(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.DESPESA,
+			.willReturn(null);
+		given(repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(idUsuario, TipoLancamento.DESPESA,
 				StatusLancamento.EFETIVADO))
-			.thenReturn(null);
+			.willReturn(null);
 
 		BigDecimal saldo = service.obterSaldoPorUsuario(idUsuario);
 
-		Assertions.assertThat(saldo).isEqualByComparingTo(BigDecimal.ZERO);
+		assertThat(saldo).isZero();
 	}
 
 	@Test
-	public void deveLancarErroAoObterSaldoDeUsuarioInexistente() throws RegraNegocioException {
+	void deveLancarErroAoObterSaldoDeUsuarioInexistente() throws Exception {
 		Long idUsuario = 1L;
+		given(usuarioService.obterPorId(idUsuario)).willThrow(new RegraNegocioException("Usuário não encontrado"));
 
-		Mockito.when(usuarioService.obterPorId(idUsuario))
-			.thenThrow(new RegraNegocioException("Usuário não encontrado"));
+		assertThatThrownBy(() -> service.obterSaldoPorUsuario(idUsuario)).isInstanceOf(RegraNegocioException.class)
+			.hasMessage("Usuário não encontrado");
 
-		Throwable erro = Assertions.catchThrowable(() -> service.obterSaldoPorUsuario(idUsuario));
-
-		Assertions.assertThat(erro).isInstanceOf(RegraNegocioException.class).hasMessage("Usuário não encontrado");
-
-		Mockito.verify(repository, Mockito.never())
-			.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(Mockito.anyLong(), Mockito.any(TipoLancamento.class),
-					Mockito.any(StatusLancamento.class));
+		then(repository).shouldHaveNoInteractions();
 	}
 
 	@Test
-	public void deveValidarStatusLancamentoQuandoEstiverPendente() throws RegraNegocioException {
-		Long idLancamento = 1L;
-		Lancamento lancamento = Lancamento.builder()
-			.id(idLancamento)
-			.statusLancamento(StatusLancamento.PENDENTE)
-			.build();
+	void deveValidarStatusLancamentoQuandoEstiverPendente() throws Exception {
+		Long id = 1L;
+		String email = "usuario@teste.com";
+		Usuario u = usuario(5L, email);
+		Lancamento l = new Lancamento();
+		l.setId(id);
+		l.setStatusLancamento(StatusLancamento.PENDENTE);
+		l.setUsuario(u);
 
-		Mockito.doReturn(lancamento).when(service).obterPorIdLancamento(idLancamento, authentication);
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
+		given(repository.findLancamentoByIdAndUsuarioId(id, u.getId())).willReturn(Optional.of(l));
 
-		Assertions.assertThatCode(() -> service.validarStatusLancamento(idLancamento, authentication))
-			.doesNotThrowAnyException();
+		assertThatCode(() -> service.validarStatusLancamento(id, authentication)).doesNotThrowAnyException();
 
-		Mockito.verify(service, Mockito.times(1)).obterPorIdLancamento(idLancamento, authentication);
+		then(repository).should().findLancamentoByIdAndUsuarioId(id, u.getId());
 	}
 
 	@Test
-	public void deveLancarErroAoValidarStatusLancamentoQuandoEstiverEfetivado() throws RegraNegocioException {
-		Long idLancamento = 1L;
-		Lancamento lancamento = Lancamento.builder()
-			.id(idLancamento)
-			.statusLancamento(StatusLancamento.EFETIVADO)
-			.build();
+	void deveLancarErroAoValidarStatusLancamentoQuandoEstiverEfetivado() throws Exception {
+		Long id = 1L;
+		String email = "usuario@teste.com";
+		Usuario u = usuario(5L, email);
+		Lancamento l = new Lancamento();
+		l.setId(id);
+		l.setStatusLancamento(StatusLancamento.EFETIVADO);
+		l.setUsuario(u);
 
-		Mockito.doReturn(lancamento).when(service).obterPorIdLancamento(idLancamento, authentication);
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
+		given(repository.findLancamentoByIdAndUsuarioId(id, u.getId())).willReturn(Optional.of(l));
 
-		Throwable erro = Assertions.catchThrowable(() -> service.validarStatusLancamento(idLancamento, authentication));
-
-		Assertions.assertThat(erro)
+		assertThatThrownBy(() -> service.validarStatusLancamento(id, authentication))
 			.isInstanceOf(com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException.class)
 			.hasMessage("Lançamentos efetivados ou cancelados não podem ser editados ou deletados.");
-
-		Mockito.verify(service, Mockito.times(1)).obterPorIdLancamento(idLancamento, authentication);
 	}
 
 	@Test
-	public void deveLancarErroAoValidarStatusLancamentoQuandoEstiverCancelado() throws RegraNegocioException {
-		Long idLancamento = 1L;
-		Lancamento lancamento = Lancamento.builder()
-			.id(idLancamento)
-			.statusLancamento(StatusLancamento.CANCELADO)
-			.build();
+	void deveLancarErroAoValidarStatusLancamentoQuandoEstiverCancelado() throws Exception {
+		Long id = 1L;
+		String email = "usuario@teste.com";
+		Usuario u = usuario(5L, email);
+		Lancamento l = new Lancamento();
+		l.setId(id);
+		l.setStatusLancamento(StatusLancamento.CANCELADO);
+		l.setUsuario(u);
 
-		Mockito.doReturn(lancamento).when(service).obterPorIdLancamento(idLancamento, authentication);
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
+		given(repository.findLancamentoByIdAndUsuarioId(id, u.getId())).willReturn(Optional.of(l));
 
-		Throwable erro = Assertions.catchThrowable(() -> service.validarStatusLancamento(idLancamento, authentication));
-
-		Assertions.assertThat(erro)
+		assertThatThrownBy(() -> service.validarStatusLancamento(id, authentication))
 			.isInstanceOf(com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException.class)
 			.hasMessage("Lançamentos efetivados ou cancelados não podem ser editados ou deletados.");
-
-		Mockito.verify(service, Mockito.times(1)).obterPorIdLancamento(idLancamento, authentication);
 	}
 
 }

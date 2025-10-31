@@ -3,33 +3,35 @@ package com.pedropaulo.minhas_financas.resource;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pedropaulo.minhas_financas.api.dto.UsuarioDTO;
 import com.pedropaulo.minhas_financas.api.resource.UsuarioResource;
+import com.pedropaulo.minhas_financas.api.config.SecurityConfig;
 import com.pedropaulo.minhas_financas.exception.AutenticacaoException;
 import com.pedropaulo.minhas_financas.exception.RegraNegocioException;
 import com.pedropaulo.minhas_financas.model.entity.Usuario;
 import com.pedropaulo.minhas_financas.service.LancamentoService;
 import com.pedropaulo.minhas_financas.service.UsuarioService;
 import com.pedropaulo.minhas_financas.service.impl.JwtServiceImpl;
-import java.math.BigDecimal;
-
-import com.pedropaulo.minhas_financas.api.config.SecurityConfig;
 import com.pedropaulo.minhas_financas.service.impl.SecurityUserDetailsServiceImpl;
-import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
-import org.springframework.context.annotation.Import;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+
+import java.math.BigDecimal;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @ExtendWith(SpringExtension.class)
 @ActiveProfiles("test")
@@ -37,143 +39,113 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 		excludeAutoConfiguration = { UserDetailsServiceAutoConfiguration.class })
 @AutoConfigureMockMvc
 @Import(SecurityConfig.class)
-public class UsuarioResourceTest {
+class UsuarioResourceTest {
 
-	static final String API = "/api/usuarios";
-	static final String JSON = MediaType.APPLICATION_JSON_VALUE;
+	private static final String API = "/api/usuarios";
+
+	private static final MediaType JSON = MediaType.APPLICATION_JSON;
+
+	private static final String EMAIL = "email@email.com";
+
+	private static final String SENHA = "123";
 
 	@Autowired
 	MockMvc mvc;
 
-	@SuppressWarnings("removal")
+	@Autowired
+	ObjectMapper om;
+
 	@MockBean
 	UsuarioService service;
 
-	@SuppressWarnings("removal")
 	@MockBean
 	LancamentoService lancamentoService;
 
-	@SuppressWarnings("removal")
 	@MockBean
 	JwtServiceImpl jwtService;
 
-	@SuppressWarnings("removal")
 	@MockBean
-	private SecurityUserDetailsServiceImpl userDetailsService;
+	SecurityUserDetailsServiceImpl userDetailsService;
 
-	@Test
-	public void deveAutenticarUmUsuario() throws Exception {
-		String email = "email@email.com";
-		String senha = "123";
-		String tokenFalso = "access-token-123";
+	private UsuarioDTO dto(String email, String senha) {
+		return UsuarioDTO.builder().email(email).senha(senha).build();
+	}
 
-		UsuarioDTO dto = UsuarioDTO.builder().email(email).senha(senha).build();
-		Usuario usuario = Usuario.builder().nome("Usuário").email(email).senha(senha).id(1L).build();
-
-		Mockito.when(service.autenticar(email, senha)).thenReturn(usuario);
-		Mockito.when(jwtService.gerarToken(usuario)).thenReturn(tokenFalso);
-
-		String json = new ObjectMapper().writeValueAsString(dto);
-
-		MockHttpServletRequestBuilder request = MockMvcRequestBuilders.post((API.concat("/autenticar")))
-			.contentType(JSON)
-			.accept(JSON)
-			.content(json);
-
-		mvc.perform(request)
-			.andExpect(MockMvcResultMatchers.status().isOk())
-			.andExpect(MockMvcResultMatchers.jsonPath("nome").value(usuario.getNome()))
-			.andExpect(MockMvcResultMatchers.jsonPath("token").value(tokenFalso));
+	private Usuario usuario(Long id, String nome, String email, String senha) {
+		return Usuario.builder().id(id).nome(nome).email(email).senha(senha).build();
 	}
 
 	@Test
-	public void deveRetornarBadRequestAoAutenticarUmUsuarioErrado() throws Exception {
-		String email = "email@email.com";
-		String senha = "123";
+	void deveAutenticarUmUsuario() throws Exception {
+		String token = "access-token-123";
+		UsuarioDTO body = dto(EMAIL, SENHA);
+		Usuario usuario = usuario(1L, "Usuário", EMAIL, SENHA);
 
-		UsuarioDTO dto = UsuarioDTO.builder().email(email).senha(senha).build();
-		Usuario usuario = Usuario.builder().email(email).senha(senha).build();
+		when(service.autenticar(EMAIL, SENHA)).thenReturn(usuario);
+		when(jwtService.gerarToken(usuario)).thenReturn(token);
 
-		Mockito.when(service.autenticar(email, senha)).thenThrow(AutenticacaoException.class);
-
-		String json = new ObjectMapper().writeValueAsString(dto);
-
-		MockHttpServletRequestBuilder request = MockMvcRequestBuilders.post((API.concat("/autenticar")))
-			.contentType(JSON)
-			.accept(JSON)
-			.content(json);
-
-		mvc.perform(request).andExpect(MockMvcResultMatchers.status().isBadRequest());
+		mvc.perform(post(API + "/autenticar").contentType(JSON).accept(JSON).content(om.writeValueAsString(body)))
+			.andExpect(status().isOk())
+			.andExpect(content().contentTypeCompatibleWith(JSON))
+			.andExpect(jsonPath("$.nome").value("Usuário"))
+			.andExpect(jsonPath("$.token").value(token));
 	}
 
 	@Test
-	public void deveCriarUmUsuario() throws Exception {
-		String email = "email@email.com";
-		String senha = "123";
+	void deveRetornarBadRequestAoAutenticarUsuarioInvalido() throws Exception {
+		UsuarioDTO body = dto(EMAIL, SENHA);
+		when(service.autenticar(EMAIL, SENHA)).thenThrow(new AutenticacaoException("Credenciais inválidas"));
 
-		UsuarioDTO dto = UsuarioDTO.builder().email(email).senha(senha).build();
-		Usuario usuario = Usuario.builder().email(email).senha(senha).build();
-
-		Mockito.when(service.salvarUsuario(Mockito.any())).thenReturn(usuario);
-
-		String json = new ObjectMapper().writeValueAsString(dto);
-
-		MockHttpServletRequestBuilder request = MockMvcRequestBuilders.post((API))
-			.contentType(JSON)
-			.accept(JSON)
-			.content(json);
-
-		mvc.perform(request)
-			.andExpect(MockMvcResultMatchers.status().isCreated())
-			.andExpect(MockMvcResultMatchers.jsonPath("id").value(usuario.getId()))
-			.andExpect(MockMvcResultMatchers.jsonPath("nome").value(usuario.getNome()))
-			.andExpect(MockMvcResultMatchers.jsonPath("email").value(usuario.getEmail()));
+		mvc.perform(post(API + "/autenticar").contentType(JSON).accept(JSON).content(om.writeValueAsString(body)))
+			.andExpect(status().isBadRequest())
+			.andExpect(content().string("Credenciais inválidas"));
 	}
 
 	@Test
-	public void deveLancarBadRequestAoCriarUmUsuarioErrado() throws Exception {
-		String email = "email@email.com";
-		String senha = "123";
+	void deveCriarUmUsuario() throws Exception {
+		UsuarioDTO body = dto(EMAIL, SENHA);
+		Usuario salvo = usuario(10L, "Usuário", EMAIL, SENHA);
 
-		UsuarioDTO dto = UsuarioDTO.builder().email(email).senha(senha).build();
-		Usuario usuario = Usuario.builder().email(email).senha(senha).build();
+		when(service.salvarUsuario(any())).thenReturn(salvo);
 
-		Mockito.when(service.salvarUsuario(Mockito.any())).thenThrow(RegraNegocioException.class);
-		MockHttpServletRequestBuilder request = MockMvcRequestBuilders.post((API)).contentType(JSON).accept(JSON);
-
-		mvc.perform(request).andExpect(MockMvcResultMatchers.status().isBadRequest());
+		mvc.perform(post(API).contentType(JSON).accept(JSON).content(om.writeValueAsString(body)))
+			.andExpect(status().isCreated())
+			.andExpect(content().contentTypeCompatibleWith(JSON))
+			.andExpect(jsonPath("$.id").value(10))
+			.andExpect(jsonPath("$.nome").value("Usuário"))
+			.andExpect(jsonPath("$.email").value(EMAIL));
 	}
 
 	@Test
-	@WithMockUser(username = "email@email.com")
-	public void deveRetornarSaldoDeUmUsuario() throws Exception {
+	void deveLancarBadRequestAoCriarUsuarioInvalido() throws Exception {
+		UsuarioDTO body = dto(EMAIL, SENHA);
+		when(service.salvarUsuario(any())).thenThrow(new RegraNegocioException("Dados inválidos"));
+
+		mvc.perform(post(API).contentType(JSON).accept(JSON).content(om.writeValueAsString(body)))
+			.andExpect(status().isBadRequest())
+			.andExpect(content().string("Dados inválidos"));
+	}
+
+	@Test
+	@WithMockUser(username = EMAIL)
+	void deveRetornarSaldoDeUmUsuario() throws Exception {
 		Long idUsuario = 1L;
-		String email = "email@email.com";
 		BigDecimal saldo = BigDecimal.valueOf(1000);
+		when(service.obterIdUsuarioPorEmail(EMAIL)).thenReturn(usuario(idUsuario, "nome", EMAIL, "pwd"));
+		when(lancamentoService.obterSaldoPorUsuario(idUsuario)).thenReturn(saldo);
 
-		Usuario usuario = Usuario.builder().id(idUsuario).nome("nome").email(email).build();
-
-		Mockito.when(service.obterIdUsuarioPorEmail(email)).thenReturn(usuario);
-		Mockito.when(lancamentoService.obterSaldoPorUsuario(idUsuario)).thenReturn(saldo);
-
-		MockHttpServletRequestBuilder request = MockMvcRequestBuilders.get(API).accept(JSON);
-
-		mvc.perform(request)
-			.andExpect(MockMvcResultMatchers.status().isOk())
-			.andExpect(MockMvcResultMatchers.content().string("1000"));
+		mvc.perform(get(API).accept(JSON)).andExpect(status().isOk()).andExpect(content().string("1000"));
 	}
 
 	@Test
 	@WithMockUser(username = "outro@email.com")
-	public void naoDeveRetornarSaldoDeUmUsuario() throws Exception {
-		String email = "outro@email.com";
-
-		Mockito.when(service.obterIdUsuarioPorEmail(email))
+	void naoDeveRetornarSaldoQuandoUsuarioNaoEncontrado() throws Exception {
+		when(service.obterIdUsuarioPorEmail("outro@email.com"))
 			.thenThrow(new RegraNegocioException("Usuário não encontrado"));
 
-		MockHttpServletRequestBuilder request = MockMvcRequestBuilders.get(API).accept(JSON);
-
-		mvc.perform(request).andExpect(MockMvcResultMatchers.status().isNotFound());
+		mvc.perform(get(API).accept(JSON))
+			.andExpect(status().isNotFound())
+			.andExpect(content().string("Usuário não encontrado"));
 	}
 
 }

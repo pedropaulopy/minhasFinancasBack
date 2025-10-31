@@ -1,8 +1,6 @@
 package com.pedropaulo.minhas_financas.model.repository;
 
 import com.pedropaulo.minhas_financas.model.entity.Usuario;
-import java.util.Optional;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,11 +10,15 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
 @ExtendWith(SpringExtension.class)
+@DataJpaTest
 @ActiveProfiles("test")
-public class UsuarioRepositoryTest {
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+class UsuarioRepositoryTest {
 
 	@Autowired
 	UsuarioRepository repository;
@@ -24,46 +26,56 @@ public class UsuarioRepositoryTest {
 	@Autowired
 	TestEntityManager entityManager;
 
-	public Usuario criaUsuario() {
-		return Usuario.builder().nome("usuario").email("email@email.com").senha("123").build();
+	private static final String EMAIL = "email@email.com";
+
+	private static final String NOME = "usuario";
+
+	private static final String SENHA = "123";
+
+	private Usuario novoUsuario() {
+		return Usuario.builder().nome(NOME).email(EMAIL).senha(SENHA).build();
+	}
+
+	private Usuario persistido() {
+		Usuario u = novoUsuario();
+		entityManager.persist(u);
+		entityManager.flush();
+		entityManager.clear();
+		return u;
 	}
 
 	@Test
-	public void verificaExistenciaEmail() {
-		Usuario usuario = criaUsuario();
-		entityManager.persist(usuario);
-
-		boolean exists = repository.existsByEmail("email@email.com");
-
-		Assertions.assertThat(exists).isTrue();
+	void deveRetornarVerdadeiroQuandoEmailExistir() {
+		persistido();
+		boolean exists = repository.existsByEmail(EMAIL);
+		assertThat(exists).isTrue();
 	}
 
 	@Test
-	public void retornaFalsoQuandoNaoHouverUsuarioCadastradoComEmail() {
-
-		boolean exists = repository.existsByEmail("email@email.com");
-
-		Assertions.assertThat(exists).isFalse();
+	void deveRetornarFalsoQuandoEmailNaoExistir() {
+		boolean exists = repository.existsByEmail(EMAIL);
+		assertThat(exists).isFalse();
 	}
 
 	@Test
-	public void devePersistirUsuarioNaBaseDeDados() {
-		Usuario usuario = criaUsuario();
-		Usuario usuarioSalvo = entityManager.persist(usuario);
-		Assertions.assertThat(usuarioSalvo.getId()).isNotNull();
+	void devePersistirUsuario() {
+		Usuario salvo = repository.save(novoUsuario());
+		entityManager.flush();
+		assertThat(salvo.getId()).isNotNull();
 	}
 
 	@Test
-	public void deveBuscarUsuarioPorEmail() {
-		Usuario usuario = criaUsuario();
-		Usuario usuarioSalvo = entityManager.persist(usuario);
-		Assertions.assertThat(repository.findByEmail("email@email.com")).isPresent();
+	void deveBuscarPorEmailQuandoExistir() {
+		persistido();
+		Optional<Usuario> result = repository.findByEmail(EMAIL);
+		assertThat(result).isPresent();
+		assertThat(result.get().getEmail()).isEqualTo(EMAIL);
 	}
 
 	@Test
-	public void deveRetornarVazioQuandoUsuarioNaoExistirPorEmail() {
-		Optional<Usuario> exists = repository.findByEmail("email@email.com");
-		Assertions.assertThat(exists.isPresent()).isFalse();
+	void deveRetornarVazioQuandoEmailNaoExistir() {
+		Optional<Usuario> result = repository.findByEmail(EMAIL);
+		assertThat(result).isNotPresent();
 	}
 
 }

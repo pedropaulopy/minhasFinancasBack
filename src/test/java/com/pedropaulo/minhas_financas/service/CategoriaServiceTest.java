@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -22,11 +21,14 @@ import org.springframework.security.core.Authentication;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.BDDMockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT)
-class CategoriaServiceImplTest {
+@MockitoSettings(strictness = Strictness.STRICT_STUBS)
+class CategoriaServiceTest {
+
+	private static final String EMAIL = "usuario@teste.com";
 
 	@Mock
 	CategoriaRepository repository;
@@ -45,36 +47,41 @@ class CategoriaServiceImplTest {
 	@BeforeEach
 	void setUp() {
 		service = new CategoriaServiceImpl(repository, usuarioService, lancamentoRepository);
-		when(authentication.getName()).thenReturn("usuario@teste.com");
 	}
 
 	@Test
 	void buscarOuCriarCategorias_quandoListaNulaOuVazia_retornaVazio() throws Exception {
 		assertThat(service.buscarOuCriarCategorias(null, authentication)).isEmpty();
 		assertThat(service.buscarOuCriarCategorias(Collections.emptyList(), authentication)).isEmpty();
+		then(usuarioService).shouldHaveNoInteractions();
+		then(repository).shouldHaveNoInteractions();
 	}
 
 	@Test
 	void buscarOuCriarCategorias_quandoExistemAlgumas_criaOutrasSalvaETrazTodas() throws Exception {
+		given(authentication.getName()).willReturn(EMAIL);
 		Usuario usuario = new Usuario();
 		usuario.setId(1L);
-		usuario.setEmail("usuario@teste.com");
-		when(usuarioService.obterIdUsuarioPorEmail("usuario@teste.com")).thenReturn(usuario);
+		usuario.setEmail(EMAIL);
+		given(usuarioService.obterIdUsuarioPorEmail(EMAIL)).willReturn(usuario);
 
 		Categoria existente = Categoria.builder().id(10L).nome("Mercado").usuario(usuario).build();
-		when(repository.findByNomeAndUsuario(eq("Mercado"), eq(usuario))).thenReturn(Optional.of(existente));
-		when(repository.findByNomeAndUsuario(eq("Transporte"), eq(usuario))).thenReturn(Optional.empty());
+		given(repository.findByNomeAndUsuario(eq("Mercado"), eq(usuario))).willReturn(Optional.of(existente));
+		given(repository.findByNomeAndUsuario(eq("Transporte"), eq(usuario))).willReturn(Optional.empty());
 
 		Categoria criado = Categoria.builder().id(11L).nome("Transporte").usuario(usuario).build();
-		when(repository.save(any(Categoria.class))).thenReturn(criado);
+		given(repository.save(any(Categoria.class))).willReturn(criado);
 
 		Set<Categoria> out = service.buscarOuCriarCategorias(Arrays.asList("Mercado", "Transporte"), authentication);
 
 		assertThat(out).extracting(Categoria::getNome).containsExactlyInAnyOrder("Mercado", "Transporte");
+
 		ArgumentCaptor<Categoria> cap = ArgumentCaptor.forClass(Categoria.class);
-		verify(repository).save(cap.capture());
+		then(repository).should().save(cap.capture());
 		assertThat(cap.getValue().getNome()).isEqualTo("Transporte");
 		assertThat(cap.getValue().getUsuario()).isEqualTo(usuario);
+		then(repository).should(times(1)).save(any(Categoria.class));
+		then(repository).shouldHaveNoMoreInteractions();
 	}
 
 	@Test
@@ -83,19 +90,23 @@ class CategoriaServiceImplTest {
 		Categoria c = new Categoria();
 		c.setId(1L);
 		c.setNome("Saúde");
-		when(repository.findAll(Mockito.<Example<Categoria>>any())).thenReturn(Collections.singletonList(c));
+		given(repository.findAll(any(Example.class))).willReturn(Collections.singletonList(c));
 
 		assertThat(service.buscarPorNome(filtro)).containsExactly(c);
+		then(repository).should().findAll(any(Example.class));
+		then(repository).shouldHaveNoMoreInteractions();
 	}
 
 	@Test
 	void buscarPorNome_quandoNaoEncontra_lancaExcecao() throws Exception {
-		when(repository.findAll(Mockito.<Example<Categoria>>any())).thenReturn(Collections.emptyList());
+		given(repository.findAll(any(Example.class))).willReturn(Collections.emptyList());
 		Categoria filtro = new Categoria();
 
 		Throwable t = catchThrowable(() -> service.buscarPorNome(filtro));
 		assertThat(t).isInstanceOf(RegraNegocioException.class)
 			.hasMessage("Nenhum lançamento encontrado para este nome.");
+		then(repository).should().findAll(any(Example.class));
+		then(repository).shouldHaveNoMoreInteractions();
 	}
 
 	@Test
@@ -105,10 +116,12 @@ class CategoriaServiceImplTest {
 		Categoria c = new Categoria();
 		c.setNome("Lazer");
 		c.setUsuario(u);
-		when(repository.findByNomeIgnoreCaseAndUsuario("Lazer", u)).thenReturn(Optional.of(new Categoria()));
+		given(repository.findByNomeIgnoreCaseAndUsuario("Lazer", u)).willReturn(Optional.of(new Categoria()));
 
 		Throwable t = catchThrowable(() -> service.validar(c));
 		assertThat(t).isInstanceOf(RegraNegocioException.class).hasMessage("Uma categoria com esse nome já existe");
+		then(repository).should().findByNomeIgnoreCaseAndUsuario("Lazer", u);
+		then(repository).shouldHaveNoMoreInteractions();
 	}
 
 	@Test
@@ -118,10 +131,12 @@ class CategoriaServiceImplTest {
 		Categoria c = new Categoria();
 		c.setUsuario(u);
 		c.setNome("  ");
-		when(repository.findByNomeIgnoreCaseAndUsuario(anyString(), any())).thenReturn(Optional.empty());
+		given(repository.findByNomeIgnoreCaseAndUsuario(anyString(), any())).willReturn(Optional.empty());
 
 		Throwable t = catchThrowable(() -> service.validar(c));
 		assertThat(t).isInstanceOf(RegraNegocioException.class).hasMessage("Insira uma nome válido.");
+		then(repository).should().findByNomeIgnoreCaseAndUsuario(anyString(), any());
+		then(repository).shouldHaveNoMoreInteractions();
 	}
 
 	@Test
@@ -131,9 +146,11 @@ class CategoriaServiceImplTest {
 		Categoria c = new Categoria();
 		c.setUsuario(u);
 		c.setNome("Educação");
-		when(repository.findByNomeIgnoreCaseAndUsuario("Educação", u)).thenReturn(Optional.empty());
+		given(repository.findByNomeIgnoreCaseAndUsuario("Educação", u)).willReturn(Optional.empty());
 
 		assertThatCode(() -> service.validar(c)).doesNotThrowAnyException();
+		then(repository).should().findByNomeIgnoreCaseAndUsuario("Educação", u);
+		then(repository).shouldHaveNoMoreInteractions();
 	}
 
 	@Test
@@ -143,66 +160,77 @@ class CategoriaServiceImplTest {
 		Categoria c = new Categoria();
 		c.setUsuario(u);
 		c.setNome("Viagem");
-		when(repository.findByNomeIgnoreCaseAndUsuario("Viagem", u)).thenReturn(Optional.empty());
+		given(repository.findByNomeIgnoreCaseAndUsuario("Viagem", u)).willReturn(Optional.empty());
 		Categoria salvo = new Categoria();
 		salvo.setId(5L);
 		salvo.setNome("Viagem");
-		when(repository.save(c)).thenReturn(salvo);
+		given(repository.save(c)).willReturn(salvo);
 
 		Categoria out = service.salvar(c);
+
 		assertThat(out).isEqualTo(salvo);
-		verify(repository).save(c);
+		then(repository).should().findByNomeIgnoreCaseAndUsuario("Viagem", u);
+		then(repository).should().save(c);
+		then(repository).shouldHaveNoMoreInteractions();
 	}
 
 	@Test
 	void atualizar_quandoNaoExiste_lancaExcecao() throws Exception {
-		when(usuarioService.obterIdUsuarioPorEmail("usuario@teste.com")).thenReturn(new Usuario() {
-			{
-				setId(1L);
-				setEmail("usuario@teste.com");
-			}
-		});
-		when(repository.findByIdAndUsuario_Id(99L, 1L)).thenReturn(Optional.empty());
+		given(authentication.getName()).willReturn(EMAIL);
+		Usuario u = new Usuario();
+		u.setId(1L);
+		u.setEmail(EMAIL);
+		given(usuarioService.obterIdUsuarioPorEmail(EMAIL)).willReturn(u);
+		given(repository.findByIdAndUsuario_Id(99L, 1L)).willReturn(Optional.empty());
 
 		CategoriaDTO dto = new CategoriaDTO();
 		dto.setNome("Novo");
 		Throwable t = catchThrowable(() -> service.atualizar(99L, authentication, dto));
+
 		assertThat(t).isInstanceOf(RegraNegocioException.class)
 			.hasMessage("Nenhuma categoria foi encontrada para o ID fornecido");
+		then(repository).should().findByIdAndUsuario_Id(99L, 1L);
+		then(repository).shouldHaveNoMoreInteractions();
 	}
 
 	@Test
 	void atualizar_quandoNomeInvalido_lancaExcecao() throws Exception {
+		given(authentication.getName()).willReturn(EMAIL);
 		Usuario u = new Usuario();
 		u.setId(1L);
-		u.setEmail("usuario@teste.com");
-		when(usuarioService.obterIdUsuarioPorEmail("usuario@teste.com")).thenReturn(u);
+		u.setEmail(EMAIL);
+		given(usuarioService.obterIdUsuarioPorEmail(EMAIL)).willReturn(u);
+
 		Categoria existente = new Categoria();
 		existente.setId(3L);
 		existente.setUsuario(u);
 		existente.setNome("Antigo");
-		when(repository.findByIdAndUsuario_Id(3L, 1L)).thenReturn(Optional.of(existente));
+		given(repository.findByIdAndUsuario_Id(3L, 1L)).willReturn(Optional.of(existente));
 
 		CategoriaDTO dto = new CategoriaDTO();
 		dto.setNome(" ");
 
 		Throwable t = catchThrowable(() -> service.atualizar(3L, authentication, dto));
 		assertThat(t).isInstanceOf(RegraNegocioException.class).hasMessage("Insira um nome válido.");
+		then(repository).should().findByIdAndUsuario_Id(3L, 1L);
+		then(repository).shouldHaveNoMoreInteractions();
 	}
 
 	@Test
 	void atualizar_sucesso_salvaEDepoisRetornaSalvo() throws Exception {
+		given(authentication.getName()).willReturn(EMAIL);
 		Usuario u = new Usuario();
 		u.setId(1L);
-		u.setEmail("usuario@teste.com");
-		when(usuarioService.obterIdUsuarioPorEmail("usuario@teste.com")).thenReturn(u);
+		u.setEmail(EMAIL);
+		given(usuarioService.obterIdUsuarioPorEmail(EMAIL)).willReturn(u);
+
 		Categoria existente = new Categoria();
 		existente.setId(3L);
 		existente.setUsuario(u);
 		existente.setNome("Antigo");
-		when(repository.findByIdAndUsuario_Id(3L, 1L)).thenReturn(Optional.of(existente));
-		when(repository.findByNomeIgnoreCaseAndUsuario(anyString(), any())).thenReturn(Optional.empty());
-		when(repository.save(any(Categoria.class))).thenAnswer(inv -> inv.getArgument(0));
+
+		given(repository.findByIdAndUsuario_Id(3L, 1L)).willReturn(Optional.of(existente));
+		given(repository.save(any(Categoria.class))).willAnswer(inv -> inv.getArgument(0));
 
 		CategoriaDTO dto = new CategoriaDTO();
 		dto.setNome("Novo");
@@ -210,76 +238,98 @@ class CategoriaServiceImplTest {
 		Categoria out = service.atualizar(3L, authentication, dto);
 
 		assertThat(out.getNome()).isEqualTo("Novo");
-		verify(repository, times(2)).save(any(Categoria.class));
+
+		then(repository).should().findByIdAndUsuario_Id(3L, 1L);
+		then(repository).should(times(2)).save(any(Categoria.class));
+		then(repository).should(never()).findByNomeIgnoreCaseAndUsuario(anyString(), any());
+		then(repository).shouldHaveNoMoreInteractions();
 	}
 
 	@Test
 	void converterDTO_mapeiaCampos() throws Exception {
+		given(authentication.getName()).willReturn(EMAIL);
 		Usuario u = new Usuario();
 		u.setId(2L);
-		u.setEmail("usuario@teste.com");
-		when(usuarioService.obterIdUsuarioPorEmail("usuario@teste.com")).thenReturn(u);
+		u.setEmail(EMAIL);
+		given(usuarioService.obterIdUsuarioPorEmail(EMAIL)).willReturn(u);
 
 		CategoriaDTO dto = new CategoriaDTO();
 		dto.setNome("Casa");
+
 		Categoria c = service.converterDTO(dto, authentication);
 
 		assertThat(c.getNome()).isEqualTo("Casa");
 		assertThat(c.getUsuario()).isEqualTo(u);
+		then(usuarioService).should().obterIdUsuarioPorEmail(EMAIL);
+		then(repository).shouldHaveNoInteractions();
 	}
 
 	@Test
 	void obterPorIdCategoria_repassaIdDoUsuario() throws Exception {
+		given(authentication.getName()).willReturn(EMAIL);
 		Usuario u = new Usuario();
 		u.setId(7L);
-		u.setEmail("usuario@teste.com");
-		when(usuarioService.obterIdUsuarioPorEmail("usuario@teste.com")).thenReturn(u);
+		u.setEmail(EMAIL);
+		given(usuarioService.obterIdUsuarioPorEmail(EMAIL)).willReturn(u);
+
 		Categoria c = new Categoria();
 		c.setId(15L);
 		c.setUsuario(u);
-		when(repository.findByIdAndUsuario_Id(15L, 7L)).thenReturn(Optional.of(c));
+		given(repository.findByIdAndUsuario_Id(15L, 7L)).willReturn(Optional.of(c));
 
 		Optional<Categoria> out = service.obterPorIdCategoria(15L, authentication);
 
 		assertThat(out).contains(c);
+		then(repository).should().findByIdAndUsuario_Id(15L, 7L);
+		then(repository).shouldHaveNoMoreInteractions();
 	}
 
 	@Test
 	void deletar_quandoEmUso_lancaExcecaoComQuantidade() throws Exception {
+		given(authentication.getName()).willReturn(EMAIL);
 		Usuario u = new Usuario();
 		u.setId(1L);
-		u.setEmail("usuario@teste.com");
-		when(usuarioService.obterIdUsuarioPorEmail("usuario@teste.com")).thenReturn(u);
+		u.setEmail(EMAIL);
+		given(usuarioService.obterIdUsuarioPorEmail(EMAIL)).willReturn(u);
+
 		Categoria c = new Categoria();
 		c.setId(20L);
 		c.setUsuario(u);
 		c.setNome("X");
-		when(repository.findByIdAndUsuario_Id(20L, 1L)).thenReturn(Optional.of(c));
-		when(lancamentoRepository.existsByCategorias_Id(20L)).thenReturn(true);
-		when(lancamentoRepository.countByCategorias_Id(20L)).thenReturn(3L);
+		given(repository.findByIdAndUsuario_Id(20L, 1L)).willReturn(Optional.of(c));
+		given(lancamentoRepository.existsByCategorias_Id(20L)).willReturn(true);
+		given(lancamentoRepository.countByCategorias_Id(20L)).willReturn(3L);
 
 		Throwable t = catchThrowable(() -> service.deletar(20L, authentication));
 		assertThat(t).isInstanceOf(RegraNegocioException.class)
 			.hasMessage("Não é possível excluir: a categoria está vinculada a 3 lançamento(s).");
-		verify(repository, never()).delete(any());
+		then(repository).should(never()).delete(any());
+		then(lancamentoRepository).should().existsByCategorias_Id(20L);
+		then(lancamentoRepository).should().countByCategorias_Id(20L);
+		then(lancamentoRepository).shouldHaveNoMoreInteractions();
 	}
 
 	@Test
 	void deletar_quandoNaoEmUso_exclui() throws Exception {
+		given(authentication.getName()).willReturn(EMAIL);
 		Usuario u = new Usuario();
 		u.setId(1L);
-		u.setEmail("usuario@teste.com");
-		when(usuarioService.obterIdUsuarioPorEmail("usuario@teste.com")).thenReturn(u);
+		u.setEmail(EMAIL);
+		given(usuarioService.obterIdUsuarioPorEmail(EMAIL)).willReturn(u);
+
 		Categoria c = new Categoria();
 		c.setId(21L);
 		c.setUsuario(u);
 		c.setNome("Y");
-		when(repository.findByIdAndUsuario_Id(21L, 1L)).thenReturn(Optional.of(c));
-		when(lancamentoRepository.existsByCategorias_Id(21L)).thenReturn(false);
+		given(repository.findByIdAndUsuario_Id(21L, 1L)).willReturn(Optional.of(c));
+		given(lancamentoRepository.existsByCategorias_Id(21L)).willReturn(false);
 
 		service.deletar(21L, authentication);
 
-		verify(repository).delete(c);
+		then(repository).should().delete(c);
+		then(lancamentoRepository).should().existsByCategorias_Id(21L);
+		then(repository).shouldHaveNoMoreInteractions();
+		then(lancamentoRepository).shouldHaveNoMoreInteractions();
 	}
 
 }
