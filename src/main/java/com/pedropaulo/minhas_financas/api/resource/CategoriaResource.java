@@ -50,17 +50,17 @@ public class CategoriaResource {
 		}
 	}
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Categoria> obterPorId(@PathVariable("id") Long id,
-                                                Authentication authentication) {
-        try {
-            return categoriaService.obterPorIdCategoria(id, authentication)
-                    .map(ResponseEntity::ok)
-                    .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
-        } catch (RegraNegocioException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        }
-    }
+	@GetMapping("/{id}")
+	public ResponseEntity<Categoria> obterPorId(@PathVariable("id") Long id, Authentication authentication) {
+		try {
+			return categoriaService.obterPorIdCategoria(id, authentication)
+				.map(ResponseEntity::ok)
+				.orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+		}
+		catch (RegraNegocioException e) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+		}
+	}
 
 	@PostMapping
 	public ResponseEntity criar(@RequestBody CategoriaDTO dto, Authentication authentication) {
@@ -86,13 +86,15 @@ public class CategoriaResource {
 		}
 	}
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity deletar(@PathVariable Long id, Authentication authentication) throws RegraNegocioException {
-        try{
-            categoriaService.deletar(id, authentication);
-            return  new ResponseEntity(HttpStatus.NO_CONTENT);
-        }catch (RegraNegocioException e){
-            return new ResponseEntity(e.getMessage(), HttpStatus.BAD_REQUEST);
-        }
-    }
+	@DeleteMapping("/{id}")
+	public ResponseEntity deletar(@PathVariable Long id, Authentication authentication) throws RegraNegocioException {
+		try {
+			categoriaService.deletar(id, authentication);
+			return new ResponseEntity(HttpStatus.NO_CONTENT);
+		}
+		catch (RegraNegocioException e) {
+			return new ResponseEntity(e.getMessage(), HttpStatus.BAD_REQUEST);
+		}
+	}
+
 }

@@ -35,11 +35,14 @@ public class LancamentoServiceTest {
 	LancamentoServiceImpl service;
 
 	@Mock
+	CategoriaService categoriaService;
+
+	@Mock
 	Authentication authentication;
 
 	@BeforeEach
 	public void setUp() {
-		service = Mockito.spy(new LancamentoServiceImpl(repository, usuarioService));
+		service = Mockito.spy(new LancamentoServiceImpl(repository, usuarioService, categoriaService));
 	}
 
 	@Test

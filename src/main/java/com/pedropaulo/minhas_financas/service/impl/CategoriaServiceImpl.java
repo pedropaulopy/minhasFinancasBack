@@ -26,9 +26,10 @@ public class CategoriaServiceImpl implements CategoriaService {
 	private final CategoriaRepository repository;
 
 	private final UsuarioService usuarioService;
-    private final LancamentoRepository lancamentoRepository;
 
-    @Override
+	private final LancamentoRepository lancamentoRepository;
+
+	@Override
 	public Set<Categoria> buscarOuCriarCategorias(List<String> nomesCategorias, Authentication authentication)
 			throws RegraNegocioException {
 		Set<Categoria> categorias = new HashSet<>();
@@ -120,21 +121,20 @@ public class CategoriaServiceImpl implements CategoriaService {
 		return repository.findByIdAndUsuario_Id(idCategoria, idUsuario);
 	}
 
-    @Override
-    public void deletar(Long idCategoria, Authentication authentication) throws RegraNegocioException {
+	@Override
+	public void deletar(Long idCategoria, Authentication authentication) throws RegraNegocioException {
 
-        Categoria categoria = this.obterPorIdCategoria(idCategoria, authentication).orElseThrow();
+		Categoria categoria = this.obterPorIdCategoria(idCategoria, authentication).orElseThrow();
 
-        boolean emUso = lancamentoRepository.existsByCategorias_Id(idCategoria);
+		boolean emUso = lancamentoRepository.existsByCategorias_Id(idCategoria);
 
-        if (emUso) {
-            long qtd = lancamentoRepository.countByCategorias_Id(idCategoria);
-            throw new RegraNegocioException(
-                    "Não é possível excluir: a categoria está vinculada a " + qtd + " lançamento(s)."
-            );
-        }
+		if (emUso) {
+			long qtd = lancamentoRepository.countByCategorias_Id(idCategoria);
+			throw new RegraNegocioException(
+					"Não é possível excluir: a categoria está vinculada a " + qtd + " lançamento(s).");
+		}
 
-        repository.delete(categoria);
-    }
+		repository.delete(categoria);
+	}
 
 }

@@ -27,5 +27,6 @@ public interface CategoriaService {
 	Optional<Categoria> obterPorIdCategoria(Long idCategoria, Authentication authentication)
 			throws RegraNegocioException;
 
-    void deletar(Long idCategoria, Authentication authentication) throws RegraNegocioException;
+	void deletar(Long idCategoria, Authentication authentication) throws RegraNegocioException;
+
 }

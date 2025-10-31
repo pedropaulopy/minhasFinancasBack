@@ -35,8 +35,8 @@ public class Lancamento {
 	private Integer ano;
 
 	@JoinColumn(name = "id_usuario")
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JsonIgnore
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JsonIgnore
 	private Usuario usuario;
 
 	@Column(name = "valor")
@@ -54,12 +54,9 @@ public class Lancamento {
 	@Enumerated(EnumType.STRING)
 	private StatusLancamento statusLancamento;
 
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "lancamento_categoria",
-            joinColumns = @JoinColumn(name = "id_lancamento"),
-            inverseJoinColumns = @JoinColumn(name = "id_categoria")
-    )
-    private Set<Categoria> categorias;
+	@ManyToMany(fetch = FetchType.LAZY)
+	@JoinTable(name = "lancamento_categoria", joinColumns = @JoinColumn(name = "id_lancamento"),
+			inverseJoinColumns = @JoinColumn(name = "id_categoria"))
+	private Set<Categoria> categorias;
 
 }

@@ -10,26 +10,28 @@ import lombok.NoArgsConstructor;
 import java.util.Set;
 
 @Entity
-@Table(name="categoria")
+@Table(name = "categoria")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class Categoria {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
-    private Long id;
 
-    @Column(name = "nome")
-    private String nome;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Column(name = "id")
+	private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "id_usuario")
-    @JsonIgnore
-    private Usuario usuario;
+	@Column(name = "nome")
+	private String nome;
 
-    @ManyToMany(mappedBy = "categorias", fetch = FetchType.LAZY)
-    @JsonIgnore
-    private Set<Lancamento> lancamentos;
+	@ManyToOne
+	@JoinColumn(name = "id_usuario")
+	@JsonIgnore
+	private Usuario usuario;
+
+	@ManyToMany(mappedBy = "categorias", fetch = FetchType.LAZY)
+	@JsonIgnore
+	private Set<Lancamento> lancamentos;
+
 }
