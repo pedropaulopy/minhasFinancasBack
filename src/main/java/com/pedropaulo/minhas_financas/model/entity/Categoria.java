@@ -1,5 +1,6 @@
 package com.pedropaulo.minhas_financas.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -25,8 +26,10 @@ public class Categoria {
 
     @ManyToOne
     @JoinColumn(name = "id_usuario")
+    @JsonIgnore
     private Usuario usuario;
 
-    @ManyToMany(mappedBy = "categorias")
+    @ManyToMany(mappedBy = "categorias", fetch = FetchType.LAZY)
+    @JsonIgnore
     private Set<Lancamento> lancamentos;
 }

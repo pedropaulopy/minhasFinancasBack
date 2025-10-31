@@ -1,5 +1,6 @@
 package com.pedropaulo.minhas_financas.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.pedropaulo.minhas_financas.model.enums.StatusLancamento;
 import com.pedropaulo.minhas_financas.model.enums.TipoLancamento;
 import jakarta.persistence.*;
@@ -16,6 +17,7 @@ import org.springframework.data.jpa.convert.threeten.Jsr310JpaConverters;
 @Data // lombok gera getters, setters hashcode e equals
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Lancamento {
 
 	@Id
@@ -32,8 +34,9 @@ public class Lancamento {
 	@Column(name = "ano")
 	private Integer ano;
 
-	@ManyToOne
 	@JoinColumn(name = "id_usuario")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JsonIgnore
 	private Usuario usuario;
 
 	@Column(name = "valor")

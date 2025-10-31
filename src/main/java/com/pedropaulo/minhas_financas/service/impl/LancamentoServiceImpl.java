@@ -30,13 +30,14 @@ public class LancamentoServiceImpl implements LancamentoService {
 
 	private final UsuarioService usuarioService;
 
-    private final CategoriaService categoriaService;
+	private final CategoriaService categoriaService;
 
-	public LancamentoServiceImpl(LancamentoRepository repository, UsuarioService usuarioService, CategoriaService categoriaService) {
+	public LancamentoServiceImpl(LancamentoRepository repository, UsuarioService usuarioService,
+			CategoriaService categoriaService) {
 		this.repository = repository;
-        this.usuarioService = usuarioService;
-        this.categoriaService = categoriaService;
-    }
+		this.usuarioService = usuarioService;
+		this.categoriaService = categoriaService;
+	}
 
 	@Override
 	@Transactional
@@ -50,7 +51,7 @@ public class LancamentoServiceImpl implements LancamentoService {
 	public Lancamento atualizar(Long id, Authentication authentication, LancamentoDTO dto)
 			throws RegraNegocioException {
 		this.validarStatusLancamento(id, authentication);
-        Lancamento lancamento = this.obterPorIdLancamento(id, authentication);
+		Lancamento lancamento = this.obterPorIdLancamento(id, authentication);
 
 		lancamento.setDescricao(dto.getDescricao());
 		lancamento.setValor(dto.getValor());
@@ -58,9 +59,9 @@ public class LancamentoServiceImpl implements LancamentoService {
 		lancamento.setAno(dto.getAno());
 		lancamento.setTipoLancamento(TipoLancamento.valueOf(dto.getTipoLancamento()));
 		lancamento.setStatusLancamento(StatusLancamento.valueOf(dto.getStatusLancamento()));
-        Set<Categoria> categorias = categoriaService.buscarOuCriarCategorias(dto.getCategorias(), authentication);
+		Set<Categoria> categorias = categoriaService.buscarOuCriarCategorias(dto.getCategorias(), authentication);
 		lancamento.setCategorias(categorias);
-        return repository.save(lancamento);
+		return repository.save(lancamento);
 	}
 
 	@Override
@@ -145,26 +146,27 @@ public class LancamentoServiceImpl implements LancamentoService {
 
 	@Override
 	public Lancamento converterDTO(LancamentoDTO dto, Authentication authentication) throws RegraNegocioException {
-        Usuario usuario = usuarioService.obterIdUsuarioPorEmail(authentication.getName());
-        Lancamento lancamento = new Lancamento();
-        lancamento.setDescricao(dto.getDescricao());
-        lancamento.setMes(dto.getMes());
-        lancamento.setAno(dto.getAno());
-        lancamento.setValor(dto.getValor());
-        lancamento.setDataCadastro(LocalDate.now());
+		Usuario usuario = usuarioService.obterIdUsuarioPorEmail(authentication.getName());
+		Lancamento lancamento = new Lancamento();
+		lancamento.setDescricao(dto.getDescricao());
+		lancamento.setMes(dto.getMes());
+		lancamento.setAno(dto.getAno());
+		lancamento.setValor(dto.getValor());
+		lancamento.setDataCadastro(LocalDate.now());
 		lancamento.setUsuario(usuario);
 		lancamento.setTipoLancamento(TipoLancamento.valueOf(dto.getTipoLancamento()));
 		lancamento.setStatusLancamento(StatusLancamento.valueOf(dto.getStatusLancamento()));
-        Set<Categoria> categorias = categoriaService.buscarOuCriarCategorias(dto.getCategorias(), authentication);
+		Set<Categoria> categorias = categoriaService.buscarOuCriarCategorias(dto.getCategorias(), authentication);
 		lancamento.setCategorias(categorias);
-        return lancamento;
+		return lancamento;
 	}
 
 	@Override
 	public void validarStatusLancamento(Long idLancamento, Authentication authentication) throws RegraNegocioException {
 		Lancamento lancamento = this.obterPorIdLancamento(idLancamento, authentication);
 		if (lancamento.getStatusLancamento() != StatusLancamento.PENDENTE) {
-			throw new EntidadeNaoProcessavelException("Lançamentos efetivados ou cancelados não podem ser editados ou deletados.");
+			throw new EntidadeNaoProcessavelException(
+					"Lançamentos efetivados ou cancelados não podem ser editados ou deletados.");
 		}
 	}
 

@@ -25,36 +25,74 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class CategoriaResource {
 
-    private final UsuarioService usuarioService;
-    private final CategoriaService categoriaService;
+	private final UsuarioService usuarioService;
 
-    @GetMapping
-    public ResponseEntity<List<Categoria>> buscar(@RequestParam(value = "nomeCategoria", required = false) String nomeCategoria, Authentication authentication) throws RegraNegocioException {
-        String email = authentication.getName();
-        Usuario usuario = usuarioService.obterIdUsuarioPorEmail(email);
-        Categoria categoriaFiltro = new Categoria();
-        categoriaFiltro.setUsuario(usuario);
+	private final CategoriaService categoriaService;
 
-        if (nomeCategoria != null && !nomeCategoria.isEmpty()) {
-            categoriaFiltro.setNome(nomeCategoria);
-        }
-        try{
-            List<Categoria> categorias = categoriaService.buscarPorNome(categoriaFiltro);
-            return ResponseEntity.ok(categorias);
-        }catch (RegraNegocioException e){
-            return new ResponseEntity(e.getMessage(), HttpStatus.NOT_FOUND);
+	@GetMapping()
+	public ResponseEntity<List<Categoria>> buscar(
+			@RequestParam(value = "nomeCategoria", required = false) String nomeCategoria,
+			Authentication authentication) throws RegraNegocioException {
+		String email = authentication.getName();
+		Usuario usuario = usuarioService.obterIdUsuarioPorEmail(email);
+		Categoria categoriaFiltro = new Categoria();
+		categoriaFiltro.setUsuario(usuario);
+
+		if (nomeCategoria != null && !nomeCategoria.isEmpty()) {
+			categoriaFiltro.setNome(nomeCategoria);
+		}
+		try {
+			List<Categoria> categorias = categoriaService.buscarPorNome(categoriaFiltro);
+			return ResponseEntity.ok(categorias);
+		}
+		catch (RegraNegocioException e) {
+			return new ResponseEntity(e.getMessage(), HttpStatus.NOT_FOUND);
+		}
+	}
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Categoria> obterPorId(@PathVariable("id") Long id,
+                                                Authentication authentication) {
+        try {
+            return categoriaService.obterPorIdCategoria(id, authentication)
+                    .map(ResponseEntity::ok)
+                    .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+        } catch (RegraNegocioException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
 
-    @PostMapping("/criar")
-    public ResponseEntity criar(@RequestBody CategoriaDTO dto, Authentication authentication){
+	@PostMapping
+	public ResponseEntity criar(@RequestBody CategoriaDTO dto, Authentication authentication) {
+		try {
+			Categoria entidade = categoriaService.converterDTO(dto, authentication);
+			entidade = categoriaService.salvar(entidade);
+			return ResponseEntity.ok(entidade);
+		}
+		catch (RegraNegocioException e) {
+			return ResponseEntity.badRequest().body(e.getMessage());
+		}
+	}
+
+	@PutMapping("/{id}")
+	public ResponseEntity atualizar(@RequestBody CategoriaDTO dto, Authentication authentication,
+			@PathVariable("id") Long id) throws RegraNegocioException {
+		try {
+			categoriaService.atualizar(id, authentication, dto);
+			return new ResponseEntity(HttpStatus.CREATED);
+		}
+		catch (RegraNegocioException e) {
+			return new ResponseEntity(e.getMessage(), HttpStatus.BAD_REQUEST);
+		}
+	}
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity deletar(@PathVariable Long id, Authentication authentication) throws RegraNegocioException {
         try{
-            Categoria entidade = categoriaService.converterDTO(dto, authentication);
-            entidade = categoriaService.salvar(entidade);
-            return new ResponseEntity(entidade, HttpStatus.CREATED);
+            categoriaService.deletar(id, authentication);
+            return  new ResponseEntity(HttpStatus.NO_CONTENT);
         }catch (RegraNegocioException e){
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return new ResponseEntity(e.getMessage(), HttpStatus.BAD_REQUEST);
         }
     }
-
 }

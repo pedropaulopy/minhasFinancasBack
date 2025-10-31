@@ -55,7 +55,7 @@ public class LancamentoResource {
 		}
 	}
 
-	@PutMapping("{id}/atualizar_status")
+	@PutMapping("{id}/atualizar-status")
 	public ResponseEntity atualizarStatus(@PathVariable Long id, @RequestBody LancamentoStatusDTO dto,
 			Authentication authentication) {
 		try {

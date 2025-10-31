@@ -19,4 +19,6 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, Long> {
 
 	Optional<Lancamento> findLancamentoByIdAndUsuarioId(Long id, Long idUsuario);
 
+    boolean existsByCategorias_Id(Long idCategoria);
+    long countByCategorias_Id(Long idCategoria);
 }

@@ -10,5 +10,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class CategoriaDTO {
-    private String nome;
+
+	private String nome;
+
 }

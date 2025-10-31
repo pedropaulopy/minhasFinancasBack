@@ -30,6 +30,6 @@ public class LancamentoDTO {
 
 	private String statusLancamento;
 
-    private List<String> categorias;
+	private List<String> categorias;
 
 }
