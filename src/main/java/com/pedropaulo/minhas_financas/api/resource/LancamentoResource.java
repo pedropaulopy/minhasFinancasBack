@@ -27,7 +27,7 @@ public class LancamentoResource {
 
 	private final UsuarioService usuarioService;
 
-	@PostMapping("/salvar")
+	@PostMapping()
 	public ResponseEntity salvar(@RequestBody LancamentoDTO dto, Authentication authentication) {
 		try {
 			Lancamento entidade = service.converterDTO(dto, authentication);
@@ -39,7 +39,7 @@ public class LancamentoResource {
 		}
 	}
 
-	@PutMapping("{id}/atualizar")
+	@PutMapping("{id}")
 	public ResponseEntity atualizar(@PathVariable Long id, @RequestBody LancamentoDTO dto,
 			Authentication authentication) {
 		try {
@@ -71,7 +71,7 @@ public class LancamentoResource {
 		}
 	}
 
-	@DeleteMapping("{id}/deletar")
+	@DeleteMapping("{id}")
 	public ResponseEntity deletar(@PathVariable Long id, Authentication authentication) {
 		try {
 			service.deletar(id, authentication);
@@ -86,7 +86,7 @@ public class LancamentoResource {
 		}
 	}
 
-	@GetMapping("/buscar")
+	@GetMapping("")
 	public ResponseEntity<List<Lancamento>> buscar(
 			@RequestParam(value = "descricao", required = false) String descricao,
 			@RequestParam(value = "mes", required = false) Integer mes,
@@ -111,7 +111,7 @@ public class LancamentoResource {
 		return ResponseEntity.ok(lancamentos);
 	}
 
-	@GetMapping("{id}/buscar")
+	@GetMapping("{id}")
 	public ResponseEntity<?> obterLancamento(@PathVariable("id") Long id, Authentication authentication) {
 		try {
 			Lancamento lancamento = service.obterPorIdLancamento(id, authentication);

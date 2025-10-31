@@ -154,14 +154,9 @@ public class UsuarioResourceTest {
 		Usuario usuario = Usuario.builder().id(idUsuario).nome("nome").email(email).build();
 
 		Mockito.when(service.obterIdUsuarioPorEmail(email)).thenReturn(usuario);
-
-		Mockito.when(service.obterPorId(idUsuario)).thenReturn(java.util.Optional.of(usuario));
-
 		Mockito.when(lancamentoService.obterSaldoPorUsuario(idUsuario)).thenReturn(saldo);
 
-		MockHttpServletRequestBuilder request = MockMvcRequestBuilders.get(API.concat("/saldo"))
-			.contentType(JSON)
-			.accept(JSON);
+		MockHttpServletRequestBuilder request = MockMvcRequestBuilders.get(API).accept(JSON);
 
 		mvc.perform(request)
 			.andExpect(MockMvcResultMatchers.status().isOk())
@@ -169,17 +164,14 @@ public class UsuarioResourceTest {
 	}
 
 	@Test
-	@WithMockUser(username = "outro@email.com") // 1. Add mocked user to avoid NPE
+	@WithMockUser(username = "outro@email.com")
 	public void naoDeveRetornarSaldoDeUmUsuario() throws Exception {
-		Long idUsuario = 1L;
 		String email = "outro@email.com";
 
 		Mockito.when(service.obterIdUsuarioPorEmail(email))
 			.thenThrow(new RegraNegocioException("Usuário não encontrado"));
 
-		MockHttpServletRequestBuilder request = MockMvcRequestBuilders.get(API.concat("/saldo"))
-			.contentType(JSON)
-			.accept(JSON);
+		MockHttpServletRequestBuilder request = MockMvcRequestBuilders.get(API).accept(JSON);
 
 		mvc.perform(request).andExpect(MockMvcResultMatchers.status().isNotFound());
 	}
