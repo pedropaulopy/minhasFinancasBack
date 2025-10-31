@@ -2,6 +2,7 @@ package com.pedropaulo.minhas_financas.service;
 
 import com.pedropaulo.minhas_financas.api.dto.LancamentoDTO;
 import com.pedropaulo.minhas_financas.api.dto.LancamentoDTOFactory;
+import com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException;
 import com.pedropaulo.minhas_financas.exception.RegraNegocioException;
 import com.pedropaulo.minhas_financas.model.entity.Lancamento;
 import com.pedropaulo.minhas_financas.model.entity.Usuario;
@@ -515,7 +516,7 @@ public class LancamentoServiceTest {
 		Throwable erro = Assertions.catchThrowable(() -> service.validarStatusLancamento(idLancamento, authentication));
 
 		Assertions.assertThat(erro)
-			.isInstanceOf(com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException.class)
+			.isInstanceOf(EntidadeNaoProcessavelException.class)
 			.hasMessage("Lançamentos efetivados ou cancelados não podem ser editados ou deletados.");
 
 		Mockito.verify(service, Mockito.times(1)).obterPorIdLancamento(idLancamento, authentication);
@@ -534,7 +535,7 @@ public class LancamentoServiceTest {
 		Throwable erro = Assertions.catchThrowable(() -> service.validarStatusLancamento(idLancamento, authentication));
 
 		Assertions.assertThat(erro)
-			.isInstanceOf(com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException.class)
+			.isInstanceOf(EntidadeNaoProcessavelException.class)
 			.hasMessage("Lançamentos efetivados ou cancelados não podem ser editados ou deletados.");
 
 		Mockito.verify(service, Mockito.times(1)).obterPorIdLancamento(idLancamento, authentication);
