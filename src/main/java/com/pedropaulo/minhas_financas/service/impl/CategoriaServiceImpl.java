@@ -54,4 +54,18 @@ public class CategoriaServiceImpl implements CategoriaService {
                 ExampleMatcher.matching().withIgnoreCase().withStringMatcher(ExampleMatcher.StringMatcher.CONTAINING));
         return repository.findAll(example);
     }
+
+    @Override
+    public void validar(Categoria categoria) throws RegraNegocioException {
+
+        if (categoria.getNome() == null || categoria.getNome().trim().equals("")) {
+            throw new RegraNegocioException("Insira uma nome válido.");
+        }
+
+    }
+
+    @Override
+    public Categoria salvar(Categoria categoria){
+        return null;
+    }
 }

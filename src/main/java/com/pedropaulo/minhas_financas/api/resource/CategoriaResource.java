@@ -1,5 +1,6 @@
 package com.pedropaulo.minhas_financas.api.resource;
 
+import com.pedropaulo.minhas_financas.api.dto.CategoriaDTO;
 import com.pedropaulo.minhas_financas.exception.RegraNegocioException;
 import com.pedropaulo.minhas_financas.model.entity.Categoria;
 import com.pedropaulo.minhas_financas.model.entity.Lancamento;
@@ -11,10 +12,7 @@ import com.pedropaulo.minhas_financas.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.HashSet;
 import java.util.List;
@@ -44,4 +42,10 @@ public class CategoriaResource {
         List<Categoria> categorias = categoriaService.buscarPorNome(categoriaFiltro);
         return  ResponseEntity.ok(categorias);
     }
+
+    @PostMapping("/criar")
+    public ResponseEntity criar(@RequestBody CategoriaDTO dto){
+    Categoria categoria = Categoria.builder().nome(dto.getNome()).build();
+    }
+
 }
