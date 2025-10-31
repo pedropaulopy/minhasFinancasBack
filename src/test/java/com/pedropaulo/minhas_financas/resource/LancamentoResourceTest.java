@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pedropaulo.minhas_financas.api.dto.LancamentoDTO;
 import com.pedropaulo.minhas_financas.api.dto.LancamentoStatusDTO;
 import com.pedropaulo.minhas_financas.api.resource.LancamentoResource;
+import com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException;
 import com.pedropaulo.minhas_financas.exception.RegraNegocioException;
 import com.pedropaulo.minhas_financas.model.entity.Lancamento;
 import com.pedropaulo.minhas_financas.model.entity.Usuario;
@@ -360,7 +361,7 @@ public class LancamentoResourceTest {
 		String mensagemErro = "Lançamentos efetivados ou cancelados não podem ser editados.";
 
 		Mockito.when(lancamentoService.atualizar(id, authentication, dto))
-			.thenThrow(new com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException(mensagemErro));
+			.thenThrow(new EntidadeNaoProcessavelException(mensagemErro));
 
 		ResponseEntity response = resource.atualizar(id, dto, authentication);
 
@@ -375,7 +376,7 @@ public class LancamentoResourceTest {
 		dto.setStatus("EFETIVADO");
 		String mensagemErro = "Lançamentos efetivados ou cancelados não podem ser editados.";
 
-		Mockito.doThrow(new com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException(mensagemErro))
+		Mockito.doThrow(new EntidadeNaoProcessavelException(mensagemErro))
 			.when(lancamentoService)
 			.atualizarStatus(Mockito.eq(id), Mockito.any(Authentication.class), Mockito.any(StatusLancamento.class));
 
@@ -390,7 +391,7 @@ public class LancamentoResourceTest {
 		Long id = 1L;
 		String mensagemErro = "Lançamentos efetivados ou cancelados não podem ser editados.";
 
-		Mockito.doThrow(new com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException(mensagemErro))
+		Mockito.doThrow(new EntidadeNaoProcessavelException(mensagemErro))
 			.when(lancamentoService)
 			.deletar(id, authentication);
 
