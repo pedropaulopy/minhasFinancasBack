@@ -50,7 +50,7 @@ public class LancamentoServiceImpl implements LancamentoService {
 	public Lancamento atualizar(Long id, Authentication authentication, LancamentoDTO dto)
 			throws RegraNegocioException {
 		this.validarStatusLancamento(id, authentication);
-		Lancamento lancamento = this.obterPorIdLancamento(id, authentication);
+        Lancamento lancamento = this.obterPorIdLancamento(id, authentication);
 
 		lancamento.setDescricao(dto.getDescricao());
 		lancamento.setValor(dto.getValor());
@@ -58,7 +58,7 @@ public class LancamentoServiceImpl implements LancamentoService {
 		lancamento.setAno(dto.getAno());
 		lancamento.setTipoLancamento(TipoLancamento.valueOf(dto.getTipoLancamento()));
 		lancamento.setStatusLancamento(StatusLancamento.valueOf(dto.getStatusLancamento()));
-        Set<Categoria> categorias = categoriaService.buscarOuCriarCategorias(dto.getCategorias(), lancamento.getUsuario());
+        Set<Categoria> categorias = categoriaService.buscarOuCriarCategorias(dto.getCategorias(), authentication);
 		lancamento.setCategorias(categorias);
         return repository.save(lancamento);
 	}
@@ -155,7 +155,7 @@ public class LancamentoServiceImpl implements LancamentoService {
 		lancamento.setUsuario(usuario);
 		lancamento.setTipoLancamento(TipoLancamento.valueOf(dto.getTipoLancamento()));
 		lancamento.setStatusLancamento(StatusLancamento.valueOf(dto.getStatusLancamento()));
-        Set<Categoria> categorias = categoriaService.buscarOuCriarCategorias(dto.getCategorias(), usuario);
+        Set<Categoria> categorias = categoriaService.buscarOuCriarCategorias(dto.getCategorias(), authentication);
 		lancamento.setCategorias(categorias);
         return lancamento;
 	}

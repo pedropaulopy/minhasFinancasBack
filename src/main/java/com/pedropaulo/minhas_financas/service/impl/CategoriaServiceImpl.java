@@ -1,5 +1,6 @@
 package com.pedropaulo.minhas_financas.service.impl;
 
+import com.pedropaulo.minhas_financas.api.dto.CategoriaDTO;
 import com.pedropaulo.minhas_financas.exception.RegraNegocioException;
 import com.pedropaulo.minhas_financas.model.entity.Categoria;
 import com.pedropaulo.minhas_financas.model.entity.Usuario;
@@ -21,7 +22,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class CategoriaServiceImpl implements CategoriaService {
     private final CategoriaRepository repository;
-    private  final UsuarioService service;
+    private final UsuarioService usuarioService;
 
     @Override
     public Set<Categoria> buscarOuCriarCategorias(List<String> nomesCategorias, Authentication authentication) throws RegraNegocioException {
@@ -30,7 +31,7 @@ public class CategoriaServiceImpl implements CategoriaService {
             return categorias;
         }
         String email = authentication.getName();
-        Usuario usuario = service.obterIdUsuarioPorEmail(email);
+        Usuario usuario = usuarioService.obterIdUsuarioPorEmail(email);
         for (String nome : nomesCategorias) {
             Optional<Categoria> categoriaExistente = repository.findByNomeAndUsuario(nome, usuario);
 
@@ -49,23 +50,39 @@ public class CategoriaServiceImpl implements CategoriaService {
     }
 
     @Override
-    public List<Categoria> buscarPorNome(Categoria categoriaFiltro) {
+    public List<Categoria> buscarPorNome(Categoria categoriaFiltro) throws RegraNegocioException {
         Example example = Example.of(categoriaFiltro,
                 ExampleMatcher.matching().withIgnoreCase().withStringMatcher(ExampleMatcher.StringMatcher.CONTAINING));
-        return repository.findAll(example);
+        List<Categoria> listaCategorias = repository.findAll(example);
+        if(listaCategorias.isEmpty()){
+            throw new RegraNegocioException("Nenhum lançamento encontrado para este nome.");
+        }
+        return listaCategorias;
     }
 
     @Override
     public void validar(Categoria categoria) throws RegraNegocioException {
-
+        Optional<Categoria> listaCategorias = repository.findByNomeIgnoreCaseAndUsuario(categoria.getNome(), categoria.getUsuario());
+        if(!listaCategorias.isEmpty()){
+            throw new RegraNegocioException("Uma categoria com esse nome já existe");
+        }
         if (categoria.getNome() == null || categoria.getNome().trim().equals("")) {
             throw new RegraNegocioException("Insira uma nome válido.");
         }
-
     }
 
     @Override
-    public Categoria salvar(Categoria categoria){
-        return null;
+    public Categoria salvar(Categoria categoria) throws RegraNegocioException {
+        this.validar(categoria);
+        return repository.save(categoria);
+    }
+
+    @Override
+    public Categoria converterDTO(CategoriaDTO dto, Authentication authentication) throws RegraNegocioException {
+        Usuario usuario = usuarioService.obterIdUsuarioPorEmail(authentication.getName());
+        Categoria categoria = new Categoria();
+        categoria.setUsuario(usuario);
+        categoria.setNome(dto.getNome());
+        return  categoria;
     }
 }

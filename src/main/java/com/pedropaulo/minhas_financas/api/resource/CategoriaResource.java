@@ -10,6 +10,7 @@ import com.pedropaulo.minhas_financas.model.repository.UsuarioRepository;
 import com.pedropaulo.minhas_financas.service.CategoriaService;
 import com.pedropaulo.minhas_financas.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -24,7 +25,6 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class CategoriaResource {
 
-    private final CategoriaRepository categoriaRepository;
     private final UsuarioService usuarioService;
     private final CategoriaService categoriaService;
 
@@ -38,14 +38,23 @@ public class CategoriaResource {
         if (nomeCategoria != null && !nomeCategoria.isEmpty()) {
             categoriaFiltro.setNome(nomeCategoria);
         }
-
-        List<Categoria> categorias = categoriaService.buscarPorNome(categoriaFiltro);
-        return  ResponseEntity.ok(categorias);
+        try{
+            List<Categoria> categorias = categoriaService.buscarPorNome(categoriaFiltro);
+            return ResponseEntity.ok(categorias);
+        }catch (RegraNegocioException e){
+            return new ResponseEntity(e.getMessage(), HttpStatus.NOT_FOUND);
+        }
     }
 
     @PostMapping("/criar")
-    public ResponseEntity criar(@RequestBody CategoriaDTO dto){
-    Categoria categoria = Categoria.builder().nome(dto.getNome()).build();
+    public ResponseEntity criar(@RequestBody CategoriaDTO dto, Authentication authentication){
+        try{
+            Categoria entidade = categoriaService.converterDTO(dto, authentication);
+            entidade = categoriaService.salvar(entidade);
+            return new ResponseEntity(entidade, HttpStatus.CREATED);
+        }catch (RegraNegocioException e){
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
 }
