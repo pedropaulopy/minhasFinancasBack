@@ -97,7 +97,7 @@ public class LancamentoResource {
 		}
 	}
 
-	@GetMapping("")
+	@GetMapping()
 	public ResponseEntity<List<Lancamento>> buscar(
 			@RequestParam(value = "descricao", required = false) String descricao,
 			@RequestParam(value = "mes", required = false) Integer mes,
@@ -136,15 +136,15 @@ public class LancamentoResource {
     private static final String UPLOAD_DIR = "Documents/";
 
     @PostMapping(value = "/upload", consumes = "multipart/form-data")
-    public ResponseEntity<ImportResultadoDTO> importarLancamentos(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<ImportResultadoDTO> importarLancamentos(@RequestParam("file") MultipartFile file, Authentication authentication) {
         if (file == null || file.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
 
         try (var in = file.getInputStream()) {
             final int TAMANHO_LOTE = 1000;
-
-            ImportResultadoDTO resultado = importService.importar(in, TAMANHO_LOTE);
+            Long usuarioAutenticadoId = usuarioService.obterIdUsuarioPorEmail(authentication.getName()).getId();
+            ImportResultadoDTO resultado = importService.importar(in, TAMANHO_LOTE, usuarioAutenticadoId);
 
             HttpStatus status = resultado.getTotalFalha() > 0 ? HttpStatus.MULTI_STATUS : HttpStatus.OK;
             return new ResponseEntity<>(resultado, status);

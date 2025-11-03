@@ -53,7 +53,6 @@ public class SecurityConfig {
                         ).permitAll()
 
                         .requestMatchers(HttpMethod.POST, "/api/usuarios").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/lancamentos/upload").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/usuarios/autenticar").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 

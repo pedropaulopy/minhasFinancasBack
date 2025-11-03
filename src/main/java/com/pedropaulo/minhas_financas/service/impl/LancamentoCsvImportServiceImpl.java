@@ -46,8 +46,7 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
     private EntityManager em;
 
     public LancamentoCsvImportServiceImpl(
-            com.pedropaulo.minhas_financas.service.
-            CategoriaService categoriaService,
+            com.pedropaulo.minhas_financas.service.CategoriaService categoriaService,
             LancamentoService lancamentoService,
             TransactionTemplate txTemplate) {
         this.categoriaService = categoriaService;
@@ -56,7 +55,7 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
     }
 
     @Override
-    public ImportResultadoDTO importar(InputStream in, int tamanhoDoLote) throws Exception {
+    public ImportResultadoDTO importar(InputStream in, int tamanhoDoLote, Long usuarioAutenticadoId) throws Exception {
         ImportResultadoDTO resumo = new ImportResultadoDTO();
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
@@ -70,7 +69,6 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
             validarCabecalho(parser.getHeaderMap().keySet());
 
             Map<Lancamento, Set<String>> catsPorLanc = new IdentityHashMap<>();
-
             List<Lancamento> bufferLote = new ArrayList<>(tamanhoDoLote);
             long linhaAbsoluta = 1;
 
@@ -79,7 +77,8 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
                 resumo.incLida();
 
                 try {
-                    Lancamento l = mapearSemEntidades(rec);
+                    Lancamento l = mapearSemEntidades(rec, usuarioAutenticadoId);
+
                     Set<String> nomesCats = extrairNomesCategorias(rec.get(H_CATEGORIA));
                     catsPorLanc.put(l, nomesCats);
 
@@ -111,7 +110,7 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
         }
     }
 
-    private Lancamento mapearSemEntidades(CSVRecord r) throws RegraNegocioException {
+    private Lancamento mapearSemEntidades(CSVRecord r, Long usuarioAutenticadoId) throws RegraNegocioException {
         String desc = obrig(r, H_DESC);
         String valorStr = obrig(r, H_VALOR_LANC);
         String tipoStr = obrig(r, H_TIPO);
@@ -123,25 +122,36 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
         if (valor.compareTo(BigDecimal.ZERO) <= 0) {
             throw new RegraNegocioException("Valor inválido (<= 0): " + valorStr);
         }
+
         TipoLancamento tipo = TipoLancamento.valueOf(tipoStr.toUpperCase(Locale.ROOT));
         StatusLancamento status = StatusLancamento.valueOf(statusStr.toUpperCase(Locale.ROOT));
-        Long usuarioId = Long.parseLong(usuarioIdStr);
+
+        Long usuarioIdCsv = Long.parseLong(usuarioIdStr);
+
+        if (!usuarioIdCsv.equals(usuarioAutenticadoId)) {
+            throw new RegraNegocioException(
+                    "Usuário do CSV (" + usuarioIdCsv + ") diferente do usuário autenticado (" + usuarioAutenticadoId + ")."
+            );
+        }
 
         String[] partes = dataStr.split("/");
         if (partes.length != 3) throw new RegraNegocioException("Data inválida: " + dataStr);
+
         int dia = Integer.parseInt(partes[0]);
         int mes = Integer.parseInt(partes[1]);
         int ano = Integer.parseInt(partes[2]);
+
         if (mes < 1 || mes > 12) {
             throw new RegraNegocioException("Insira um mês válido (1-12). Valor recebido: " + mes);
         }
         if (String.valueOf(ano).length() != 4) {
             throw new RegraNegocioException("Insira um ano válido (AAAA). Valor recebido: " + ano);
         }
+
         LocalDate data = LocalDate.of(ano, mes, dia);
 
         Usuario usuarioRefDetached = new Usuario();
-        usuarioRefDetached.setId(usuarioId);
+        usuarioRefDetached.setId(usuarioIdCsv);
 
         Lancamento l = new Lancamento();
         l.setDescricao(desc);
@@ -185,32 +195,29 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
                                  Map<Lancamento, Set<String>> catsPorLanc,
                                  ImportResultadoDTO resumo) {
         txTemplate.execute(status -> {
-            try {
-                for (Lancamento l : lote) {
-                    Long uid = l.getUsuario().getId();
+            for (Lancamento l : lote) {
+                Long uid = l.getUsuario().getId();
 
-                    Usuario usuarioRef = em.getReference(Usuario.class, uid);
-                    l.setUsuario(usuarioRef);
+                Usuario usuarioRef = em.getReference(Usuario.class, uid);
+                l.setUsuario(usuarioRef);
 
-                    Set<String> nomes = catsPorLanc.getOrDefault(l, Collections.emptySet());
-                    if (!nomes.isEmpty()) {
-                        Set<Categoria> categorias = new LinkedHashSet<>();
-                        for (String nome : nomes) {
-                            Categoria c = categoriaService.buscarOuCriarCategoria(usuarioRef, nome);
-                            categorias.add(c);
+                Set<String> nomes = catsPorLanc.getOrDefault(l, Collections.emptySet());
+                if (!nomes.isEmpty()) {
+                    Set<Categoria> categorias = new LinkedHashSet<>();
+                    for (String nome : nomes) {
+                        Categoria c = null;
+                        try {
+                            c = categoriaService.buscarOuCriarCategoria(usuarioRef, nome);
+                        } catch (RegraNegocioException e) {
+                            throw new RuntimeException(e);
                         }
-                        l.setCategorias(categorias);
+                        categorias.add(c);
                     }
-                }
-
-                lancamentoService.salvarTodos(lote);
-            } catch (Exception e) {
-                try {
-                    throw e;
-                } catch (RegraNegocioException ex) {
-                    throw new RuntimeException(ex);
+                    l.setCategorias(categorias);
                 }
             }
+
+            lancamentoService.salvarTodos(lote);
             return null;
         });
 
