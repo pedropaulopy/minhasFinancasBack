@@ -8,16 +8,16 @@ import com.pedropaulo.minhas_financas.model.entity.Usuario;
 import com.pedropaulo.minhas_financas.model.enums.StatusLancamento;
 import com.pedropaulo.minhas_financas.model.enums.TipoLancamento;
 import com.pedropaulo.minhas_financas.service.CategoriaService;
-import com.pedropaulo.minhas_financas.service.LancamentoService;
 import com.pedropaulo.minhas_financas.service.LancamentoCsvImportService;
+import com.pedropaulo.minhas_financas.service.LancamentoService;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -46,7 +46,7 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
     private EntityManager em;
 
     public LancamentoCsvImportServiceImpl(
-            com.pedropaulo.minhas_financas.service.CategoriaService categoriaService,
+            CategoriaService categoriaService,
             LancamentoService lancamentoService,
             TransactionTemplate txTemplate) {
         this.categoriaService = categoriaService;
@@ -78,24 +78,22 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 
                 try {
                     Lancamento l = mapearSemEntidades(rec, usuarioAutenticadoId);
-
                     Set<String> nomesCats = extrairNomesCategorias(rec.get(H_CATEGORIA));
                     catsPorLanc.put(l, nomesCats);
-
                     bufferLote.add(l);
                 } catch (Exception e) {
                     resumo.addFalha(linhaAbsoluta, e.getMessage(), String.join(",", rec));
                 }
 
                 if (bufferLote.size() >= tamanhoDoLote) {
-                    persistirEmLote(bufferLote, catsPorLanc, resumo);
+                    persistirEmLote(bufferLote, catsPorLanc, resumo); // OPT: resolve categorias em lote
                     bufferLote.clear();
                     catsPorLanc.clear();
                 }
             }
 
             if (!bufferLote.isEmpty()) {
-                persistirEmLote(bufferLote, catsPorLanc, resumo);
+                persistirEmLote(bufferLote, catsPorLanc, resumo); // OPT: idem para o último lote
             }
         }
 
@@ -127,11 +125,9 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
         StatusLancamento status = StatusLancamento.valueOf(statusStr.toUpperCase(Locale.ROOT));
 
         Long usuarioIdCsv = Long.parseLong(usuarioIdStr);
-
         if (!usuarioIdCsv.equals(usuarioAutenticadoId)) {
-            throw new RegraNegocioException(
-                    "Usuário do CSV (" + usuarioIdCsv + ") diferente do usuário autenticado (" + usuarioAutenticadoId + ")."
-            );
+            throw new RegraNegocioException("Usuário do CSV (" + usuarioIdCsv +
+                    ") diferente do usuário autenticado (" + usuarioAutenticadoId + ").");
         }
 
         String[] partes = dataStr.split("/");
@@ -140,16 +136,10 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
         int dia = Integer.parseInt(partes[0]);
         int mes = Integer.parseInt(partes[1]);
         int ano = Integer.parseInt(partes[2]);
+        if (mes < 1 || mes > 12) throw new RegraNegocioException("Insira um mês válido (1-12). Valor recebido: " + mes);
+        if (String.valueOf(ano).length() != 4) throw new RegraNegocioException("Insira um ano válido (AAAA). Valor recebido: " + ano);
 
-        if (mes < 1 || mes > 12) {
-            throw new RegraNegocioException("Insira um mês válido (1-12). Valor recebido: " + mes);
-        }
-        if (String.valueOf(ano).length() != 4) {
-            throw new RegraNegocioException("Insira um ano válido (AAAA). Valor recebido: " + ano);
-        }
-
-        LocalDate data = LocalDate.of(ano, mes, dia);
-
+        // apenas referência por id; entidade será gerenciada no lote
         Usuario usuarioRefDetached = new Usuario();
         usuarioRefDetached.setId(usuarioIdCsv);
 
@@ -191,33 +181,73 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
         return new BigDecimal(clean);
     }
 
+    /**
+     * OPT: Resolve USUÁRIO como referência gerenciada e categorias em LOTE:
+     *  - 1 SELECT para todas as categorias existentes do usuário no lote (por nome)
+     *  - persist de todas as faltantes em batch
+     *  - associação sem novas idas ao banco
+     *  Também libera o contexto após persistência para manter memória/velocidade.
+     */
     private void persistirEmLote(List<Lancamento> lote,
                                  Map<Lancamento, Set<String>> catsPorLanc,
                                  ImportResultadoDTO resumo) {
+
         txTemplate.execute(status -> {
+            // ----- Usuario gerenciado (todos os lançamentos do lote são do mesmo usuário pela validação) -----
             for (Lancamento l : lote) {
-                Long uid = l.getUsuario().getId();
+                l.setUsuario(em.getReference(Usuario.class, l.getUsuario().getId()));
+            }
+            Long uid = lote.get(0).getUsuario().getId();
 
+            // ----- OPT: coletar TODOS os nomes de categorias do lote -----
+            Set<String> todosNomes = new LinkedHashSet<>();
+            for (Lancamento l : lote) {
+                todosNomes.addAll(catsPorLanc.getOrDefault(l, Collections.emptySet()));
+            }
+
+            // ----- OPT: buscar existentes em um único SELECT -----
+            Map<String, Categoria> mapaPorNome = new HashMap<>();
+            if (!todosNomes.isEmpty()) {
+                List<Categoria> existentes = em.createQuery(
+                                "select c from Categoria c " +
+                                        "where c.usuario.id = :uid and c.nome in :nomes", Categoria.class)
+                        .setParameter("uid", uid)
+                        .setParameter("nomes", todosNomes)
+                        .getResultList();
+                for (Categoria c : existentes) {
+                    mapaPorNome.put(c.getNome(), c);
+                }
+
+                // ----- OPT: criar faltantes via batch (em.persist) -----
                 Usuario usuarioRef = em.getReference(Usuario.class, uid);
-                l.setUsuario(usuarioRef);
+                for (String nome : todosNomes) {
+                    if (!mapaPorNome.containsKey(nome)) {
+                        Categoria nova = new Categoria();
+                        nova.setUsuario(usuarioRef);
+                        nova.setNome(nome);
+                        em.persist(nova);             // batched insert
+                        mapaPorNome.put(nome, nova);
+                    }
+                }
+            }
 
+            // ----- OPT: associar sem novas idas ao banco -----
+            for (Lancamento l : lote) {
                 Set<String> nomes = catsPorLanc.getOrDefault(l, Collections.emptySet());
                 if (!nomes.isEmpty()) {
-                    Set<Categoria> categorias = new LinkedHashSet<>();
-                    for (String nome : nomes) {
-                        Categoria c = null;
-                        try {
-                            c = categoriaService.buscarOuCriarCategoria(usuarioRef, nome);
-                        } catch (RegraNegocioException e) {
-                            throw new RuntimeException(e);
-                        }
-                        categorias.add(c);
-                    }
+                    Set<Categoria> categorias = new LinkedHashSet<>(nomes.size());
+                    for (String n : nomes) categorias.add(mapaPorNome.get(n));
                     l.setCategorias(categorias);
                 }
             }
 
+            // ----- Persistir lançamentos em batch -----
             lancamentoService.salvarTodos(lote);
+
+            // ----- OPT: liberar contexto para manter performance estável em grandes volumes -----
+            em.flush();
+            em.clear();
+
             return null;
         });
 
