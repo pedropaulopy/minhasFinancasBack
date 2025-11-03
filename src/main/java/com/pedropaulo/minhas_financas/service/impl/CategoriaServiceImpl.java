@@ -30,30 +30,6 @@ public class CategoriaServiceImpl implements CategoriaService {
 	private final LancamentoRepository lancamentoRepository;
 
 	@Override
-	public Set<Categoria> buscarOuCriarCategorias(List<String> nomesCategorias, Authentication authentication)
-			throws RegraNegocioException {
-		Set<Categoria> categorias = new HashSet<>();
-		if (nomesCategorias == null || nomesCategorias.isEmpty()) {
-			return categorias;
-		}
-		String email = authentication.getName();
-		Usuario usuario = usuarioService.obterIdUsuarioPorEmail(email);
-		for (String nome : nomesCategorias) {
-			Optional<Categoria> categoriaExistente = repository.findByNomeAndUsuario(nome, usuario);
-
-			if (categoriaExistente.isPresent()) {
-				categorias.add(categoriaExistente.get());
-			}
-			else {
-				Categoria novaCategoria = Categoria.builder().nome(nome).usuario(usuario).build();
-				Categoria categoriaSalva = repository.save(novaCategoria);
-				categorias.add(categoriaSalva);
-			}
-		}
-		return categorias;
-	}
-
-	@Override
 	public List<Categoria> buscarPorNome(Categoria categoriaFiltro) throws RegraNegocioException {
 		String nome = categoriaFiltro.getNome();
 		if (nome != null) {

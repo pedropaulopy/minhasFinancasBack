@@ -1,5 +1,6 @@
 package com.pedropaulo.minhas_financas.service.impl;
 
+import com.pedropaulo.minhas_financas.api.dto.CategoriaDTO;
 import com.pedropaulo.minhas_financas.api.dto.LancamentoDTO;
 import com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException;
 import com.pedropaulo.minhas_financas.exception.RegraNegocioException;
@@ -41,6 +42,53 @@ public class LancamentoServiceImpl implements LancamentoService {
 		this.categoriaService = categoriaService;
 	}
 
+    @Override
+    public Set<Categoria> resolverCategoriasDoUsuario(List<String> nomes, Authentication authentication)
+            throws RegraNegocioException {
+
+        Set<Categoria> resolvidas = new java.util.LinkedHashSet<>();
+        if (nomes == null || nomes.isEmpty()) {
+            return resolvidas;
+        }
+
+        Usuario usuario = usuarioService.obterIdUsuarioPorEmail(authentication.getName());
+
+        for (String raw : nomes) {
+            String nome = (raw == null) ? null : raw.trim();
+            if (nome == null || nome.isEmpty()) {
+                continue;
+            }
+
+            Categoria filtro = new Categoria();
+            filtro.setUsuario(usuario);
+            filtro.setNome(nome);
+
+            List<Categoria> candidatas;
+            try {
+                candidatas = categoriaService.buscarPorNome(filtro);
+            } catch (RegraNegocioException e) {
+                candidatas = java.util.Collections.emptyList();
+            }
+
+            Categoria exata = candidatas.stream()
+                    .filter(c -> c.getNome() != null && c.getNome().equalsIgnoreCase(nome))
+                    .findFirst()
+                    .orElse(null);
+
+            if (exata != null) {
+                resolvidas.add(exata);
+                continue;
+            }
+
+            CategoriaDTO dto = new CategoriaDTO();
+            dto.setNome(nome);
+            Categoria criada = categoriaService.salvar(dto, authentication);
+            resolvidas.add(criada);
+        }
+
+        return resolvidas;
+    }
+
 	@Override
 	@Transactional
 	public Lancamento salvar(Lancamento lancamento) throws RegraNegocioException {
@@ -61,7 +109,7 @@ public class LancamentoServiceImpl implements LancamentoService {
 		lancamento.setAno(dto.getAno());
 		lancamento.setTipoLancamento(TipoLancamento.valueOf(dto.getTipoLancamento()));
 		lancamento.setStatusLancamento(StatusLancamento.valueOf(dto.getStatusLancamento()));
-		Set<Categoria> categorias = categoriaService.buscarOuCriarCategorias(dto.getCategorias(), authentication);
+		Set<Categoria> categorias = this.resolverCategoriasDoUsuario(dto.getCategorias(), authentication);
 		lancamento.setCategorias(categorias);
 		return repository.save(lancamento);
 	}
@@ -186,7 +234,7 @@ public class LancamentoServiceImpl implements LancamentoService {
 		lancamento.setUsuario(usuario);
 		lancamento.setTipoLancamento(TipoLancamento.valueOf(dto.getTipoLancamento()));
 		lancamento.setStatusLancamento(StatusLancamento.valueOf(dto.getStatusLancamento()));
-		Set<Categoria> categorias = categoriaService.buscarOuCriarCategorias(dto.getCategorias(), authentication);
+		Set<Categoria> categorias = this.resolverCategoriasDoUsuario(dto.getCategorias(), authentication);
 		lancamento.setCategorias(categorias);
 		return lancamento;
 	}

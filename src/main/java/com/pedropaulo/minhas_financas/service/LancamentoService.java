@@ -2,10 +2,13 @@ package com.pedropaulo.minhas_financas.service;
 
 import com.pedropaulo.minhas_financas.api.dto.LancamentoDTO;
 import com.pedropaulo.minhas_financas.exception.RegraNegocioException;
+import com.pedropaulo.minhas_financas.model.entity.Categoria;
 import com.pedropaulo.minhas_financas.model.entity.Lancamento;
 import com.pedropaulo.minhas_financas.model.enums.StatusLancamento;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Set;
+
 import org.springframework.security.core.Authentication;
 
 public interface LancamentoService {
@@ -30,4 +33,5 @@ public interface LancamentoService {
 
 	void validarStatusLancamento(Long id, Authentication authentication) throws RegraNegocioException;
 
+    Set<Categoria> resolverCategoriasDoUsuario(List<String> nomes, Authentication authentication) throws RegraNegocioException
 }

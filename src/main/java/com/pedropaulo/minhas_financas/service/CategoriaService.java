@@ -11,9 +11,6 @@ import java.util.Set;
 
 public interface CategoriaService {
 
-	Set<Categoria> buscarOuCriarCategorias(List<String> nomesCategorias, Authentication authentication)
-			throws RegraNegocioException;
-
 	List<Categoria> buscarPorNome(Categoria categoriaFiltro) throws RegraNegocioException;
 
 	Categoria salvar(CategoriaDTO dto, Authentication authentication) throws RegraNegocioException;
