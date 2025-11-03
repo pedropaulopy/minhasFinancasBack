@@ -55,7 +55,16 @@ public class CategoriaServiceImpl implements CategoriaService {
 
 	@Override
 	public List<Categoria> buscarPorNome(Categoria categoriaFiltro) throws RegraNegocioException {
-		Example example = Example.of(categoriaFiltro,
+        String nome = categoriaFiltro.getNome();
+        if (nome != null) {
+            nome = nome.trim();
+            if (nome.isEmpty()) {
+                categoriaFiltro.setNome(null);
+            } else {
+                categoriaFiltro.setNome(nome);
+            }
+        }
+        Example example = Example.of(categoriaFiltro,
 				ExampleMatcher.matching().withIgnoreCase().withStringMatcher(ExampleMatcher.StringMatcher.CONTAINING));
 		List<Categoria> listaCategorias = repository.findAll(example);
 		if (listaCategorias.isEmpty()) {

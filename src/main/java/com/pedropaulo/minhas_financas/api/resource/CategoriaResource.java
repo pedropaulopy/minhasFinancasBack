@@ -38,9 +38,6 @@ public class CategoriaResource {
 		Categoria categoriaFiltro = new Categoria();
 		categoriaFiltro.setUsuario(usuario);
 
-		if (nomeCategoria != null && !nomeCategoria.isEmpty()) {
-			categoriaFiltro.setNome(nomeCategoria);
-		}
 		try {
 			List<Categoria> categorias = categoriaService.buscarPorNome(categoriaFiltro);
 			return ResponseEntity.ok(categorias);
