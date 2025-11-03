@@ -484,7 +484,9 @@ class LancamentoServiceTest {
 		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
 		given(repository.findLancamentoByIdAndUsuarioId(id, u.getId())).willReturn(Optional.of(l));
 
-		assertThatThrownBy(() -> service.validarStatusLancamento(id, authentication))
+		Throwable erro = Assertions.catchThrowable(() -> service.validarStatusLancamento(idLancamento, authentication));
+
+		Assertions.assertThat(erro)
 			.isInstanceOf(com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException.class)
 			.hasMessage("Lançamentos efetivados ou cancelados não podem ser editados ou deletados.");
 	}
