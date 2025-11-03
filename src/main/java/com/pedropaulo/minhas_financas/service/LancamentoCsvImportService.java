@@ -1,0 +1,10 @@
+package com.pedropaulo.minhas_financas.service;
+
+import com.pedropaulo.minhas_financas.api.dto.importacao.ImportResultadoDTO;
+
+import java.io.InputStream;
+
+public interface LancamentoCsvImportService {
+
+    ImportResultadoDTO importar(InputStream inputStream, int tamanhoDoLote) throws Exception;
+}

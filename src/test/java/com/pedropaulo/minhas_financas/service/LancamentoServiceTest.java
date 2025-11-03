@@ -9,6 +9,7 @@ import com.pedropaulo.minhas_financas.model.enums.StatusLancamento;
 import com.pedropaulo.minhas_financas.model.enums.TipoLancamento;
 import com.pedropaulo.minhas_financas.model.repository.LancamentoRepository;
 import com.pedropaulo.minhas_financas.service.impl.LancamentoServiceImpl;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

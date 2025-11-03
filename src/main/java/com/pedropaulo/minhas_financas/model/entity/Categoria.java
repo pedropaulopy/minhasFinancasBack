@@ -2,10 +2,7 @@ package com.pedropaulo.minhas_financas.model.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.Set;
 
@@ -25,9 +22,10 @@ public class Categoria {
 	@Column(name = "nome")
 	private String nome;
 
-	@ManyToOne
+	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "id_usuario")
 	@JsonIgnore
+    @ToString.Exclude
 	private Usuario usuario;
 
 	@ManyToMany(mappedBy = "categorias", fetch = FetchType.LAZY)

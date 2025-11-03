@@ -2,21 +2,30 @@ package com.pedropaulo.minhas_financas.api.resource;
 
 import com.pedropaulo.minhas_financas.api.dto.LancamentoDTO;
 import com.pedropaulo.minhas_financas.api.dto.LancamentoStatusDTO;
+import com.pedropaulo.minhas_financas.api.dto.importacao.ImportResultadoDTO;
 import com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException;
 import com.pedropaulo.minhas_financas.exception.RegraNegocioException;
 import com.pedropaulo.minhas_financas.model.entity.Lancamento;
 import com.pedropaulo.minhas_financas.model.entity.Usuario;
 import com.pedropaulo.minhas_financas.model.enums.StatusLancamento;
 import com.pedropaulo.minhas_financas.model.enums.TipoLancamento;
+import com.pedropaulo.minhas_financas.service.LancamentoCsvImportService;
 import com.pedropaulo.minhas_financas.service.LancamentoService;
 import com.pedropaulo.minhas_financas.service.UsuarioService;
+
+import java.io.File;
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/lancamentos")
@@ -26,6 +35,8 @@ public class LancamentoResource {
 	private final LancamentoService service;
 
 	private final UsuarioService usuarioService;
+
+    private final LancamentoCsvImportService importService;
 
 	@PostMapping()
 	public ResponseEntity salvar(@RequestBody LancamentoDTO dto, Authentication authentication) {
@@ -121,5 +132,28 @@ public class LancamentoResource {
 			return new ResponseEntity(e.getMessage(), HttpStatus.NOT_FOUND);
 		}
 	}
+
+    private static final String UPLOAD_DIR = "Documents/";
+
+    @PostMapping(value = "/upload", consumes = "multipart/form-data")
+    public ResponseEntity<ImportResultadoDTO> importarLancamentos(@RequestParam("file") MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        try (var in = file.getInputStream()) {
+            final int TAMANHO_LOTE = 1000;
+
+            ImportResultadoDTO resultado = importService.importar(in, TAMANHO_LOTE);
+
+            HttpStatus status = resultado.getTotalFalha() > 0 ? HttpStatus.MULTI_STATUS : HttpStatus.OK;
+            return new ResponseEntity<>(resultado, status);
+
+        } catch (Exception e) {
+            ImportResultadoDTO erro = new ImportResultadoDTO();
+            erro.addFalha(0, "Erro ao processar arquivo: " + e.getMessage(), "");
+            return new ResponseEntity<>(erro, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 
 }

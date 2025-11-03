@@ -30,4 +30,6 @@ public interface LancamentoService {
 
 	void validarStatusLancamento(Long id, Authentication authentication) throws RegraNegocioException;
 
+    void salvarTodos(List<Lancamento> lote);
+
 }

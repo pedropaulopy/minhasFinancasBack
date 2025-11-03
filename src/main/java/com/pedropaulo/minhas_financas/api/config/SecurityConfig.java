@@ -39,25 +39,34 @@ public class SecurityConfig {
 		return new JwtTokenFilter(jwtService, userDetailsService);
 	}
 
-	@Bean
-	public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtTokenFilter jwtTokenFilter) throws Exception {
-		http.csrf(AbstractHttpConfigurer::disable)
-			.cors(Customizer.withDefaults())
-			.authorizeHttpRequests(authorize -> authorize.requestMatchers(HttpMethod.POST, "/api/usuarios")
-				.permitAll()
-				.requestMatchers(HttpMethod.POST, "/api/usuarios/autenticar")
-				.permitAll()
-				.requestMatchers(HttpMethod.OPTIONS, "/**")
-				.permitAll()
-				.anyRequest()
-				.authenticated())
-			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-			.addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class);
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtTokenFilter jwtTokenFilter) throws Exception {
+        http.csrf(AbstractHttpConfigurer::disable)
+                .cors(Customizer.withDefaults())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/v3/api-docs",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs.yaml"
+                        ).permitAll()
 
-		return http.build();
-	}
+                        .requestMatchers(HttpMethod.POST, "/api/usuarios").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/lancamentos/upload").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/usuarios/autenticar").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-	@Bean
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+
+
+    @Bean
 	public CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration config = new CorsConfiguration();
 

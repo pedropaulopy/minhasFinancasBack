@@ -53,7 +53,19 @@ public class CategoriaServiceImpl implements CategoriaService {
 		return categorias;
 	}
 
-	@Override
+    @Override
+    public Categoria buscarOuCriarCategoria(Usuario usuario, String nome) throws RegraNegocioException {
+        String n = nome == null ? "" : nome.trim();
+        if (n.isEmpty()) throw new RegraNegocioException("Nome da categoria vazio.");
+
+        return repository.findByNomeAndUsuario(n, usuario)
+                .orElseGet(() -> repository.save(
+                        Categoria.builder().nome(n).usuario(usuario).build()
+                ));
+    }
+
+
+    @Override
 	public List<Categoria> buscarPorNome(Categoria categoriaFiltro) throws RegraNegocioException {
 		Example example = Example.of(categoriaFiltro,
 				ExampleMatcher.matching().withIgnoreCase().withStringMatcher(ExampleMatcher.StringMatcher.CONTAINING));
