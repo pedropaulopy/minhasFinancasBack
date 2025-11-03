@@ -16,7 +16,7 @@ public interface CategoriaService {
 
 	List<Categoria> buscarPorNome(Categoria categoriaFiltro) throws RegraNegocioException;
 
-	Categoria salvar(Categoria categoria) throws RegraNegocioException;
+	Categoria salvar(CategoriaDTO dto, Authentication authentication) throws RegraNegocioException;
 
 	Categoria atualizar(Long idCategoria, Authentication authentication, CategoriaDTO dto) throws RegraNegocioException;
 

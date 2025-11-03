@@ -60,10 +60,9 @@ public class CategoriaResource {
 	}
 
 	@PostMapping
-	public ResponseEntity criar(@RequestBody CategoriaDTO dto, Authentication authentication) {
+	public ResponseEntity criar(@RequestBody CategoriaDTO dto, Authentication authentication, Categoria categoria) {
 		try {
-			Categoria entidade = categoriaService.converterDTO(dto, authentication);
-			entidade = categoriaService.salvar(entidade);
+			Categoria entidade = categoriaService.salvar(dto, authentication);
 			return ResponseEntity.ok(entidade);
 		}
 		catch (RegraNegocioException e) {

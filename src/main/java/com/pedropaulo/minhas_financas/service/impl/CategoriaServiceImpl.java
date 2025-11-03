@@ -86,9 +86,10 @@ public class CategoriaServiceImpl implements CategoriaService {
 	}
 
 	@Override
-	public Categoria salvar(Categoria categoria) throws RegraNegocioException {
-		this.validar(categoria);
-		return repository.save(categoria);
+	public Categoria salvar(CategoriaDTO dto, Authentication authentication) throws RegraNegocioException {
+        Categoria categoria = this.converterDTO(dto, authentication);
+        this.validar(categoria);
+        return repository.save(categoria);
 	}
 
 	@Override
