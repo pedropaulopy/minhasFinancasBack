@@ -57,20 +57,20 @@ class CategoriaResourceTest {
 		usuario.setEmail(EMAIL);
 		when(usuarioService.obterIdUsuarioPorEmail(EMAIL)).thenReturn(usuario);
 
-		Categoria c1 = new Categoria();
-		c1.setId(10L);
-		c1.setNome("Alimentação");
-		c1.setUsuario(usuario);
-		Categoria c2 = new Categoria();
-		c2.setId(11L);
-		c2.setNome("Transporte");
-		c2.setUsuario(usuario);
-		when(categoriaService.buscarPorNome(any(Categoria.class))).thenReturn(Arrays.asList(c1, c2));
+		Categoria categoria1 = new Categoria();
+		categoria1.setId(10L);
+		categoria1.setNome("Alimentação");
+		categoria1.setUsuario(usuario);
+		Categoria categoria2 = new Categoria();
+		categoria2.setId(11L);
+		categoria2.setNome("Transporte");
+		categoria2.setUsuario(usuario);
+		when(categoriaService.buscarPorNome(any(Categoria.class))).thenReturn(Arrays.asList(categoria1, categoria2));
 
 		ResponseEntity<List<Categoria>> resp = resource.buscar(null, authentication);
 
 		assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-		assertThat(resp.getBody()).containsExactly(c1, c2);
+		assertThat(resp.getBody()).containsExactly(categoria1, categoria2);
 
 		ArgumentCaptor<Categoria> cap = ArgumentCaptor.forClass(Categoria.class);
 		verify(categoriaService).buscarPorNome(cap.capture());

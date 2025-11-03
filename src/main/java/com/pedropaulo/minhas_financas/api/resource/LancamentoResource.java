@@ -27,7 +27,7 @@ public class LancamentoResource {
 
 	private final UsuarioService usuarioService;
 
-	@PostMapping()
+	@PostMapping
 	public ResponseEntity salvar(@RequestBody LancamentoDTO dto, Authentication authentication) {
 		try {
 			Lancamento entidade = service.converterDTO(dto, authentication);
@@ -86,7 +86,7 @@ public class LancamentoResource {
 		}
 	}
 
-	@GetMapping("")
+	@GetMapping
 	public ResponseEntity<List<Lancamento>> buscar(
 			@RequestParam(value = "descricao", required = false) String descricao,
 			@RequestParam(value = "mes", required = false) Integer mes,
@@ -94,6 +94,7 @@ public class LancamentoResource {
 			@RequestParam(value = "valor", required = false) BigDecimal valor,
 			@RequestParam(value = "tipo_lancamento", required = false) TipoLancamento tipoLancamento,
 			@RequestParam(value = "status_lancamento", required = false) StatusLancamento status,
+            @RequestParam(value = "categoriaId", required = false) List<Long> categoriaIds,
 			Authentication authentication) throws RegraNegocioException {
 		String email = authentication.getName();
 		Usuario usuario = usuarioService.obterIdUsuarioPorEmail(email);
@@ -107,8 +108,8 @@ public class LancamentoResource {
 		lancamentoFiltro.setStatusLancamento(status);
 		lancamentoFiltro.setUsuario(usuario);
 
-		List<Lancamento> lancamentos = service.buscar(lancamentoFiltro);
-		return ResponseEntity.ok(lancamentos);
+        List<Lancamento> lancamentos = service.buscar(lancamentoFiltro, categoriaIds);
+        return ResponseEntity.ok(lancamentos);
 	}
 
 	@GetMapping("{id}")

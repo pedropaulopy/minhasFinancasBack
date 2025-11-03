@@ -81,11 +81,11 @@ class LancamentoResourceTest {
 	}
 
 	private Usuario usuario() {
-		Usuario u = new Usuario();
-		u.setId(1L);
-		u.setEmail(EMAIL);
-		u.setNome("Pedro");
-		return u;
+		Usuario usuario = new Usuario();
+		usuario.setId(1L);
+		usuario.setEmail(EMAIL);
+		usuario.setNome("Pedro");
+		return usuario;
 	}
 
 	@Test

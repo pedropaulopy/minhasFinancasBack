@@ -16,7 +16,7 @@ public interface LancamentoService {
 
 	void deletar(Long id, Authentication authentication) throws RegraNegocioException;
 
-	List<Lancamento> buscar(Lancamento lancamentoFiltro);
+    List<Lancamento> buscar(Lancamento lancamentoFiltro, List<Long> categoriaIds);
 
 	void atualizarStatus(Long id, Authentication authentication, StatusLancamento dto) throws RegraNegocioException;
 
