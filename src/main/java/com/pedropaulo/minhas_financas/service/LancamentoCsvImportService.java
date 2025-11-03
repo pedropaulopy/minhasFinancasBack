@@ -6,5 +6,6 @@ import java.io.InputStream;
 
 public interface LancamentoCsvImportService {
 
-    ImportResultadoDTO importar(InputStream inputStream, int tamanhoDoLote, Long usuarioAutenticadoId) throws Exception;
+	ImportResultadoDTO importar(InputStream inputStream, int tamanhoDoLote, Long usuarioAutenticadoId) throws Exception;
+
 }

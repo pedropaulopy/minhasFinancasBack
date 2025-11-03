@@ -170,12 +170,11 @@ public class LancamentoServiceImpl implements LancamentoService {
 		}
 	}
 
-    @Override
-    @Transactional
-    public void salvarTodos(List<Lancamento> lote) {
-        repository.saveAll(lote);
-        repository.flush();
-    }
-
+	@Override
+	@Transactional
+	public void salvarTodos(List<Lancamento> lote) {
+		repository.saveAll(lote);
+		repository.flush();
+	}
 
 }

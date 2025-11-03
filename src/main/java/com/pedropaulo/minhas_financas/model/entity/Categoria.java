@@ -15,8 +15,8 @@ import java.util.Set;
 public class Categoria {
 
 	@Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "categoria_seq_gen")
-    @SequenceGenerator(name = "categoria_seq_gen", sequenceName = "categoria_seq", allocationSize = 200)
+	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "categoria_seq_gen")
+	@SequenceGenerator(name = "categoria_seq_gen", sequenceName = "categoria_seq", allocationSize = 200)
 	@Column(name = "id")
 	private Long id;
 
@@ -26,7 +26,7 @@ public class Categoria {
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "id_usuario")
 	@JsonIgnore
-    @ToString.Exclude
+	@ToString.Exclude
 	private Usuario usuario;
 
 	@ManyToMany(mappedBy = "categorias", fetch = FetchType.LAZY)

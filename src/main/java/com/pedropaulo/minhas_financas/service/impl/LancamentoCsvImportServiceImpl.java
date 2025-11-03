@@ -30,227 +30,225 @@ import java.util.stream.Collectors;
 @Service
 public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportService {
 
-    private static final String H_DESC = "DESC";
-    private static final String H_VALOR_LANC = "VALOR_LANC";
-    private static final String H_TIPO = "TIPO";
-    private static final String H_STATUS = "STATUS";
-    private static final String H_USUARIO = "USUARIO";
-    private static final String H_DATA_LANC = "DATA_LANC";
-    private static final String H_CATEGORIA = "CATEGORIA";
+	private static final String H_DESC = "DESC";
 
-    private final CategoriaService categoriaService;
-    private final LancamentoService lancamentoService;
-    private final TransactionTemplate txTemplate;
+	private static final String H_VALOR_LANC = "VALOR_LANC";
 
-    @PersistenceContext
-    private EntityManager em;
+	private static final String H_TIPO = "TIPO";
 
-    public LancamentoCsvImportServiceImpl(
-            CategoriaService categoriaService,
-            LancamentoService lancamentoService,
-            TransactionTemplate txTemplate) {
-        this.categoriaService = categoriaService;
-        this.lancamentoService = lancamentoService;
-        this.txTemplate = txTemplate;
-    }
+	private static final String H_STATUS = "STATUS";
 
-    @Override
-    public ImportResultadoDTO importar(InputStream in, int tamanhoDoLote, Long usuarioAutenticadoId) throws Exception {
-        ImportResultadoDTO resumo = new ImportResultadoDTO();
+	private static final String H_USUARIO = "USUARIO";
 
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
-            CSVParser parser = CSVFormat.DEFAULT
-                    .withFirstRecordAsHeader()
-                    .withTrim()
-                    .withIgnoreEmptyLines()
-                    .withAllowMissingColumnNames()
-                    .parse(reader);
+	private static final String H_DATA_LANC = "DATA_LANC";
 
-            validarCabecalho(parser.getHeaderMap().keySet());
+	private static final String H_CATEGORIA = "CATEGORIA";
 
-            Map<Lancamento, Set<String>> catsPorLanc = new IdentityHashMap<>();
-            List<Lancamento> bufferLote = new ArrayList<>(tamanhoDoLote);
-            long linhaAbsoluta = 1;
+	private final CategoriaService categoriaService;
 
-            for (CSVRecord rec : parser) {
-                linhaAbsoluta = rec.getRecordNumber() + 1;
-                resumo.incLida();
+	private final LancamentoService lancamentoService;
 
-                try {
-                    Lancamento l = mapearSemEntidades(rec, usuarioAutenticadoId);
-                    Set<String> nomesCats = extrairNomesCategorias(rec.get(H_CATEGORIA));
-                    catsPorLanc.put(l, nomesCats);
-                    bufferLote.add(l);
-                } catch (Exception e) {
-                    resumo.addFalha(linhaAbsoluta, e.getMessage(), String.join(",", rec));
-                }
+	private final TransactionTemplate txTemplate;
 
-                if (bufferLote.size() >= tamanhoDoLote) {
-                    persistirEmLote(bufferLote, catsPorLanc, resumo); // OPT: resolve categorias em lote
-                    bufferLote.clear();
-                    catsPorLanc.clear();
-                }
-            }
+	@PersistenceContext
+	private EntityManager em;
 
-            if (!bufferLote.isEmpty()) {
-                persistirEmLote(bufferLote, catsPorLanc, resumo); // OPT: idem para o último lote
-            }
-        }
+	public LancamentoCsvImportServiceImpl(CategoriaService categoriaService, LancamentoService lancamentoService,
+			TransactionTemplate txTemplate) {
+		this.categoriaService = categoriaService;
+		this.lancamentoService = lancamentoService;
+		this.txTemplate = txTemplate;
+	}
 
-        return resumo;
-    }
+	@Override
+	public ImportResultadoDTO importar(InputStream in, int tamanhoDoLote, Long usuarioAutenticadoId) throws Exception {
+		ImportResultadoDTO resumo = new ImportResultadoDTO();
 
-    private void validarCabecalho(Set<String> header) {
-        List<String> obrig = List.of(H_DESC, H_VALOR_LANC, H_TIPO, H_STATUS, H_USUARIO, H_DATA_LANC, H_CATEGORIA);
-        List<String> faltando = obrig.stream().filter(h -> !header.contains(h)).collect(Collectors.toList());
-        if (!faltando.isEmpty()) {
-            throw new IllegalArgumentException("Cabeçalho inválido. Faltando: " + faltando);
-        }
-    }
+		try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+			CSVParser parser = CSVFormat.DEFAULT.withFirstRecordAsHeader()
+				.withTrim()
+				.withIgnoreEmptyLines()
+				.withAllowMissingColumnNames()
+				.parse(reader);
 
-    private Lancamento mapearSemEntidades(CSVRecord r, Long usuarioAutenticadoId) throws RegraNegocioException {
-        String desc = obrig(r, H_DESC);
-        String valorStr = obrig(r, H_VALOR_LANC);
-        String tipoStr = obrig(r, H_TIPO);
-        String statusStr = obrig(r, H_STATUS);
-        String usuarioIdStr = obrig(r, H_USUARIO);
-        String dataStr = obrig(r, H_DATA_LANC);
+			validarCabecalho(parser.getHeaderMap().keySet());
 
-        BigDecimal valor = parseValorMonetario(valorStr);
-        if (valor.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new RegraNegocioException("Valor inválido (<= 0): " + valorStr);
-        }
+			Map<Lancamento, Set<String>> catsPorLanc = new IdentityHashMap<>();
+			List<Lancamento> bufferLote = new ArrayList<>(tamanhoDoLote);
+			long linhaAbsoluta = 1;
 
-        TipoLancamento tipo = TipoLancamento.valueOf(tipoStr.toUpperCase(Locale.ROOT));
-        StatusLancamento status = StatusLancamento.valueOf(statusStr.toUpperCase(Locale.ROOT));
+			for (CSVRecord rec : parser) {
+				linhaAbsoluta = rec.getRecordNumber() + 1;
+				resumo.incLida();
 
-        Long usuarioIdCsv = Long.parseLong(usuarioIdStr);
-        if (!usuarioIdCsv.equals(usuarioAutenticadoId)) {
-            throw new RegraNegocioException("Usuário do CSV (" + usuarioIdCsv +
-                    ") diferente do usuário autenticado (" + usuarioAutenticadoId + ").");
-        }
+				try {
+					Lancamento l = mapearSemEntidades(rec, usuarioAutenticadoId);
+					Set<String> nomesCats = extrairNomesCategorias(rec.get(H_CATEGORIA));
+					catsPorLanc.put(l, nomesCats);
+					bufferLote.add(l);
+				}
+				catch (Exception e) {
+					resumo.addFalha(linhaAbsoluta, e.getMessage(), String.join(",", rec));
+				}
 
-        String[] partes = dataStr.split("/");
-        if (partes.length != 3) throw new RegraNegocioException("Data inválida: " + dataStr);
+				if (bufferLote.size() >= tamanhoDoLote) {
+					persistirEmLote(bufferLote, catsPorLanc, resumo); // OPT: resolve
+																		// categorias em
+																		// lote
+					bufferLote.clear();
+					catsPorLanc.clear();
+				}
+			}
 
-        int dia = Integer.parseInt(partes[0]);
-        int mes = Integer.parseInt(partes[1]);
-        int ano = Integer.parseInt(partes[2]);
-        if (mes < 1 || mes > 12) throw new RegraNegocioException("Insira um mês válido (1-12). Valor recebido: " + mes);
-        if (String.valueOf(ano).length() != 4) throw new RegraNegocioException("Insira um ano válido (AAAA). Valor recebido: " + ano);
+			if (!bufferLote.isEmpty()) {
+				persistirEmLote(bufferLote, catsPorLanc, resumo); // OPT: idem para o
+																	// último lote
+			}
+		}
 
-        // apenas referência por id; entidade será gerenciada no lote
-        Usuario usuarioRefDetached = new Usuario();
-        usuarioRefDetached.setId(usuarioIdCsv);
+		return resumo;
+	}
 
-        Lancamento l = new Lancamento();
-        l.setDescricao(desc);
-        l.setValor(valor);
-        l.setTipoLancamento(tipo);
-        l.setStatusLancamento(status);
-        l.setUsuario(usuarioRefDetached);
-        l.setMes(mes);
-        l.setAno(ano);
-        l.setDataCadastro(LocalDate.now());
-        return l;
-    }
+	private void validarCabecalho(Set<String> header) {
+		List<String> obrig = List.of(H_DESC, H_VALOR_LANC, H_TIPO, H_STATUS, H_USUARIO, H_DATA_LANC, H_CATEGORIA);
+		List<String> faltando = obrig.stream().filter(h -> !header.contains(h)).collect(Collectors.toList());
+		if (!faltando.isEmpty()) {
+			throw new IllegalArgumentException("Cabeçalho inválido. Faltando: " + faltando);
+		}
+	}
 
-    private Set<String> extrairNomesCategorias(String catRaw) {
-        if (catRaw == null || catRaw.isBlank()) return Collections.emptySet();
-        String[] nomes = catRaw.split("\\|");
-        Set<String> out = new LinkedHashSet<>();
-        for (String nome : nomes) {
-            String n = nome.trim();
-            if (!n.isBlank()) out.add(n);
-        }
-        return out;
-    }
+	private Lancamento mapearSemEntidades(CSVRecord r, Long usuarioAutenticadoId) throws RegraNegocioException {
+		String desc = obrig(r, H_DESC);
+		String valorStr = obrig(r, H_VALOR_LANC);
+		String tipoStr = obrig(r, H_TIPO);
+		String statusStr = obrig(r, H_STATUS);
+		String usuarioIdStr = obrig(r, H_USUARIO);
+		String dataStr = obrig(r, H_DATA_LANC);
 
-    private String obrig(CSVRecord r, String h) {
-        String v = r.get(h);
-        if (v == null || v.isBlank()) throw new IllegalArgumentException("Campo obrigatório vazio: " + h);
-        return v.trim();
-    }
+		BigDecimal valor = parseValorMonetario(valorStr);
+		if (valor.compareTo(BigDecimal.ZERO) <= 0) {
+			throw new RegraNegocioException("Valor inválido (<= 0): " + valorStr);
+		}
 
-    private BigDecimal parseValorMonetario(String raw) {
-        String clean = raw.replace("R$", "")
-                .replace("$", "")
-                .replace(" ", "")
-                .replace(".", "")
-                .replace(",", ".");
-        return new BigDecimal(clean);
-    }
+		TipoLancamento tipo = TipoLancamento.valueOf(tipoStr.toUpperCase(Locale.ROOT));
+		StatusLancamento status = StatusLancamento.valueOf(statusStr.toUpperCase(Locale.ROOT));
 
-    /**
-     * OPT: Resolve USUÁRIO como referência gerenciada e categorias em LOTE:
-     *  - 1 SELECT para todas as categorias existentes do usuário no lote (por nome)
-     *  - persist de todas as faltantes em batch
-     *  - associação sem novas idas ao banco
-     *  Também libera o contexto após persistência para manter memória/velocidade.
-     */
-    private void persistirEmLote(List<Lancamento> lote,
-                                 Map<Lancamento, Set<String>> catsPorLanc,
-                                 ImportResultadoDTO resumo) {
+		Long usuarioIdCsv = Long.parseLong(usuarioIdStr);
+		if (!usuarioIdCsv.equals(usuarioAutenticadoId)) {
+			throw new RegraNegocioException("Usuário do CSV (" + usuarioIdCsv + ") diferente do usuário autenticado ("
+					+ usuarioAutenticadoId + ").");
+		}
 
-        txTemplate.execute(status -> {
-            // ----- Usuario gerenciado (todos os lançamentos do lote são do mesmo usuário pela validação) -----
-            for (Lancamento l : lote) {
-                l.setUsuario(em.getReference(Usuario.class, l.getUsuario().getId()));
-            }
-            Long uid = lote.get(0).getUsuario().getId();
+		String[] partes = dataStr.split("/");
+		if (partes.length != 3)
+			throw new RegraNegocioException("Data inválida: " + dataStr);
 
-            // ----- OPT: coletar TODOS os nomes de categorias do lote -----
-            Set<String> todosNomes = new LinkedHashSet<>();
-            for (Lancamento l : lote) {
-                todosNomes.addAll(catsPorLanc.getOrDefault(l, Collections.emptySet()));
-            }
+		int dia = Integer.parseInt(partes[0]);
+		int mes = Integer.parseInt(partes[1]);
+		int ano = Integer.parseInt(partes[2]);
+		if (mes < 1 || mes > 12)
+			throw new RegraNegocioException("Insira um mês válido (1-12). Valor recebido: " + mes);
+		if (String.valueOf(ano).length() != 4)
+			throw new RegraNegocioException("Insira um ano válido (AAAA). Valor recebido: " + ano);
 
-            // ----- OPT: buscar existentes em um único SELECT -----
-            Map<String, Categoria> mapaPorNome = new HashMap<>();
-            if (!todosNomes.isEmpty()) {
-                List<Categoria> existentes = em.createQuery(
-                                "select c from Categoria c " +
-                                        "where c.usuario.id = :uid and c.nome in :nomes", Categoria.class)
-                        .setParameter("uid", uid)
-                        .setParameter("nomes", todosNomes)
-                        .getResultList();
-                for (Categoria c : existentes) {
-                    mapaPorNome.put(c.getNome(), c);
-                }
+		Usuario usuarioRefDetached = new Usuario();
+		usuarioRefDetached.setId(usuarioIdCsv);
 
-                // ----- OPT: criar faltantes via batch (em.persist) -----
-                Usuario usuarioRef = em.getReference(Usuario.class, uid);
-                for (String nome : todosNomes) {
-                    if (!mapaPorNome.containsKey(nome)) {
-                        Categoria nova = new Categoria();
-                        nova.setUsuario(usuarioRef);
-                        nova.setNome(nome);
-                        em.persist(nova);             // batched insert
-                        mapaPorNome.put(nome, nova);
-                    }
-                }
-            }
+		Lancamento l = new Lancamento();
+		l.setDescricao(desc);
+		l.setValor(valor);
+		l.setTipoLancamento(tipo);
+		l.setStatusLancamento(status);
+		l.setUsuario(usuarioRefDetached);
+		l.setMes(mes);
+		l.setAno(ano);
+		l.setDataCadastro(LocalDate.now());
+		return l;
+	}
 
-            // ----- OPT: associar sem novas idas ao banco -----
-            for (Lancamento l : lote) {
-                Set<String> nomes = catsPorLanc.getOrDefault(l, Collections.emptySet());
-                if (!nomes.isEmpty()) {
-                    Set<Categoria> categorias = new LinkedHashSet<>(nomes.size());
-                    for (String n : nomes) categorias.add(mapaPorNome.get(n));
-                    l.setCategorias(categorias);
-                }
-            }
+	private Set<String> extrairNomesCategorias(String catRaw) {
+		if (catRaw == null || catRaw.isBlank())
+			return Collections.emptySet();
+		String[] nomes = catRaw.split("\\|");
+		Set<String> out = new LinkedHashSet<>();
+		for (String nome : nomes) {
+			String n = nome.trim();
+			if (!n.isBlank())
+				out.add(n);
+		}
+		return out;
+	}
 
-            // ----- Persistir lançamentos em batch -----
-            lancamentoService.salvarTodos(lote);
+	private String obrig(CSVRecord r, String h) {
+		String v = r.get(h);
+		if (v == null || v.isBlank())
+			throw new IllegalArgumentException("Campo obrigatório vazio: " + h);
+		return v.trim();
+	}
 
-            // ----- OPT: liberar contexto para manter performance estável em grandes volumes -----
-            em.flush();
-            em.clear();
+	private BigDecimal parseValorMonetario(String raw) {
+		String clean = raw.replace("R$", "").replace("$", "").replace(" ", "").replace(".", "").replace(",", ".");
+		return new BigDecimal(clean);
+	}
 
-            return null;
-        });
+	private void persistirEmLote(List<Lancamento> lote, Map<Lancamento, Set<String>> catsPorLanc,
+			ImportResultadoDTO resumo) {
 
-        for (int i = 0; i < lote.size(); i++) resumo.incSucesso();
-    }
+		txTemplate.execute(status -> {
+			for (Lancamento l : lote) {
+				l.setUsuario(em.getReference(Usuario.class, l.getUsuario().getId()));
+			}
+			Long uid = lote.get(0).getUsuario().getId();
+
+			Set<String> todosNomes = new LinkedHashSet<>();
+			for (Lancamento l : lote) {
+				todosNomes.addAll(catsPorLanc.getOrDefault(l, Collections.emptySet()));
+			}
+
+			Map<String, Categoria> mapaPorNome = new HashMap<>();
+			if (!todosNomes.isEmpty()) {
+				List<Categoria> existentes = em
+					.createQuery("select c from Categoria c " + "where c.usuario.id = :uid and c.nome in :nomes",
+							Categoria.class)
+					.setParameter("uid", uid)
+					.setParameter("nomes", todosNomes)
+					.getResultList();
+				for (Categoria c : existentes) {
+					mapaPorNome.put(c.getNome(), c);
+				}
+
+				Usuario usuarioRef = em.getReference(Usuario.class, uid);
+				for (String nome : todosNomes) {
+					if (!mapaPorNome.containsKey(nome)) {
+						Categoria nova = new Categoria();
+						nova.setUsuario(usuarioRef);
+						nova.setNome(nome);
+						em.persist(nova); // batched insert
+						mapaPorNome.put(nome, nova);
+					}
+				}
+			}
+
+			for (Lancamento l : lote) {
+				Set<String> nomes = catsPorLanc.getOrDefault(l, Collections.emptySet());
+				if (!nomes.isEmpty()) {
+					Set<Categoria> categorias = new LinkedHashSet<>(nomes.size());
+					for (String n : nomes)
+						categorias.add(mapaPorNome.get(n));
+					l.setCategorias(categorias);
+				}
+			}
+
+			lancamentoService.salvarTodos(lote);
+
+			em.flush();
+			em.clear();
+
+			return null;
+		});
+
+		for (int i = 0; i < lote.size(); i++)
+			resumo.incSucesso();
+	}
+
 }

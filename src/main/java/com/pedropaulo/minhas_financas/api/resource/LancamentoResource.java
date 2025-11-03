@@ -36,7 +36,7 @@ public class LancamentoResource {
 
 	private final UsuarioService usuarioService;
 
-    private final LancamentoCsvImportService importService;
+	private final LancamentoCsvImportService importService;
 
 	@PostMapping()
 	public ResponseEntity salvar(@RequestBody LancamentoDTO dto, Authentication authentication) {
@@ -133,27 +133,29 @@ public class LancamentoResource {
 		}
 	}
 
-    private static final String UPLOAD_DIR = "Documents/";
+	private static final String UPLOAD_DIR = "Documents/";
 
-    @PostMapping(value = "/upload", consumes = "multipart/form-data")
-    public ResponseEntity<ImportResultadoDTO> importarLancamentos(@RequestParam("file") MultipartFile file, Authentication authentication) {
-        if (file == null || file.isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
+	@PostMapping(value = "/upload", consumes = "multipart/form-data")
+	public ResponseEntity<ImportResultadoDTO> importarLancamentos(@RequestParam("file") MultipartFile file,
+			Authentication authentication) {
+		if (file == null || file.isEmpty()) {
+			return ResponseEntity.badRequest().build();
+		}
 
-        try (var in = file.getInputStream()) {
-            final int TAMANHO_LOTE = 1000;
-            Long usuarioAutenticadoId = usuarioService.obterIdUsuarioPorEmail(authentication.getName()).getId();
-            ImportResultadoDTO resultado = importService.importar(in, TAMANHO_LOTE, usuarioAutenticadoId);
+		try (var in = file.getInputStream()) {
+			final int TAMANHO_LOTE = 1000;
+			Long usuarioAutenticadoId = usuarioService.obterIdUsuarioPorEmail(authentication.getName()).getId();
+			ImportResultadoDTO resultado = importService.importar(in, TAMANHO_LOTE, usuarioAutenticadoId);
 
-            HttpStatus status = resultado.getTotalFalha() > 0 ? HttpStatus.MULTI_STATUS : HttpStatus.OK;
-            return new ResponseEntity<>(resultado, status);
+			HttpStatus status = resultado.getTotalFalha() > 0 ? HttpStatus.MULTI_STATUS : HttpStatus.OK;
+			return new ResponseEntity<>(resultado, status);
 
-        } catch (Exception e) {
-            ImportResultadoDTO erro = new ImportResultadoDTO();
-            erro.addFalha(0, "Erro ao processar arquivo: " + e.getMessage(), "");
-            return new ResponseEntity<>(erro, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
+		}
+		catch (Exception e) {
+			ImportResultadoDTO erro = new ImportResultadoDTO();
+			erro.addFalha(0, "Erro ao processar arquivo: " + e.getMessage(), "");
+			return new ResponseEntity<>(erro, HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
 
 }

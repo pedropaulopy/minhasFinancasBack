@@ -15,8 +15,7 @@ public interface CategoriaService {
 	Set<Categoria> buscarOuCriarCategorias(List<String> nomesCategorias, Authentication authentication)
 			throws RegraNegocioException;
 
-    Categoria buscarOuCriarCategoria(Usuario usuario, String nome)
-            throws RegraNegocioException;
+	Categoria buscarOuCriarCategoria(Usuario usuario, String nome) throws RegraNegocioException;
 
 	List<Categoria> buscarPorNome(Categoria categoriaFiltro) throws RegraNegocioException;
 
