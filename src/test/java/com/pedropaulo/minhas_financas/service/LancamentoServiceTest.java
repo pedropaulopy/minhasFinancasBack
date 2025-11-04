@@ -1,23 +1,24 @@
 package com.pedropaulo.minhas_financas.service;
 
+import com.pedropaulo.minhas_financas.api.dto.CategoriaDTO;
 import com.pedropaulo.minhas_financas.api.dto.LancamentoDTO;
 import com.pedropaulo.minhas_financas.api.dto.LancamentoDTOFactory;
 import com.pedropaulo.minhas_financas.exception.RegraNegocioException;
+import com.pedropaulo.minhas_financas.model.entity.Categoria;
 import com.pedropaulo.minhas_financas.model.entity.Lancamento;
 import com.pedropaulo.minhas_financas.model.entity.Usuario;
 import com.pedropaulo.minhas_financas.model.enums.StatusLancamento;
 import com.pedropaulo.minhas_financas.model.enums.TipoLancamento;
 import com.pedropaulo.minhas_financas.model.repository.LancamentoRepository;
 import com.pedropaulo.minhas_financas.service.impl.LancamentoServiceImpl;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.Authentication;
 
 import java.math.BigDecimal;
@@ -40,6 +41,9 @@ class LancamentoServiceTest {
 	@Mock
 	CategoriaService categoriaService;
 
+	@Mock
+	Authentication authentication;
+
 	LancamentoServiceImpl service;
 
 	@BeforeEach
@@ -47,14 +51,14 @@ class LancamentoServiceTest {
 		service = new LancamentoServiceImpl(repository, usuarioService, categoriaService);
 	}
 
-	private Usuario usuario(Long id, String email) {
-		Usuario u = new Usuario();
-		u.setId(id);
-		u.setEmail(email);
-		return u;
+	private Usuario criarUsuario(Long id, String email) {
+		Usuario usuario = new Usuario();
+		usuario.setId(id);
+		usuario.setEmail(email);
+		return usuario;
 	}
 
-	private Lancamento lancamentoValido(Usuario u) {
+	private Lancamento lancamentoValido(Usuario usuario) {
 		return Lancamento.builder()
 			.ano(2025)
 			.mes(11)
@@ -63,16 +67,16 @@ class LancamentoServiceTest {
 			.tipoLancamento(TipoLancamento.DESPESA)
 			.statusLancamento(StatusLancamento.PENDENTE)
 			.dataCadastro(LocalDate.now())
-			.usuario(u)
+			.usuario(usuario)
 			.build();
 	}
 
 	@Test
 	void deveSalvarUmLancamento() throws Exception {
-		Usuario u = usuario(1L, "usuario@teste.com");
-		Lancamento aSalvar = lancamentoValido(u);
+		Usuario usuario = criarUsuario(1L, "usuario@teste.com");
+		Lancamento aSalvar = lancamentoValido(usuario);
 
-		Lancamento salvo = lancamentoValido(u);
+		Lancamento salvo = lancamentoValido(usuario);
 		salvo.setId(1L);
 
 		given(repository.save(aSalvar)).willReturn(salvo);
@@ -95,22 +99,21 @@ class LancamentoServiceTest {
 	void deveAtualizarUmLancamento() throws Exception {
 		Long id = 1L;
 		String email = "usuario@teste.com";
-		Authentication auth = new TestingAuthenticationToken(email, null);
-		Usuario u = usuario(10L, email);
+		Usuario usuario = criarUsuario(10L, email);
 
-		Lancamento existente = lancamentoValido(u);
+		Lancamento existente = lancamentoValido(usuario);
 		existente.setId(id);
 
 		LancamentoDTO dto = LancamentoDTOFactory.create(id, "Lançamento teste", 11, 2025, BigDecimal.valueOf(100),
 				TipoLancamento.DESPESA.name(), StatusLancamento.PENDENTE.name());
+		dto.setCategorias(Collections.emptyList());
 
-		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
-		given(repository.findLancamentoByIdAndUsuarioId(id, u.getId())).willReturn(Optional.of(existente));
-		given(categoriaService.buscarOuCriarCategorias(eq(dto.getCategorias()), any(Authentication.class)))
-			.willReturn(Collections.emptySet());
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(usuario);
+		given(repository.findLancamentoByIdAndUsuarioId(id, usuario.getId())).willReturn(Optional.of(existente));
 		given(repository.save(existente)).willReturn(existente);
 
-		Lancamento atualizado = service.atualizar(id, auth, dto);
+		Lancamento atualizado = service.atualizar(id, authentication, dto);
 
 		then(repository).should().save(existente);
 		assertThat(atualizado).isEqualTo(existente);
@@ -120,16 +123,16 @@ class LancamentoServiceTest {
 	void deveLancarErroAoTentarAtualizarUmLancamentoQueAindaNaoFoiSalvo() throws Exception {
 		Long id = 1L;
 		String email = "usuario@teste.com";
-		Authentication auth = new TestingAuthenticationToken(email, null);
-		Usuario u = usuario(10L, email);
+		Usuario usuario = criarUsuario(10L, email);
 
 		LancamentoDTO dto = LancamentoDTOFactory.create(id, "Lançamento teste", 11, 2025, BigDecimal.valueOf(100),
 				TipoLancamento.DESPESA.name(), StatusLancamento.PENDENTE.name());
 
-		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
-		given(repository.findLancamentoByIdAndUsuarioId(id, u.getId())).willReturn(Optional.empty());
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(usuario);
+		given(repository.findLancamentoByIdAndUsuarioId(id, usuario.getId())).willReturn(Optional.empty());
 
-		assertThatThrownBy(() -> service.atualizar(id, auth, dto)).isInstanceOf(RegraNegocioException.class)
+		assertThatThrownBy(() -> service.atualizar(id, authentication, dto)).isInstanceOf(RegraNegocioException.class)
 			.hasMessage("Lançamento não encontrado para o ID informado.");
 		then(repository).should(never()).save(any());
 	}
@@ -138,15 +141,15 @@ class LancamentoServiceTest {
 	void deveDeletarUmLancamento() throws Exception {
 		Long id = 1L;
 		String email = "usuario@teste.com";
-		Authentication auth = new TestingAuthenticationToken(email, null);
-		Usuario u = usuario(7L, email);
-		Lancamento existente = lancamentoValido(u);
+		Usuario usuario = criarUsuario(7L, email);
+		Lancamento existente = lancamentoValido(usuario);
 		existente.setId(id);
 
-		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
-		given(repository.findLancamentoByIdAndUsuarioId(id, u.getId())).willReturn(Optional.of(existente));
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(usuario);
+		given(repository.findLancamentoByIdAndUsuarioId(id, usuario.getId())).willReturn(Optional.of(existente));
 
-		service.deletar(id, auth);
+		service.deletar(id, authentication);
 
 		then(repository).should().delete(existente);
 	}
@@ -155,44 +158,45 @@ class LancamentoServiceTest {
 	void deveLancarErroAoTentarDeletarUmLancamentoQueAindaNaoFoiSalvo() throws Exception {
 		Long id = 1L;
 		String email = "usuario@teste.com";
-		Authentication auth = new TestingAuthenticationToken(email, null);
-		Usuario u = usuario(7L, email);
+		Usuario usuario = criarUsuario(7L, email);
 
-		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
-		given(repository.findLancamentoByIdAndUsuarioId(id, u.getId())).willReturn(Optional.empty());
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(usuario);
+		given(repository.findLancamentoByIdAndUsuarioId(id, usuario.getId())).willReturn(Optional.empty());
 
-		assertThatThrownBy(() -> service.deletar(id, auth)).isInstanceOf(RegraNegocioException.class)
+		assertThatThrownBy(() -> service.deletar(id, authentication)).isInstanceOf(RegraNegocioException.class)
 			.hasMessage("Lançamento não encontrado para o ID informado.");
-		then(repository).should(never()).delete(any());
+		then(repository).should(never()).delete(any(Lancamento.class));
 	}
 
 	@Test
 	void deveFiltrarLancamentos() {
-		Lancamento l = new Lancamento();
-		l.setId(1L);
-		given(repository.findAll(any(org.springframework.data.domain.Example.class)))
-			.willReturn(Collections.singletonList(l));
+		Lancamento lancamento = new Lancamento();
+		lancamento.setId(1L);
 
-		List<Lancamento> out = service.buscar(l);
+		given(repository.findAll(any(org.springframework.data.jpa.domain.Specification.class)))
+			.willReturn(Collections.singletonList(lancamento));
 
-		assertThat(out).hasSize(1).containsExactly(l);
-		then(repository).should().findAll(any(org.springframework.data.domain.Example.class));
+		List<Lancamento> out = service.buscar(lancamento, Collections.emptyList());
+
+		assertThat(out).hasSize(1).containsExactly(lancamento);
+		then(repository).should().findAll(any(org.springframework.data.jpa.domain.Specification.class));
 	}
 
 	@Test
 	void deveAtualizarOStatusDeUmLancamento() throws Exception {
 		Long id = 1L;
 		String email = "usuario@teste.com";
-		Authentication auth = new TestingAuthenticationToken(email, null);
-		Usuario u = usuario(3L, email);
-		Lancamento existente = lancamentoValido(u);
+		Usuario usuario = criarUsuario(3L, email);
+		Lancamento existente = lancamentoValido(usuario);
 		existente.setId(id);
 		existente.setStatusLancamento(StatusLancamento.PENDENTE);
 
-		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
-		given(repository.findLancamentoByIdAndUsuarioId(id, u.getId())).willReturn(Optional.of(existente));
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(usuario);
+		given(repository.findLancamentoByIdAndUsuarioId(id, usuario.getId())).willReturn(Optional.of(existente));
 
-		service.atualizarStatus(id, auth, StatusLancamento.EFETIVADO);
+		service.atualizarStatus(id, authentication, StatusLancamento.EFETIVADO);
 
 		assertThat(existente.getStatusLancamento()).isEqualTo(StatusLancamento.EFETIVADO);
 	}
@@ -201,15 +205,15 @@ class LancamentoServiceTest {
 	void deveObterUmLancamentoPorId() throws Exception {
 		Long idLanc = 1L;
 		String email = "usuario@teste.com";
-		Authentication auth = new TestingAuthenticationToken(email, null);
-		Usuario u = usuario(1L, email);
-		Lancamento l = lancamentoValido(u);
-		l.setId(idLanc);
+		Usuario usuario = criarUsuario(1L, email);
+		Lancamento lancamento = lancamentoValido(usuario);
+		lancamento.setId(idLanc);
 
-		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
-		given(repository.findLancamentoByIdAndUsuarioId(idLanc, u.getId())).willReturn(Optional.of(l));
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(usuario);
+		given(repository.findLancamentoByIdAndUsuarioId(idLanc, usuario.getId())).willReturn(Optional.of(lancamento));
 
-		Lancamento out = service.obterPorIdLancamento(idLanc, auth);
+		Lancamento out = service.obterPorIdLancamento(idLanc, authentication);
 
 		assertThat(out).isNotNull();
 		assertThat(out.getId()).isEqualTo(idLanc);
@@ -219,13 +223,14 @@ class LancamentoServiceTest {
 	void deveRetornarErroQuandoOLancamentoNaoExistir() throws Exception {
 		Long idLanc = 1L;
 		String email = "usuario@teste.com";
-		Authentication auth = new TestingAuthenticationToken(email, null);
-		Usuario u = usuario(1L, email);
+		Usuario usuario = criarUsuario(1L, email);
 
-		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
-		given(repository.findLancamentoByIdAndUsuarioId(idLanc, u.getId())).willReturn(Optional.empty());
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(usuario);
+		given(repository.findLancamentoByIdAndUsuarioId(idLanc, usuario.getId())).willReturn(Optional.empty());
 
-		assertThatThrownBy(() -> service.obterPorIdLancamento(idLanc, auth)).isInstanceOf(RegraNegocioException.class)
+		assertThatThrownBy(() -> service.obterPorIdLancamento(idLanc, authentication))
+			.isInstanceOf(RegraNegocioException.class)
 			.hasMessage("Lançamento não encontrado para o ID informado.");
 	}
 
@@ -301,8 +306,7 @@ class LancamentoServiceTest {
 	@Test
 	void deveConverterUmLancamentoDTOEmUmLancamento() throws Exception {
 		String email = "usuario@teste.com";
-		Authentication auth = new TestingAuthenticationToken(email, null);
-		Usuario u = usuario(1L, email);
+		Usuario usuario = criarUsuario(1L, email);
 		LancamentoDTO dto = new LancamentoDTO();
 		dto.setDescricao("Teste DTO");
 		dto.setMes(10);
@@ -310,13 +314,13 @@ class LancamentoServiceTest {
 		dto.setValor(BigDecimal.TEN);
 		dto.setTipoLancamento(TipoLancamento.RECEITA.name());
 		dto.setStatusLancamento(StatusLancamento.PENDENTE.name());
+		dto.setCategorias(Collections.emptyList()); // evita chamadas a categoriaService
 
-		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
-		given(categoriaService.buscarOuCriarCategorias(eq(dto.getCategorias()), any(Authentication.class)))
-			.willReturn(Collections.emptySet());
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(usuario);
 
 		LocalDate hoje = LocalDate.now();
-		Lancamento l = service.converterDTO(dto, auth);
+		Lancamento l = service.converterDTO(dto, authentication);
 
 		assertThat(l.getDescricao()).isEqualTo(dto.getDescricao());
 		assertThat(l.getMes()).isEqualTo(dto.getMes());
@@ -324,15 +328,13 @@ class LancamentoServiceTest {
 		assertThat(l.getValor()).isEqualTo(dto.getValor());
 		assertThat(l.getTipoLancamento().name()).isEqualTo(dto.getTipoLancamento());
 		assertThat(l.getStatusLancamento().name()).isEqualTo(dto.getStatusLancamento());
-		assertThat(l.getUsuario()).isEqualTo(u);
+		assertThat(l.getUsuario()).isEqualTo(usuario);
 		assertThat(l.getDataCadastro()).isEqualTo(hoje);
-		then(categoriaService).should().buscarOuCriarCategorias(eq(dto.getCategorias()), any(Authentication.class));
 	}
 
 	@Test
 	void deveLancarErroAoConverterDTOComUsuarioInvalido() throws Exception {
 		String email = "usuario@teste.com";
-		Authentication auth = new TestingAuthenticationToken(email, null);
 		LancamentoDTO dto = new LancamentoDTO();
 		dto.setDescricao("Teste DTO");
 		dto.setMes(10);
@@ -341,10 +343,11 @@ class LancamentoServiceTest {
 		dto.setTipoLancamento(TipoLancamento.RECEITA.name());
 		dto.setStatusLancamento(StatusLancamento.PENDENTE.name());
 
+		given(authentication.getName()).willReturn(email);
 		given(usuarioService.obterIdUsuarioPorEmail(email))
 			.willThrow(new RegraNegocioException("Usuário não encontrado"));
 
-		assertThatThrownBy(() -> service.converterDTO(dto, auth)).isInstanceOf(RegraNegocioException.class)
+		assertThatThrownBy(() -> service.converterDTO(dto, authentication)).isInstanceOf(RegraNegocioException.class)
 			.hasMessage("Usuário não encontrado");
 		then(categoriaService).shouldHaveNoInteractions();
 	}
@@ -352,8 +355,7 @@ class LancamentoServiceTest {
 	@Test
 	void deveLancarErroAoConverterDTOComTipoInvalido() throws Exception {
 		String email = "usuario@teste.com";
-		Authentication auth = new TestingAuthenticationToken(email, null);
-		Usuario u = usuario(1L, email);
+		Usuario usuario = criarUsuario(1L, email);
 
 		LancamentoDTO dto = new LancamentoDTO();
 		dto.setDescricao("Teste DTO");
@@ -363,16 +365,17 @@ class LancamentoServiceTest {
 		dto.setTipoLancamento("TIPO_INVALIDO");
 		dto.setStatusLancamento(StatusLancamento.PENDENTE.name());
 
-		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(usuario);
 
-		assertThatThrownBy(() -> service.converterDTO(dto, auth)).isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> service.converterDTO(dto, authentication))
+			.isInstanceOf(IllegalArgumentException.class);
 	}
 
 	@Test
 	void deveLancarErroAoConverterDTOComStatusInvalido() throws Exception {
 		String email = "usuario@teste.com";
-		Authentication auth = new TestingAuthenticationToken(email, null);
-		Usuario u = usuario(1L, email);
+		Usuario usuario = criarUsuario(1L, email);
 
 		LancamentoDTO dto = new LancamentoDTO();
 		dto.setDescricao("Teste DTO");
@@ -382,9 +385,11 @@ class LancamentoServiceTest {
 		dto.setTipoLancamento(TipoLancamento.RECEITA.name());
 		dto.setStatusLancamento("STATUS_INVALIDO");
 
-		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(usuario);
 
-		assertThatThrownBy(() -> service.converterDTO(dto, auth)).isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> service.converterDTO(dto, authentication))
+			.isInstanceOf(IllegalArgumentException.class);
 	}
 
 	@Test
@@ -450,39 +455,38 @@ class LancamentoServiceTest {
 	void deveValidarStatusLancamentoQuandoEstiverPendente() throws Exception {
 		Long id = 1L;
 		String email = "usuario@teste.com";
-		Authentication auth = new TestingAuthenticationToken(email, null);
-		Usuario u = usuario(5L, email);
+		Usuario usuario = criarUsuario(5L, email);
 		Lancamento l = new Lancamento();
 		l.setId(id);
 		l.setStatusLancamento(StatusLancamento.PENDENTE);
-		l.setUsuario(u);
+		l.setUsuario(usuario);
 
-		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
-		given(repository.findLancamentoByIdAndUsuarioId(id, u.getId())).willReturn(Optional.of(l));
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(usuario);
+		given(repository.findLancamentoByIdAndUsuarioId(id, usuario.getId())).willReturn(Optional.of(l));
 
-		assertThatCode(() -> service.validarStatusLancamento(id, auth)).doesNotThrowAnyException();
+		assertThatCode(() -> service.validarStatusLancamento(id, authentication)).doesNotThrowAnyException();
 
-		then(repository).should().findLancamentoByIdAndUsuarioId(id, u.getId());
+		then(repository).should().findLancamentoByIdAndUsuarioId(id, usuario.getId());
 	}
 
 	@Test
 	void deveLancarErroAoValidarStatusLancamentoQuandoEstiverEfetivado() throws Exception {
 		Long id = 1L;
 		String email = "usuario@teste.com";
-		Authentication auth = new TestingAuthenticationToken(email, null);
-		Usuario u = usuario(5L, email);
+		Usuario usuario = criarUsuario(5L, email);
 		Lancamento l = new Lancamento();
 		l.setId(id);
 		l.setStatusLancamento(StatusLancamento.EFETIVADO);
-		l.setUsuario(u);
+		l.setUsuario(usuario);
 
-		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
-		given(repository.findLancamentoByIdAndUsuarioId(id, u.getId())).willReturn(Optional.of(l));
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(usuario);
+		given(repository.findLancamentoByIdAndUsuarioId(id, usuario.getId())).willReturn(Optional.of(l));
 
-		Throwable erro = Assertions.catchThrowable(() -> service.validarStatusLancamento(id, auth));
+		Throwable erro = catchThrowable(() -> service.validarStatusLancamento(id, authentication));
 
-		Assertions.assertThat(erro)
-			.isInstanceOf(com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException.class)
+		assertThat(erro).isInstanceOf(com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException.class)
 			.hasMessage("Lançamentos efetivados ou cancelados não podem ser editados ou deletados.");
 	}
 
@@ -490,19 +494,104 @@ class LancamentoServiceTest {
 	void deveLancarErroAoValidarStatusLancamentoQuandoEstiverCancelado() throws Exception {
 		Long id = 1L;
 		String email = "usuario@teste.com";
-		Authentication auth = new TestingAuthenticationToken(email, null);
-		Usuario u = usuario(5L, email);
+		Usuario usuario = criarUsuario(5L, email);
 		Lancamento l = new Lancamento();
 		l.setId(id);
 		l.setStatusLancamento(StatusLancamento.CANCELADO);
-		l.setUsuario(u);
+		l.setUsuario(usuario);
 
-		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
-		given(repository.findLancamentoByIdAndUsuarioId(id, u.getId())).willReturn(Optional.of(l));
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(usuario);
+		given(repository.findLancamentoByIdAndUsuarioId(id, usuario.getId())).willReturn(Optional.of(l));
 
-		assertThatThrownBy(() -> service.validarStatusLancamento(id, auth))
+		assertThatThrownBy(() -> service.validarStatusLancamento(id, authentication))
 			.isInstanceOf(com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException.class)
 			.hasMessage("Lançamentos efetivados ou cancelados não podem ser editados ou deletados.");
+	}
+
+	@Test
+	void resolverCategoriasDoUsuario_quandoListaNulaOuVazia_retornaVazioENaoInterage() throws Exception {
+		Set<Categoria> resolvidas1 = service.resolverCategoriasDoUsuario(null, authentication);
+		Set<Categoria> resolvidas2 = service.resolverCategoriasDoUsuario(Collections.emptyList(), authentication);
+
+		assertThat(resolvidas1).isEmpty();
+		assertThat(resolvidas2).isEmpty();
+
+		then(usuarioService).shouldHaveNoInteractions();
+		then(categoriaService).shouldHaveNoInteractions();
+	}
+
+	@Test
+	void resolverCategoriasDoUsuario_misturaDeExistenteNovoEBranco_resolveEChamaSalvarParaNovo() throws Exception {
+		String email = "u@t.com";
+		Usuario usuario = new Usuario();
+		usuario.setId(1L);
+		usuario.setEmail(email);
+
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(usuario);
+
+		Categoria existente = Categoria.builder().id(10L).nome("Mercado").usuario(usuario).build();
+		given(categoriaService.buscarPorNome(argThat(categoriaArg -> categoriaArg != null
+				&& usuario.equals(categoriaArg.getUsuario()) && "Mercado".equalsIgnoreCase(categoriaArg.getNome()))))
+			.willReturn(List.of(existente));
+
+		given(categoriaService.buscarPorNome(argThat(categoriaArg -> categoriaArg != null
+				&& usuario.equals(categoriaArg.getUsuario()) && "Transporte".equalsIgnoreCase(categoriaArg.getNome()))))
+			.willThrow(new RegraNegocioException("nenhuma encontrada"));
+
+		Categoria criada = Categoria.builder().id(11L).nome("Transporte").usuario(usuario).build();
+		given(categoriaService.salvar(any(CategoriaDTO.class), eq(authentication))).willReturn(criada);
+
+		List<String> nomes = Arrays.asList("Mercado", "  ", "Transporte");
+
+		Set<Categoria> out = service.resolverCategoriasDoUsuario(nomes, authentication);
+
+		assertThat(out).extracting(Categoria::getNome).containsExactlyInAnyOrder("Mercado", "Transporte");
+
+		then(categoriaService).should().salvar(argThat(dto -> "Transporte".equals(dto.getNome())), eq(authentication));
+		then(categoriaService).shouldHaveNoMoreInteractions();
+	}
+
+	@Test
+	void buscar_quandoFiltroVazio_retornaListaDoRepositorio() {
+		Lancamento l = new Lancamento();
+		l.setId(1L);
+
+		given(repository.findAll(any(org.springframework.data.jpa.domain.Specification.class))).willReturn(List.of(l));
+
+		List<Lancamento> out = service.buscar(new Lancamento(), Collections.emptyList());
+
+		assertThat(out).hasSize(1).containsExactly(l);
+		then(repository).should().findAll(any(org.springframework.data.jpa.domain.Specification.class));
+	}
+
+	@Test
+	void buscar_quandoTodosFiltrosEComCategorias_aplicaEspecificacaoEDevolveResultado() {
+		Usuario u = new Usuario();
+		u.setId(99L);
+
+		Lancamento filtro = new Lancamento();
+		filtro.setUsuario(u);
+		filtro.setDescricao("Aluguel");
+		filtro.setMes(10);
+		filtro.setAno(2025);
+		filtro.setValor(BigDecimal.valueOf(1200));
+		filtro.setTipoLancamento(TipoLancamento.DESPESA);
+		filtro.setStatusLancamento(StatusLancamento.PENDENTE);
+
+		List<Long> categoriaIds = Arrays.asList(1L, 2L);
+
+		Lancamento resultado = new Lancamento();
+		resultado.setId(42L);
+
+		given(repository.findAll(any(org.springframework.data.jpa.domain.Specification.class)))
+			.willReturn(List.of(resultado));
+
+		List<Lancamento> out = service.buscar(filtro, categoriaIds);
+
+		assertThat(out).hasSize(1).containsExactly(resultado);
+		then(repository).should().findAll(any(org.springframework.data.jpa.domain.Specification.class));
 	}
 
 }

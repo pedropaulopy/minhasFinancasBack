@@ -58,7 +58,7 @@ class UsuarioResourceTest {
 	MockMvc mvc;
 
 	@Autowired
-	ObjectMapper om;
+	ObjectMapper objectMapper;
 
 	@MockBean
 	UsuarioService service;
@@ -117,7 +117,8 @@ class UsuarioResourceTest {
 
 		when(service.autenticar(EMAIL, SENHA)).thenReturn(usuario);
 
-		mvc.perform(post(API + "/autenticar").contentType(JSON).accept(JSON).content(om.writeValueAsString(body)))
+		mvc.perform(
+				post(API + "/autenticar").contentType(JSON).accept(JSON).content(objectMapper.writeValueAsString(body)))
 			.andExpect(status().isOk())
 			.andExpect(content().contentTypeCompatibleWith(JSON))
 			.andExpect(jsonPath("$.nome").value("Usuário"))
@@ -129,7 +130,8 @@ class UsuarioResourceTest {
 		UsuarioDTO body = dto(EMAIL, SENHA);
 		when(service.autenticar(EMAIL, SENHA)).thenThrow(new AutenticacaoException("Credenciais inválidas"));
 
-		mvc.perform(post(API + "/autenticar").contentType(JSON).accept(JSON).content(om.writeValueAsString(body)))
+		mvc.perform(
+				post(API + "/autenticar").contentType(JSON).accept(JSON).content(objectMapper.writeValueAsString(body)))
 			.andExpect(status().isBadRequest())
 			.andExpect(content().string("Credenciais inválidas"));
 	}
@@ -141,7 +143,7 @@ class UsuarioResourceTest {
 
 		when(service.salvarUsuario(any())).thenReturn(salvo);
 
-		mvc.perform(post(API).contentType(JSON).accept(JSON).content(om.writeValueAsString(body)))
+		mvc.perform(post(API).contentType(JSON).accept(JSON).content(objectMapper.writeValueAsString(body)))
 			.andExpect(status().isCreated())
 			.andExpect(content().contentTypeCompatibleWith(JSON))
 			.andExpect(jsonPath("$.id").value(10))
@@ -154,7 +156,7 @@ class UsuarioResourceTest {
 		UsuarioDTO body = dto(EMAIL, SENHA);
 		when(service.salvarUsuario(any())).thenThrow(new RegraNegocioException("Dados inválidos"));
 
-		mvc.perform(post(API).contentType(JSON).accept(JSON).content(om.writeValueAsString(body)))
+		mvc.perform(post(API).contentType(JSON).accept(JSON).content(objectMapper.writeValueAsString(body)))
 			.andExpect(status().isBadRequest())
 			.andExpect(content().string("Dados inválidos"));
 	}

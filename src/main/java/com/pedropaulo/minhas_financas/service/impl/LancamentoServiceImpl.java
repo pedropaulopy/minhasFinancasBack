@@ -1,5 +1,6 @@
 package com.pedropaulo.minhas_financas.service.impl;
 
+import com.pedropaulo.minhas_financas.api.dto.CategoriaDTO;
 import com.pedropaulo.minhas_financas.api.dto.LancamentoDTO;
 import com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException;
 import com.pedropaulo.minhas_financas.exception.RegraNegocioException;
@@ -17,8 +18,10 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 
+import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.domain.Example;
 import org.springframework.data.domain.ExampleMatcher;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,7 +62,7 @@ public class LancamentoServiceImpl implements LancamentoService {
 		lancamento.setAno(dto.getAno());
 		lancamento.setTipoLancamento(TipoLancamento.valueOf(dto.getTipoLancamento()));
 		lancamento.setStatusLancamento(StatusLancamento.valueOf(dto.getStatusLancamento()));
-		Set<Categoria> categorias = categoriaService.buscarOuCriarCategorias(dto.getCategorias(), authentication);
+		Set<Categoria> categorias = this.resolverCategoriasDoUsuario(dto.getCategorias(), authentication);
 		lancamento.setCategorias(categorias);
 		return repository.save(lancamento);
 	}
@@ -73,13 +76,43 @@ public class LancamentoServiceImpl implements LancamentoService {
 
 	@Override
 	@Transactional(readOnly = true)
-	public List<Lancamento> buscar(Lancamento lancamentoFiltro) {
-		Example example = Example.of(lancamentoFiltro,
-				ExampleMatcher.matching()
-					.withIgnoreCase()
-					.withIgnoreCase()
-					.withStringMatcher(ExampleMatcher.StringMatcher.CONTAINING));
-		return repository.findAll(example);
+	public List<Lancamento> buscar(Lancamento lancamentoFiltro, List<Long> categoriaIds) {
+		Specification<Lancamento> spec = Specification.where((root, query, cb) -> {
+			query.distinct(true);
+			return cb.conjunction();
+		});
+
+		if (lancamentoFiltro.getUsuario() != null && lancamentoFiltro.getUsuario().getId() != null) {
+			Long uid = lancamentoFiltro.getUsuario().getId();
+			spec = spec.and((root, q, cb) -> cb.equal(root.get("usuario").get("id"), uid));
+		}
+		if (lancamentoFiltro.getDescricao() != null && !lancamentoFiltro.getDescricao().isBlank()) {
+			String like = "%" + lancamentoFiltro.getDescricao().trim().toLowerCase() + "%";
+			spec = spec.and((root, q, cb) -> cb.like(cb.lower(root.get("descricao")), like));
+		}
+		if (lancamentoFiltro.getMes() != null) {
+			spec = spec.and((root, q, cb) -> cb.equal(root.get("mes"), lancamentoFiltro.getMes()));
+		}
+		if (lancamentoFiltro.getAno() != null) {
+			spec = spec.and((root, q, cb) -> cb.equal(root.get("ano"), lancamentoFiltro.getAno()));
+		}
+		if (lancamentoFiltro.getValor() != null) {
+			spec = spec.and((root, q, cb) -> cb.equal(root.get("valor"), lancamentoFiltro.getValor()));
+		}
+		if (lancamentoFiltro.getTipoLancamento() != null) {
+			spec = spec
+				.and((root, q, cb) -> cb.equal(root.get("tipoLancamento"), lancamentoFiltro.getTipoLancamento()));
+		}
+		if (lancamentoFiltro.getStatusLancamento() != null) {
+			spec = spec
+				.and((root, q, cb) -> cb.equal(root.get("statusLancamento"), lancamentoFiltro.getStatusLancamento()));
+		}
+
+		if (categoriaIds != null && !categoriaIds.isEmpty()) {
+			spec = spec.and((root, query, cb) -> root.join("categorias", JoinType.INNER).get("id").in(categoriaIds));
+		}
+
+		return repository.findAll(spec);
 	}
 
 	@Override
@@ -156,7 +189,7 @@ public class LancamentoServiceImpl implements LancamentoService {
 		lancamento.setUsuario(usuario);
 		lancamento.setTipoLancamento(TipoLancamento.valueOf(dto.getTipoLancamento()));
 		lancamento.setStatusLancamento(StatusLancamento.valueOf(dto.getStatusLancamento()));
-		Set<Categoria> categorias = categoriaService.buscarOuCriarCategorias(dto.getCategorias(), authentication);
+		Set<Categoria> categorias = this.resolverCategoriasDoUsuario(dto.getCategorias(), authentication);
 		lancamento.setCategorias(categorias);
 		return lancamento;
 	}
@@ -168,6 +201,51 @@ public class LancamentoServiceImpl implements LancamentoService {
 			throw new EntidadeNaoProcessavelException(
 					"Lançamentos efetivados ou cancelados não podem ser editados ou deletados.");
 		}
+	}
+
+	public Set<Categoria> resolverCategoriasDoUsuario(List<String> nomes, Authentication authentication)
+			throws RegraNegocioException {
+
+		Set<Categoria> resolvidas = new java.util.LinkedHashSet<>();
+		if (nomes == null || nomes.isEmpty()) {
+			return resolvidas;
+		}
+
+		Usuario usuario = usuarioService.obterIdUsuarioPorEmail(authentication.getName());
+
+		for (String raw : nomes) {
+			String nome = (raw == null) ? "" : raw.trim();
+			if (nome.isEmpty())
+				continue; // único continue
+
+			Categoria filtro = new Categoria();
+			filtro.setUsuario(usuario);
+			filtro.setNome(nome);
+
+			List<Categoria> candidatas;
+			try {
+				candidatas = categoriaService.buscarPorNome(filtro);
+			}
+			catch (RegraNegocioException e) {
+				candidatas = java.util.Collections.emptyList();
+			}
+
+			java.util.Optional<Categoria> exata = candidatas.stream()
+				.filter(c -> c.getNome() != null && c.getNome().equalsIgnoreCase(nome))
+				.findFirst();
+
+			if (exata.isPresent()) {
+				resolvidas.add(exata.get());
+			}
+			else {
+				CategoriaDTO dto = new CategoriaDTO();
+				dto.setNome(nome);
+				Categoria criada = categoriaService.salvar(dto, authentication);
+				resolvidas.add(criada);
+			}
+		}
+
+		return resolvidas;
 	}
 
 	@Override

@@ -30,41 +30,8 @@ public class CategoriaServiceImpl implements CategoriaService {
 	private final LancamentoRepository lancamentoRepository;
 
 	@Override
-	public Set<Categoria> buscarOuCriarCategorias(List<String> nomesCategorias, Authentication authentication)
-			throws RegraNegocioException {
-		Set<Categoria> categorias = new HashSet<>();
-		if (nomesCategorias == null || nomesCategorias.isEmpty()) {
-			return categorias;
-		}
-		String email = authentication.getName();
-		Usuario usuario = usuarioService.obterIdUsuarioPorEmail(email);
-		for (String nome : nomesCategorias) {
-			Optional<Categoria> categoriaExistente = repository.findByNomeAndUsuario(nome, usuario);
-
-			if (categoriaExistente.isPresent()) {
-				categorias.add(categoriaExistente.get());
-			}
-			else {
-				Categoria novaCategoria = Categoria.builder().nome(nome).usuario(usuario).build();
-				Categoria categoriaSalva = repository.save(novaCategoria);
-				categorias.add(categoriaSalva);
-			}
-		}
-		return categorias;
-	}
-
-	@Override
-	public Categoria buscarOuCriarCategoria(Usuario usuario, String nome) throws RegraNegocioException {
-		String n = nome == null ? "" : nome.trim();
-		if (n.isEmpty())
-			throw new RegraNegocioException("Nome da categoria vazio.");
-
-		return repository.findByNomeAndUsuario(n, usuario)
-			.orElseGet(() -> repository.save(Categoria.builder().nome(n).usuario(usuario).build()));
-	}
-
-	@Override
 	public List<Categoria> buscarPorNome(Categoria categoriaFiltro) throws RegraNegocioException {
+		this.mapearFiltroCategoria(categoriaFiltro);
 		Example example = Example.of(categoriaFiltro,
 				ExampleMatcher.matching().withIgnoreCase().withStringMatcher(ExampleMatcher.StringMatcher.CONTAINING));
 		List<Categoria> listaCategorias = repository.findAll(example);
@@ -87,7 +54,8 @@ public class CategoriaServiceImpl implements CategoriaService {
 	}
 
 	@Override
-	public Categoria salvar(Categoria categoria) throws RegraNegocioException {
+	public Categoria salvar(CategoriaDTO dto, Authentication authentication) throws RegraNegocioException {
+		Categoria categoria = this.converterDTO(dto, authentication);
 		this.validar(categoria);
 		return repository.save(categoria);
 	}
@@ -145,6 +113,18 @@ public class CategoriaServiceImpl implements CategoriaService {
 		}
 
 		repository.delete(categoria);
+	}
+
+	private void mapearFiltroCategoria(Categoria categoriaFiltro) {
+		if (categoriaFiltro == null || categoriaFiltro.getNome() == null) {
+			return;
+		}
+		String nome = categoriaFiltro.getNome().trim();
+		if (nome.isEmpty()) {
+			categoriaFiltro.setNome(null);
+			return;
+		}
+		categoriaFiltro.setNome(nome);
 	}
 
 }

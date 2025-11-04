@@ -56,11 +56,11 @@ class LancamentoRepositoryTest {
 	}
 
 	private Lancamento persistido() {
-		Lancamento l = novoLancamento();
-		entityManager.persist(l);
+		Lancamento lancamento = novoLancamento();
+		entityManager.persist(lancamento);
 		entityManager.flush();
 		entityManager.clear();
-		return l;
+		return lancamento;
 	}
 
 	@Test

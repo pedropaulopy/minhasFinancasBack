@@ -75,7 +75,7 @@ class CategoriaResourceTest {
 
 			@Override
 			public void setAuthenticated(boolean isAuthenticated) {
-				/* não aplicável */ }
+            }
 
 			@Override
 			public java.util.Collection<org.springframework.security.core.GrantedAuthority> getAuthorities() {
@@ -93,20 +93,20 @@ class CategoriaResourceTest {
 		usuario.setEmail(EMAIL);
 		when(usuarioService.obterIdUsuarioPorEmail(EMAIL)).thenReturn(usuario);
 
-		Categoria c1 = new Categoria();
-		c1.setId(10L);
-		c1.setNome("Alimentação");
-		c1.setUsuario(usuario);
-		Categoria c2 = new Categoria();
-		c2.setId(11L);
-		c2.setNome("Transporte");
-		c2.setUsuario(usuario);
-		when(categoriaService.buscarPorNome(any(Categoria.class))).thenReturn(Arrays.asList(c1, c2));
+		Categoria categoria1 = new Categoria();
+		categoria1.setId(10L);
+		categoria1.setNome("Alimentação");
+		categoria1.setUsuario(usuario);
+		Categoria categoria2 = new Categoria();
+		categoria2.setId(11L);
+		categoria2.setNome("Transporte");
+		categoria2.setUsuario(usuario);
+		when(categoriaService.buscarPorNome(any(Categoria.class))).thenReturn(Arrays.asList(categoria1, categoria2));
 
 		ResponseEntity<List<Categoria>> resp = resource.buscar(null, authentication);
 
 		assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-		assertThat(resp.getBody()).containsExactly(c1, c2);
+		assertThat(resp.getBody()).containsExactly(categoria1, categoria2);
 
 		ArgumentCaptor<Categoria> cap = ArgumentCaptor.forClass(Categoria.class);
 		verify(categoriaService).buscarPorNome(cap.capture());
@@ -132,7 +132,7 @@ class CategoriaResourceTest {
 		ArgumentCaptor<Categoria> cap = ArgumentCaptor.forClass(Categoria.class);
 		verify(categoriaService).buscarPorNome(cap.capture());
 		assertThat(cap.getValue().getUsuario()).isEqualTo(usuario);
-		assertThat(cap.getValue().getNome()).isEqualTo("Mercado");
+		assertThat(cap.getValue().getNome()).isNull();
 	}
 
 	@Test
@@ -194,21 +194,17 @@ class CategoriaResourceTest {
 
 		CategoriaDTO dto = new CategoriaDTO();
 		dto.setNome("Saúde");
-		Categoria convertido = new Categoria();
-		convertido.setNome("Saúde");
 		Categoria salvo = new Categoria();
 		salvo.setId(7L);
 		salvo.setNome("Saúde");
 
-		when(categoriaService.converterDTO(eq(dto), eq(authentication))).thenReturn(convertido);
-		when(categoriaService.salvar(eq(convertido))).thenReturn(salvo);
+		when(categoriaService.salvar(eq(dto), eq(authentication))).thenReturn(salvo);
 
-		ResponseEntity<?> resp = resource.criar(dto, authentication);
+		ResponseEntity<?> resp = resource.criar(dto, authentication, new Categoria());
 
 		assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(resp.getBody()).isEqualTo(salvo);
-		verify(categoriaService).converterDTO(dto, authentication);
-		verify(categoriaService).salvar(convertido);
+		verify(categoriaService).salvar(eq(dto), eq(authentication));
 	}
 
 	@Test
@@ -219,12 +215,16 @@ class CategoriaResourceTest {
 		dto.setNome("Saúde");
 		when(categoriaService.converterDTO(eq(dto), eq(authentication)))
 			.thenThrow(new RegraNegocioException("A categoria informada é inválida."));
+		when(categoriaService.salvar(eq(dto), eq(authentication)))
+			.thenThrow(new RegraNegocioException("categoria inválida"));
 
-		ResponseEntity<?> resp = resource.criar(dto, authentication);
+		ResponseEntity<?> resp = resource.criar(dto, authentication, new Categoria());
 
 		assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 		assertThat(resp.getBody()).isEqualTo("A categoria informada é inválida.");
 		verify(categoriaService, never()).salvar(any());
+		assertThat(resp.getBody()).isEqualTo("categoria inválida");
+		verify(categoriaService, never()).deletar(anyLong(), any());
 	}
 
 	@Test
