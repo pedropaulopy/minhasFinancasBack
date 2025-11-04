@@ -471,29 +471,28 @@ class LancamentoServiceTest {
 		then(repository).should().findLancamentoByIdAndUsuarioId(id, u.getId());
 	}
 
-    @Test
-    void deveLancarErroAoValidarStatusLancamentoQuandoEstiverEfetivado() throws Exception {
-        Long id = 1L;
-        String email = "usuario@teste.com";
-        Usuario u = usuario(5L, email);
-        Lancamento l = new Lancamento();
-        l.setId(id);
-        l.setStatusLancamento(StatusLancamento.EFETIVADO);
-        l.setUsuario(u);
+	@Test
+	void deveLancarErroAoValidarStatusLancamentoQuandoEstiverEfetivado() throws Exception {
+		Long id = 1L;
+		String email = "usuario@teste.com";
+		Usuario u = usuario(5L, email);
+		Lancamento l = new Lancamento();
+		l.setId(id);
+		l.setStatusLancamento(StatusLancamento.EFETIVADO);
+		l.setUsuario(u);
 
-        given(authentication.getName()).willReturn(email);
-        given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
-        given(repository.findLancamentoByIdAndUsuarioId(id, u.getId())).willReturn(Optional.of(l));
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(u);
+		given(repository.findLancamentoByIdAndUsuarioId(id, u.getId())).willReturn(Optional.of(l));
 
-        Throwable erro = Assertions.catchThrowable(() -> service.validarStatusLancamento(id, authentication));
+		Throwable erro = Assertions.catchThrowable(() -> service.validarStatusLancamento(id, authentication));
 
-        Assertions.assertThat(erro)
-                .isInstanceOf(com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException.class)
-                .hasMessage("Lançamentos efetivados ou cancelados não podem ser editados ou deletados.");
-    }
+		Assertions.assertThat(erro)
+			.isInstanceOf(com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException.class)
+			.hasMessage("Lançamentos efetivados ou cancelados não podem ser editados ou deletados.");
+	}
 
-
-    @Test
+	@Test
 	void deveLancarErroAoValidarStatusLancamentoQuandoEstiverCancelado() throws Exception {
 		Long id = 1L;
 		String email = "usuario@teste.com";

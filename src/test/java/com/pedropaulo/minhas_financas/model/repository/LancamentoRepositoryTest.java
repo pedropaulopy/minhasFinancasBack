@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Sql(executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD,
-        statements = "TRUNCATE TABLE financas.lancamento RESTART IDENTITY CASCADE")
+		statements = "TRUNCATE TABLE financas.lancamento RESTART IDENTITY CASCADE")
 class LancamentoRepositoryTest {
 
 	private static final int ANO = 2025;

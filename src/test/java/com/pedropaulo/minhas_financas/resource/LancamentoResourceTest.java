@@ -50,15 +50,15 @@ class LancamentoResourceTest {
 	@Mock
 	private Authentication authentication;
 
-    @Mock
-    private LancamentoCsvImportService importService;
+	@Mock
+	private LancamentoCsvImportService importService;
 
 	private LancamentoResource resource;
 
-    @BeforeEach
-    void setUp() {
-        resource = new LancamentoResource(lancamentoService, usuarioService, importService);
-    }
+	@BeforeEach
+	void setUp() {
+		resource = new LancamentoResource(lancamentoService, usuarioService, importService);
+	}
 
 	private LancamentoDTO dtoValido() {
 		LancamentoDTO dto = new LancamentoDTO();
