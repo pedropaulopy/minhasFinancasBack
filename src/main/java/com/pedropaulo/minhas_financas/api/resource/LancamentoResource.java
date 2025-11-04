@@ -22,10 +22,12 @@ import java.nio.file.Paths;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 @RestController
 @RequestMapping("/api/lancamentos")
@@ -156,5 +158,36 @@ public class LancamentoResource {
 			return new ResponseEntity<>(erro, HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
+
+    //nesse caso é válido usar post pq os ids vão ser passados via body (json)
+    @PostMapping(value = "/export/json", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<StreamingResponseBody> exportJson(@RequestBody ExportIdsRequest body) {
+        List<Long> ids = body == null ? List.of() : body.getIds();
+        if (ids == null || ids.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        StreamingResponseBody stream = os -> exportService.streamJsonByIds(os, ids);
+
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=lancamentos_JSON.json")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(stream);
+    }
+
+    @PostMapping(value = "/export.csv", consumes = MediaType.APPLICATION_JSON_VALUE, produces = "text/csv")
+    public ResponseEntity<StreamingResponseBody> exportCsv(@RequestBody ExportIdsRequest body) {
+        List<Long> ids = body == null ? List.of() : body.getIds();
+        if (ids == null || ids.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        StreamingResponseBody stream = os -> exportService.streamCsvByIds(os, ids);
+
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=lancamentos_CSV.csv")
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .body(stream);
+    }
 
 }
