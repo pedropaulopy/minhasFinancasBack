@@ -19,7 +19,7 @@ public interface LancamentoService {
 
 	void deletar(Long id, Authentication authentication) throws RegraNegocioException;
 
-    List<Lancamento> buscar(Lancamento lancamentoFiltro, List<Long> categoriaIds);
+	List<Lancamento> buscar(Lancamento lancamentoFiltro, List<Long> categoriaIds);
 
 	void atualizarStatus(Long id, Authentication authentication, StatusLancamento dto) throws RegraNegocioException;
 
@@ -32,4 +32,5 @@ public interface LancamentoService {
 	Lancamento converterDTO(LancamentoDTO dto, Authentication authentication) throws RegraNegocioException;
 
 	void validarStatusLancamento(Long id, Authentication authentication) throws RegraNegocioException;
+
 }

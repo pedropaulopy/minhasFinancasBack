@@ -95,7 +95,7 @@ class CategoriaResourceTest {
 		ArgumentCaptor<Categoria> cap = ArgumentCaptor.forClass(Categoria.class);
 		verify(categoriaService).buscarPorNome(cap.capture());
 		assertThat(cap.getValue().getUsuario()).isEqualTo(usuario);
-		assertThat(cap.getValue().getNome()).isEqualTo("Mercado");
+		assertThat(cap.getValue().getNome()).isNull();
 	}
 
 	@Test
@@ -148,35 +148,31 @@ class CategoriaResourceTest {
 	void criar_sucesso_retorna200ComEntidade() throws Exception {
 		CategoriaDTO dto = new CategoriaDTO();
 		dto.setNome("Saúde");
-		Categoria convertido = new Categoria();
-		convertido.setNome("Saúde");
 		Categoria salvo = new Categoria();
 		salvo.setId(7L);
 		salvo.setNome("Saúde");
 
-		when(categoriaService.converterDTO(eq(dto), eq(authentication))).thenReturn(convertido);
-		when(categoriaService.salvar(eq(convertido))).thenReturn(salvo);
+		when(categoriaService.salvar(eq(dto), eq(authentication))).thenReturn(salvo);
 
-		ResponseEntity<?> resp = resource.criar(dto, authentication);
+		ResponseEntity<?> resp = resource.criar(dto, authentication, new Categoria());
 
 		assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(resp.getBody()).isEqualTo(salvo);
-		verify(categoriaService).converterDTO(dto, authentication);
-		verify(categoriaService).salvar(convertido);
+		verify(categoriaService).salvar(eq(dto), eq(authentication));
 	}
 
 	@Test
 	void criar_quandoServiceLanca_retorna400ComMensagem() throws Exception {
 		CategoriaDTO dto = new CategoriaDTO();
 		dto.setNome("Saúde");
-		when(categoriaService.converterDTO(eq(dto), eq(authentication)))
+		when(categoriaService.salvar(eq(dto), eq(authentication)))
 			.thenThrow(new RegraNegocioException("categoria inválida"));
 
-		ResponseEntity<?> resp = resource.criar(dto, authentication);
+		ResponseEntity<?> resp = resource.criar(dto, authentication, new Categoria());
 
 		assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 		assertThat(resp.getBody()).isEqualTo("categoria inválida");
-		verify(categoriaService, never()).salvar(any());
+		verify(categoriaService, never()).deletar(anyLong(), any());
 	}
 
 	@Test

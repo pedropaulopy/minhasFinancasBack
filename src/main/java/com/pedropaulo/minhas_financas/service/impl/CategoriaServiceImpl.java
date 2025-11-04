@@ -115,16 +115,16 @@ public class CategoriaServiceImpl implements CategoriaService {
 		repository.delete(categoria);
 	}
 
-    private void mapearFiltroCategoria(Categoria categoriaFiltro) {
-        if (categoriaFiltro == null || categoriaFiltro.getNome() == null) {
-            return;
-        }
-        String nome = categoriaFiltro.getNome().trim();
-        if (nome.isEmpty()) {
-            categoriaFiltro.setNome(null);
-            return;
-        }
-        categoriaFiltro.setNome(nome);
-    }
+	private void mapearFiltroCategoria(Categoria categoriaFiltro) {
+		if (categoriaFiltro == null || categoriaFiltro.getNome() == null) {
+			return;
+		}
+		String nome = categoriaFiltro.getNome().trim();
+		if (nome.isEmpty()) {
+			categoriaFiltro.setNome(null);
+			return;
+		}
+		categoriaFiltro.setNome(nome);
+	}
 
 }

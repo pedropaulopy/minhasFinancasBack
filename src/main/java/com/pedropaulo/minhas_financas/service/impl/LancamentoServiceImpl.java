@@ -74,44 +74,46 @@ public class LancamentoServiceImpl implements LancamentoService {
 		repository.delete(lancamento);
 	}
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<Lancamento> buscar(Lancamento lancamentoFiltro, List<Long> categoriaIds) {
-        Specification<Lancamento> spec = Specification.where((root, query, cb) -> {
-            query.distinct(true);
-            return cb.conjunction();
-        });
+	@Override
+	@Transactional(readOnly = true)
+	public List<Lancamento> buscar(Lancamento lancamentoFiltro, List<Long> categoriaIds) {
+		Specification<Lancamento> spec = Specification.where((root, query, cb) -> {
+			query.distinct(true);
+			return cb.conjunction();
+		});
 
-        if (lancamentoFiltro.getUsuario() != null && lancamentoFiltro.getUsuario().getId() != null) {
-            Long uid = lancamentoFiltro.getUsuario().getId();
-            spec = spec.and((root, q, cb) -> cb.equal(root.get("usuario").get("id"), uid));
-        }
-        if (lancamentoFiltro.getDescricao() != null && !lancamentoFiltro.getDescricao().isBlank()) {
-            String like = "%" + lancamentoFiltro.getDescricao().trim().toLowerCase() + "%";
-            spec = spec.and((root, q, cb) -> cb.like(cb.lower(root.get("descricao")), like));
-        }
-        if (lancamentoFiltro.getMes() != null) {
-            spec = spec.and((root, q, cb) -> cb.equal(root.get("mes"), lancamentoFiltro.getMes()));
-        }
-        if (lancamentoFiltro.getAno() != null) {
-            spec = spec.and((root, q, cb) -> cb.equal(root.get("ano"), lancamentoFiltro.getAno()));
-        }
-        if (lancamentoFiltro.getValor() != null) {
-            spec = spec.and((root, q, cb) -> cb.equal(root.get("valor"), lancamentoFiltro.getValor()));
-        }
-        if (lancamentoFiltro.getTipoLancamento() != null) {
-            spec = spec.and((root, q, cb) -> cb.equal(root.get("tipoLancamento"), lancamentoFiltro.getTipoLancamento()));
-        }
-        if (lancamentoFiltro.getStatusLancamento() != null) {
-            spec = spec.and((root, q, cb) -> cb.equal(root.get("statusLancamento"), lancamentoFiltro.getStatusLancamento()));
-        }
+		if (lancamentoFiltro.getUsuario() != null && lancamentoFiltro.getUsuario().getId() != null) {
+			Long uid = lancamentoFiltro.getUsuario().getId();
+			spec = spec.and((root, q, cb) -> cb.equal(root.get("usuario").get("id"), uid));
+		}
+		if (lancamentoFiltro.getDescricao() != null && !lancamentoFiltro.getDescricao().isBlank()) {
+			String like = "%" + lancamentoFiltro.getDescricao().trim().toLowerCase() + "%";
+			spec = spec.and((root, q, cb) -> cb.like(cb.lower(root.get("descricao")), like));
+		}
+		if (lancamentoFiltro.getMes() != null) {
+			spec = spec.and((root, q, cb) -> cb.equal(root.get("mes"), lancamentoFiltro.getMes()));
+		}
+		if (lancamentoFiltro.getAno() != null) {
+			spec = spec.and((root, q, cb) -> cb.equal(root.get("ano"), lancamentoFiltro.getAno()));
+		}
+		if (lancamentoFiltro.getValor() != null) {
+			spec = spec.and((root, q, cb) -> cb.equal(root.get("valor"), lancamentoFiltro.getValor()));
+		}
+		if (lancamentoFiltro.getTipoLancamento() != null) {
+			spec = spec
+				.and((root, q, cb) -> cb.equal(root.get("tipoLancamento"), lancamentoFiltro.getTipoLancamento()));
+		}
+		if (lancamentoFiltro.getStatusLancamento() != null) {
+			spec = spec
+				.and((root, q, cb) -> cb.equal(root.get("statusLancamento"), lancamentoFiltro.getStatusLancamento()));
+		}
 
-        if (categoriaIds != null && !categoriaIds.isEmpty()) {
-            spec = spec.and((root, query, cb) -> root.join("categorias", JoinType.INNER).get("id").in(categoriaIds));
-        }
+		if (categoriaIds != null && !categoriaIds.isEmpty()) {
+			spec = spec.and((root, query, cb) -> root.join("categorias", JoinType.INNER).get("id").in(categoriaIds));
+		}
 
-        return repository.findAll(spec);
-    }
+		return repository.findAll(spec);
+	}
 
 	@Override
 	@Transactional
@@ -201,50 +203,51 @@ public class LancamentoServiceImpl implements LancamentoService {
 		}
 	}
 
+	public Set<Categoria> resolverCategoriasDoUsuario(List<String> nomes, Authentication authentication)
+			throws RegraNegocioException {
 
-    public Set<Categoria> resolverCategoriasDoUsuario(List<String> nomes, Authentication authentication)
-            throws RegraNegocioException {
+		Set<Categoria> resolvidas = new java.util.LinkedHashSet<>();
+		if (nomes == null || nomes.isEmpty()) {
+			return resolvidas;
+		}
 
-        Set<Categoria> resolvidas = new java.util.LinkedHashSet<>();
-        if (nomes == null || nomes.isEmpty()) {
-            return resolvidas;
-        }
+		Usuario usuario = usuarioService.obterIdUsuarioPorEmail(authentication.getName());
 
-        Usuario usuario = usuarioService.obterIdUsuarioPorEmail(authentication.getName());
+		for (String raw : nomes) {
+			String nome = (raw == null) ? null : raw.trim();
+			if (nome == null || nome.isEmpty()) {
+				continue;
+			}
 
-        for (String raw : nomes) {
-            String nome = (raw == null) ? null : raw.trim();
-            if (nome == null || nome.isEmpty()) {
-                continue;
-            }
+			Categoria filtro = new Categoria();
+			filtro.setUsuario(usuario);
+			filtro.setNome(nome);
 
-            Categoria filtro = new Categoria();
-            filtro.setUsuario(usuario);
-            filtro.setNome(nome);
+			List<Categoria> candidatas;
+			try {
+				candidatas = categoriaService.buscarPorNome(filtro);
+			}
+			catch (RegraNegocioException e) {
+				candidatas = java.util.Collections.emptyList();
+			}
 
-            List<Categoria> candidatas;
-            try {
-                candidatas = categoriaService.buscarPorNome(filtro);
-            } catch (RegraNegocioException e) {
-                candidatas = java.util.Collections.emptyList();
-            }
+			Categoria exata = candidatas.stream()
+				.filter(c -> c.getNome() != null && c.getNome().equalsIgnoreCase(nome))
+				.findFirst()
+				.orElse(null);
 
-            Categoria exata = candidatas.stream()
-                    .filter(c -> c.getNome() != null && c.getNome().equalsIgnoreCase(nome))
-                    .findFirst()
-                    .orElse(null);
+			if (exata != null) {
+				resolvidas.add(exata);
+				continue;
+			}
 
-            if (exata != null) {
-                resolvidas.add(exata);
-                continue;
-            }
+			CategoriaDTO dto = new CategoriaDTO();
+			dto.setNome(nome);
+			Categoria criada = categoriaService.salvar(dto, authentication);
+			resolvidas.add(criada);
+		}
 
-            CategoriaDTO dto = new CategoriaDTO();
-            dto.setNome(nome);
-            Categoria criada = categoriaService.salvar(dto, authentication);
-            resolvidas.add(criada);
-        }
+		return resolvidas;
+	}
 
-        return resolvidas;
-    }
 }

@@ -37,11 +37,11 @@ class UsuarioRepositoryTest {
 	}
 
 	private Usuario persistido() {
-		Usuario u = novoUsuario();
-		entityManager.persist(u);
+		Usuario usuario = novoUsuario();
+		entityManager.persist(usuario);
 		entityManager.flush();
 		entityManager.clear();
-		return u;
+		return usuario;
 	}
 
 	@Test

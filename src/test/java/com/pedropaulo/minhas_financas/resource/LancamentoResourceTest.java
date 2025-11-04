@@ -80,7 +80,7 @@ class LancamentoResourceTest {
 			.build();
 	}
 
-	private Usuario usuario() {
+	private Usuario criarUsuario() {
 		Usuario usuario = new Usuario();
 		usuario.setId(1L);
 		usuario.setEmail(EMAIL);
@@ -271,59 +271,59 @@ class LancamentoResourceTest {
 	@Test
 	void buscar_deveRetornarOk_comListaVazia() throws Exception {
 		when(authentication.getName()).thenReturn(EMAIL);
-		Usuario u = usuario();
-		when(usuarioService.obterIdUsuarioPorEmail(EMAIL)).thenReturn(u);
-		when(lancamentoService.buscar(any(Lancamento.class))).thenReturn(Collections.emptyList());
+		Usuario usuario = criarUsuario();
+		when(usuarioService.obterIdUsuarioPorEmail(EMAIL)).thenReturn(usuario);
+		when(lancamentoService.buscar(any(Lancamento.class), anyList())).thenReturn(Collections.emptyList());
 
 		ResponseEntity<List<Lancamento>> response = resource.buscar("Aluguel", 10, 2025, BigDecimal.valueOf(1200),
-				TipoLancamento.DESPESA, StatusLancamento.PENDENTE, authentication);
+				TipoLancamento.DESPESA, StatusLancamento.PENDENTE, Collections.emptyList(), authentication);
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(response.getBody()).isNotNull().isEmpty();
 		verify(usuarioService).obterIdUsuarioPorEmail(EMAIL);
-		verify(lancamentoService).buscar(any(Lancamento.class));
+		verify(lancamentoService).buscar(any(Lancamento.class), anyList());
 		verifyNoMoreInteractions(lancamentoService, usuarioService);
 	}
 
 	@Test
 	void buscar_deveRetornarOk_comListaPreenchida() throws Exception {
 		when(authentication.getName()).thenReturn(EMAIL);
-		Usuario u = usuario();
-		when(usuarioService.obterIdUsuarioPorEmail(EMAIL)).thenReturn(u);
+		Usuario usuario = criarUsuario();
+		when(usuarioService.obterIdUsuarioPorEmail(EMAIL)).thenReturn(usuario);
 
-		Lancamento l = new Lancamento();
-		l.setId(10L);
-		l.setUsuario(u);
-		l.setDescricao("Aluguel");
-		l.setMes(10);
-		l.setAno(2025);
-		l.setValor(BigDecimal.valueOf(1200));
-		l.setTipoLancamento(TipoLancamento.DESPESA);
-		l.setStatusLancamento(StatusLancamento.PENDENTE);
+		Lancamento lancamento = new Lancamento();
+		lancamento.setId(10L);
+		lancamento.setUsuario(usuario);
+		lancamento.setDescricao("Aluguel");
+		lancamento.setMes(10);
+		lancamento.setAno(2025);
+		lancamento.setValor(BigDecimal.valueOf(1200));
+		lancamento.setTipoLancamento(TipoLancamento.DESPESA);
+		lancamento.setStatusLancamento(StatusLancamento.PENDENTE);
 
-		when(lancamentoService.buscar(any(Lancamento.class))).thenReturn(List.of(l));
+		when(lancamentoService.buscar(any(Lancamento.class), anyList())).thenReturn(List.of(lancamento));
 
 		ResponseEntity<List<Lancamento>> response = resource.buscar("Aluguel", 10, 2025, BigDecimal.valueOf(1200),
-				TipoLancamento.DESPESA, StatusLancamento.PENDENTE, authentication);
+				TipoLancamento.DESPESA, StatusLancamento.PENDENTE, Collections.emptyList(), authentication);
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-		Assertions.assertThat(response.getBody()).isNotNull().hasSize(1).contains(l);
+		Assertions.assertThat(response.getBody()).isNotNull().hasSize(1).contains(lancamento);
 		verify(usuarioService).obterIdUsuarioPorEmail(EMAIL);
-		verify(lancamentoService).buscar(any(Lancamento.class));
+		verify(lancamentoService).buscar(any(Lancamento.class), anyList());
 		verifyNoMoreInteractions(lancamentoService, usuarioService);
 	}
 
 	@Test
 	void obterLancamento_deveRetornarOk_quandoExiste() throws Exception {
-		Lancamento l = novoLancamento();
-		l.setId(77L);
+		Lancamento lancamento = novoLancamento();
+		lancamento.setId(77L);
 
-		when(lancamentoService.obterPorIdLancamento(eq(77L), eq(authentication))).thenReturn(l);
+		when(lancamentoService.obterPorIdLancamento(eq(77L), eq(authentication))).thenReturn(lancamento);
 
 		ResponseEntity<?> response = resource.obterLancamento(77L, authentication);
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-		assertThat(response.getBody()).isEqualTo(l);
+		assertThat(response.getBody()).isEqualTo(lancamento);
 		verify(lancamentoService).obterPorIdLancamento(77L, authentication);
 		verifyNoMoreInteractions(lancamentoService, usuarioService);
 	}
