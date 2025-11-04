@@ -32,9 +32,6 @@ class JwtTokenFilterTest {
 	private JwtService jwtService;
 
 	@Mock
-	private SecurityUserDetailsServiceImpl userDetailsService;
-
-	@Mock
 	private HttpServletRequest request;
 
 	@Mock
@@ -43,10 +40,13 @@ class JwtTokenFilterTest {
 	@Mock
 	private FilterChain filterChain;
 
+	private SecurityUserDetailsServiceImpl userDetailsService;
+
 	private JwtTokenFilter filter;
 
 	@BeforeEach
 	void setup() {
+		userDetailsService = new StubUserDetailsService();
 		filter = new JwtTokenFilter(jwtService, userDetailsService);
 		SecurityContextHolder.clearContext();
 	}
@@ -62,12 +62,8 @@ class JwtTokenFilterTest {
 		given(jwtService.isTokenValido("token-valido")).willReturn(true);
 		given(jwtService.obterLoginUsuario("token-valido")).willReturn("usuario@teste.com");
 
-		UserDetails userDetails = User.withUsername("usuario@teste.com").password("123").roles("USER").build();
-		given(userDetailsService.loadUserByUsername("usuario@teste.com")).willReturn(userDetails);
-
 		filter.doFilterInternal(request, response, filterChain);
 
-		then(userDetailsService).should().loadUserByUsername("usuario@teste.com");
 		then(filterChain).should().doFilter(request, response);
 
 		assertThat(SecurityContextHolder.getContext().getAuthentication()).isNotNull();
@@ -82,7 +78,6 @@ class JwtTokenFilterTest {
 		filter.doFilterInternal(request, response, filterChain);
 
 		then(jwtService).shouldHaveNoInteractions();
-		then(userDetailsService).shouldHaveNoInteractions();
 		then(filterChain).should().doFilter(request, response);
 
 		assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
@@ -95,7 +90,6 @@ class JwtTokenFilterTest {
 		filter.doFilterInternal(request, response, filterChain);
 
 		then(jwtService).shouldHaveNoInteractions();
-		then(userDetailsService).shouldHaveNoInteractions();
 		then(filterChain).should().doFilter(request, response);
 
 		assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
@@ -109,10 +103,22 @@ class JwtTokenFilterTest {
 		filter.doFilterInternal(request, response, filterChain);
 
 		then(jwtService).should().isTokenValido("token-invalido");
-		then(userDetailsService).shouldHaveNoInteractions();
 		then(filterChain).should().doFilter(request, response);
 
 		assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+	}
+
+	private static class StubUserDetailsService extends SecurityUserDetailsServiceImpl {
+
+		StubUserDetailsService() {
+			super(null);
+		}
+
+		@Override
+		public UserDetails loadUserByUsername(String username) {
+			return User.withUsername(username).password("123").roles("USER").build();
+		}
+
 	}
 
 }

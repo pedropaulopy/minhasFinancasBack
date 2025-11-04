@@ -94,21 +94,18 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 				}
 
 				if (bufferLote.size() >= tamanhoDoLote) {
-					persistirEmLote(bufferLote, catsPorLanc, resumo); // OPT: resolve
-																		// categorias em
-																		// lote
+					persistirEmLote(bufferLote, catsPorLanc, resumo);
 					bufferLote.clear();
 					catsPorLanc.clear();
 				}
 			}
 
 			if (!bufferLote.isEmpty()) {
-				persistirEmLote(bufferLote, catsPorLanc, resumo); // OPT: idem para o
-																	// último lote
+				persistirEmLote(bufferLote, catsPorLanc, resumo);
 			}
 		}
 		catch (IOException e) {
-			throw new RuntimeException(e);
+            throw new RegraNegocioException("Erro ao processar o arquivo CSV: " + e.getMessage());
 		}
 
 		return resumo;
@@ -195,66 +192,54 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 		return new BigDecimal(clean);
 	}
 
-	private void persistirEmLote(List<Lancamento> lote, Map<Lancamento, Set<String>> catsPorLanc,
-			ImportResultadoDTO resumo) {
-		if (lote == null || lote.isEmpty()) {
-			return;
-		}
+    private void persistirEmLote(List<Lancamento> lote,
+                                 Map<Lancamento, Set<String>> catsPorLanc,
+                                 ImportResultadoDTO resumo) {
+        if (lote == null || lote.isEmpty()) return;
 
-		txTemplate.execute(status -> {
-			// Anexa referência "managed" de Usuário a cada lançamento (evita SELECTs
-			// extras)
-			lote.forEach(l -> l.setUsuario(em.getReference(Usuario.class, l.getUsuario().getId())));
+        txTemplate.execute(status -> {
+            lote.forEach(l -> l.setUsuario(em.getReference(Usuario.class, l.getUsuario().getId())));
 
-			final Long uid = lote.get(0).getUsuario().getId();
+            final Long uid = lote.get(0).getUsuario().getId();
 
-			// Coleta todos os nomes de categorias (limpos) presentes no lote
-			final Set<String> todosNomes = catsPorLanc.values()
-				.stream()
-				.filter(Objects::nonNull)
-				.flatMap(Set::stream)
-				.filter(Objects::nonNull)
-				.map(String::trim)
-				.filter(s -> !s.isEmpty())
-				.collect(Collectors.toCollection(LinkedHashSet::new));
+            final Set<String> todosNomes = catsPorLanc.values().stream()
+                    .filter(Objects::nonNull)
+                    .flatMap(Set::stream)
+                    .filter(Objects::nonNull)
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
 
-			// Carrega/cria categorias apenas se houver nomes
-			final Map<String, Categoria> mapaPorNome = todosNomes.isEmpty() ? Collections.emptyMap()
-					: carregarOuCriarCategorias(uid, todosNomes);
+            final Map<String, Categoria> mapaPorNome = todosNomes.isEmpty()
+                    ? Collections.emptyMap()
+                    : carregarOuCriarCategorias(uid, todosNomes);
 
-			// Aplica categorias aos lançamentos
-			if (!mapaPorNome.isEmpty()) {
-				for (Lancamento l : lote) {
-					Set<String> nomes = catsPorLanc.getOrDefault(l, Collections.emptySet());
-					if (!nomes.isEmpty()) {
-						Set<Categoria> categorias = nomes.stream()
-							.map(mapaPorNome::get)
-							.filter(Objects::nonNull)
-							.collect(Collectors.toCollection(LinkedHashSet::new));
-						if (!categorias.isEmpty()) {
-							l.setCategorias(categorias);
-						}
-					}
-				}
-			}
+            if (!mapaPorNome.isEmpty()) {
+                for (Lancamento l : lote) {
+                    Set<String> nomes = catsPorLanc.get(l);
+                    if (nomes == null || nomes.isEmpty()) continue;
 
-			// Persistência em lote
-			lancamentoService.salvarTodos(lote);
-			em.flush();
-			em.clear();
-			return null;
-		});
+                    Set<Categoria> categorias = nomes.stream()
+                            .map(mapaPorNome::get)
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toCollection(LinkedHashSet::new));
 
-		// Atualiza resumo
-		for (int i = 0; i < lote.size(); i++) {
-			resumo.incSucesso();
-		}
-	}
+                    if (!categorias.isEmpty()) {
+                        l.setCategorias(categorias);
+                    }
+                }
+            }
 
-	/**
-	 * Carrega as categorias existentes por nome para um usuário e cria as ausentes,
-	 * devolvendo um mapa nome->Categoria.
-	 */
+            lancamentoService.salvarTodos(lote);
+            em.flush();
+            em.clear();
+            return null;
+        });
+
+        for (int i = 0; i < lote.size(); i++) resumo.incSucesso();
+    }
+
+
 	private Map<String, Categoria> carregarOuCriarCategorias(Long uid, Set<String> nomes) {
 		Map<String, Categoria> mapa = new HashMap<>();
 
@@ -272,7 +257,7 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 				Categoria nova = new Categoria();
 				nova.setUsuario(usuarioRef);
 				nova.setNome(nome);
-				em.persist(nova); // insert batched
+				em.persist(nova);
 				mapa.put(nome, nova);
 			}
 		}

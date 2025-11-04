@@ -22,6 +22,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.Authentication;
 
 import java.math.BigDecimal;
@@ -48,16 +49,16 @@ class LancamentoResourceTest {
 	private UsuarioService usuarioService;
 
 	@Mock
-	private Authentication authentication;
-
-	@Mock
 	private LancamentoCsvImportService importService;
+
+	private Authentication authentication;
 
 	private LancamentoResource resource;
 
 	@BeforeEach
 	void setUp() {
 		resource = new LancamentoResource(lancamentoService, usuarioService, importService);
+		authentication = new TestingAuthenticationToken(EMAIL, null);
 	}
 
 	private LancamentoDTO dtoValido() {
@@ -274,7 +275,6 @@ class LancamentoResourceTest {
 
 	@Test
 	void buscar_deveRetornarOk_comListaVazia() throws Exception {
-		when(authentication.getName()).thenReturn(EMAIL);
 		Usuario u = usuario();
 		when(usuarioService.obterIdUsuarioPorEmail(EMAIL)).thenReturn(u);
 		when(lancamentoService.buscar(any(Lancamento.class))).thenReturn(Collections.emptyList());
@@ -291,7 +291,6 @@ class LancamentoResourceTest {
 
 	@Test
 	void buscar_deveRetornarOk_comListaPreenchida() throws Exception {
-		when(authentication.getName()).thenReturn(EMAIL);
 		Usuario u = usuario();
 		when(usuarioService.obterIdUsuarioPorEmail(EMAIL)).thenReturn(u);
 
