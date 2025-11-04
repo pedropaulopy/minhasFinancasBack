@@ -31,16 +31,7 @@ public class CategoriaServiceImpl implements CategoriaService {
 
 	@Override
 	public List<Categoria> buscarPorNome(Categoria categoriaFiltro) throws RegraNegocioException {
-		String nome = categoriaFiltro.getNome();
-		if (nome != null) {
-			nome = nome.trim();
-			if (nome.isEmpty()) {
-				categoriaFiltro.setNome(null);
-			}
-			else {
-				categoriaFiltro.setNome(nome);
-			}
-		}
+		this.mapearFiltroCategoria(categoriaFiltro);
 		Example example = Example.of(categoriaFiltro,
 				ExampleMatcher.matching().withIgnoreCase().withStringMatcher(ExampleMatcher.StringMatcher.CONTAINING));
 		List<Categoria> listaCategorias = repository.findAll(example);
@@ -123,5 +114,17 @@ public class CategoriaServiceImpl implements CategoriaService {
 
 		repository.delete(categoria);
 	}
+
+    private void mapearFiltroCategoria(Categoria categoriaFiltro) {
+        if (categoriaFiltro == null || categoriaFiltro.getNome() == null) {
+            return;
+        }
+        String nome = categoriaFiltro.getNome().trim();
+        if (nome.isEmpty()) {
+            categoriaFiltro.setNome(null);
+            return;
+        }
+        categoriaFiltro.setNome(nome);
+    }
 
 }
