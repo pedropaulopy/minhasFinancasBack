@@ -105,7 +105,7 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 			}
 		}
 		catch (IOException e) {
-            throw new RegraNegocioException("Erro ao processar o arquivo CSV: " + e.getMessage());
+			throw new RegraNegocioException("Erro ao processar o arquivo CSV: " + e.getMessage());
 		}
 
 		return resumo;
@@ -192,53 +192,54 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 		return new BigDecimal(clean);
 	}
 
-    private void persistirEmLote(List<Lancamento> lote,
-                                 Map<Lancamento, Set<String>> catsPorLanc,
-                                 ImportResultadoDTO resumo) {
-        if (lote == null || lote.isEmpty()) return;
+	private void persistirEmLote(List<Lancamento> lote, Map<Lancamento, Set<String>> catsPorLanc,
+			ImportResultadoDTO resumo) {
+		if (lote == null || lote.isEmpty())
+			return;
 
-        txTemplate.execute(status -> {
-            lote.forEach(l -> l.setUsuario(em.getReference(Usuario.class, l.getUsuario().getId())));
+		txTemplate.execute(status -> {
+			lote.forEach(l -> l.setUsuario(em.getReference(Usuario.class, l.getUsuario().getId())));
 
-            final Long uid = lote.get(0).getUsuario().getId();
+			final Long uid = lote.get(0).getUsuario().getId();
 
-            final Set<String> todosNomes = catsPorLanc.values().stream()
-                    .filter(Objects::nonNull)
-                    .flatMap(Set::stream)
-                    .filter(Objects::nonNull)
-                    .map(String::trim)
-                    .filter(s -> !s.isEmpty())
-                    .collect(Collectors.toCollection(LinkedHashSet::new));
+			final Set<String> todosNomes = catsPorLanc.values()
+				.stream()
+				.filter(Objects::nonNull)
+				.flatMap(Set::stream)
+				.filter(Objects::nonNull)
+				.map(String::trim)
+				.filter(s -> !s.isEmpty())
+				.collect(Collectors.toCollection(LinkedHashSet::new));
 
-            final Map<String, Categoria> mapaPorNome = todosNomes.isEmpty()
-                    ? Collections.emptyMap()
-                    : carregarOuCriarCategorias(uid, todosNomes);
+			final Map<String, Categoria> mapaPorNome = todosNomes.isEmpty() ? Collections.emptyMap()
+					: carregarOuCriarCategorias(uid, todosNomes);
 
-            if (!mapaPorNome.isEmpty()) {
-                for (Lancamento l : lote) {
-                    Set<String> nomes = catsPorLanc.get(l);
-                    if (nomes == null || nomes.isEmpty()) continue;
+			if (!mapaPorNome.isEmpty()) {
+				for (Lancamento l : lote) {
+					Set<String> nomes = catsPorLanc.get(l);
+					if (nomes == null || nomes.isEmpty())
+						continue;
 
-                    Set<Categoria> categorias = nomes.stream()
-                            .map(mapaPorNome::get)
-                            .filter(Objects::nonNull)
-                            .collect(Collectors.toCollection(LinkedHashSet::new));
+					Set<Categoria> categorias = nomes.stream()
+						.map(mapaPorNome::get)
+						.filter(Objects::nonNull)
+						.collect(Collectors.toCollection(LinkedHashSet::new));
 
-                    if (!categorias.isEmpty()) {
-                        l.setCategorias(categorias);
-                    }
-                }
-            }
+					if (!categorias.isEmpty()) {
+						l.setCategorias(categorias);
+					}
+				}
+			}
 
-            lancamentoService.salvarTodos(lote);
-            em.flush();
-            em.clear();
-            return null;
-        });
+			lancamentoService.salvarTodos(lote);
+			em.flush();
+			em.clear();
+			return null;
+		});
 
-        for (int i = 0; i < lote.size(); i++) resumo.incSucesso();
-    }
-
+		for (int i = 0; i < lote.size(); i++)
+			resumo.incSucesso();
+	}
 
 	private Map<String, Categoria> carregarOuCriarCategorias(Long uid, Set<String> nomes) {
 		Map<String, Categoria> mapa = new HashMap<>();
