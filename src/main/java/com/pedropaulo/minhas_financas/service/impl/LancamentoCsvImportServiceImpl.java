@@ -61,57 +61,49 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 		this.txTemplate = txTemplate;
 	}
 
-	@Override
-	public ImportResultadoDTO importar(InputStream in, int tamanhoDoLote, Long usuarioAutenticadoId)
-			throws RegraNegocioException {
-		ImportResultadoDTO resumo = new ImportResultadoDTO();
+    @Override
+    public ImportResultadoDTO importar(InputStream in, int tamanhoDoLote, Long usuarioAutenticadoId)
+            throws RegraNegocioException {
+        ImportResultadoDTO resumo = new ImportResultadoDTO();
 
-		try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
-			CSVParser parser = CSVFormat.DEFAULT.withFirstRecordAsHeader()
-				.withTrim()
-				.withIgnoreEmptyLines()
-				.withAllowMissingColumnNames()
-				.parse(reader);
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+            CSVParser parser = CSVFormat.DEFAULT.withFirstRecordAsHeader()
+                    .withTrim()
+                    .withIgnoreEmptyLines()
+                    .withAllowMissingColumnNames()
+                    .parse(reader);
 
-			validarCabecalho(parser.getHeaderMap().keySet());
+            validarCabecalho(parser.getHeaderMap().keySet());
 
-			Map<Lancamento, Set<String>> catsPorLanc = new IdentityHashMap<>();
-			List<Lancamento> bufferLote = new ArrayList<>(tamanhoDoLote);
-			long linhaAbsoluta = 1;
+            Map<Lancamento, Set<String>> catsPorLanc = new IdentityHashMap<>();
+            List<Lancamento> bufferLote = new ArrayList<>(tamanhoDoLote);
+            long linhaAbsoluta;
 
-			for (CSVRecord rec : parser) {
-				linhaAbsoluta = rec.getRecordNumber() + 1;
-				resumo.incLida();
+            for (CSVRecord rec : parser) {
+                linhaAbsoluta = rec.getRecordNumber() + 1;
+                resumo.incLida();
 
-				try {
-					Lancamento l = mapearSemEntidades(rec, usuarioAutenticadoId);
-					Set<String> nomesCats = extrairNomesCategorias(rec.get(H_CATEGORIA));
-					catsPorLanc.put(l, nomesCats);
-					bufferLote.add(l);
-				}
-				catch (Exception e) {
-					resumo.addFalha(linhaAbsoluta, e.getMessage(), String.join(",", rec));
-				}
+                processarLinhaCsv(rec, usuarioAutenticadoId, catsPorLanc, bufferLote, resumo, linhaAbsoluta);
 
-				if (bufferLote.size() >= tamanhoDoLote) {
-					persistirEmLote(bufferLote, catsPorLanc, resumo);
-					bufferLote.clear();
-					catsPorLanc.clear();
-				}
-			}
+                if (bufferLote.size() >= tamanhoDoLote) {
+                    persistirEmLote(bufferLote, catsPorLanc, resumo);
+                    bufferLote.clear();
+                    catsPorLanc.clear();
+                }
+            }
 
-			if (!bufferLote.isEmpty()) {
-				persistirEmLote(bufferLote, catsPorLanc, resumo);
-			}
-		}
-		catch (IOException e) {
-			throw new RegraNegocioException("Erro ao processar o arquivo CSV: " + e.getMessage());
-		}
+            if (!bufferLote.isEmpty()) {
+                persistirEmLote(bufferLote, catsPorLanc, resumo);
+            }
+        } catch (IOException e) {
+            throw new RegraNegocioException("Erro ao processar o arquivo CSV: " + e.getMessage());
+        }
 
-		return resumo;
-	}
+        return resumo;
+    }
 
-	private void validarCabecalho(Set<String> header) {
+
+    private void validarCabecalho(Set<String> header) {
 		List<String> obrig = List.of(H_DESC, H_VALOR_LANC, H_TIPO, H_STATUS, H_USUARIO, H_DATA_LANC, H_CATEGORIA);
 		List<String> faltando = obrig.stream().filter(h -> !header.contains(h)).collect(Collectors.toList());
 		if (!faltando.isEmpty()) {
@@ -285,4 +277,20 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 		return mapa;
 	}
 
+
+    private void processarLinhaCsv(CSVRecord rec,
+                                   Long usuarioAutenticadoId,
+                                   Map<Lancamento, Set<String>> catsPorLanc,
+                                   List<Lancamento> bufferLote,
+                                   ImportResultadoDTO resumo,
+                                   long linhaAbsoluta) {
+        try {
+            Lancamento l = mapearSemEntidades(rec, usuarioAutenticadoId);
+            Set<String> nomesCats = extrairNomesCategorias(rec.get(H_CATEGORIA));
+            catsPorLanc.put(l, nomesCats);
+            bufferLote.add(l);
+        } catch (Exception e) {
+            resumo.addFalha(linhaAbsoluta, e.getMessage(), String.join(",", rec));
+        }
+    }
 }
