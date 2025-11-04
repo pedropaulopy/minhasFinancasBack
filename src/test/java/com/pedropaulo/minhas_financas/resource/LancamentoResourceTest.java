@@ -1,6 +1,7 @@
 package com.pedropaulo.minhas_financas.resource;
 
 import com.pedropaulo.minhas_financas.api.dto.LancamentoDTO;
+import com.pedropaulo.minhas_financas.service.LancamentoCsvImportService;
 import com.pedropaulo.minhas_financas.api.dto.LancamentoStatusDTO;
 import com.pedropaulo.minhas_financas.api.resource.LancamentoResource;
 import com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException;
@@ -49,12 +50,15 @@ class LancamentoResourceTest {
 	@Mock
 	private Authentication authentication;
 
+    @Mock
+    private LancamentoCsvImportService importService;
+
 	private LancamentoResource resource;
 
-	@BeforeEach
-	void setUp() {
-		resource = new LancamentoResource(lancamentoService, usuarioService);
-	}
+    @BeforeEach
+    void setUp() {
+        resource = new LancamentoResource(lancamentoService, usuarioService, importService);
+    }
 
 	private LancamentoDTO dtoValido() {
 		LancamentoDTO dto = new LancamentoDTO();
