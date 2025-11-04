@@ -192,56 +192,77 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 		return new BigDecimal(clean);
 	}
 
-	private void persistirEmLote(List<Lancamento> lote, Map<Lancamento, Set<String>> catsPorLanc,
-			ImportResultadoDTO resumo) {
-		if (lote == null || lote.isEmpty())
-			return;
+    private void persistirEmLote(List<Lancamento> lote,
+                                 Map<Lancamento, Set<String>> catsPorLanc,
+                                 ImportResultadoDTO resumo) {
+        if (lote == null || lote.isEmpty()) return;
 
-		txTemplate.execute(status -> {
-			lote.forEach(l -> l.setUsuario(em.getReference(Usuario.class, l.getUsuario().getId())));
+        txTemplate.execute(status -> {
+            anexarUsuariosGerenciados(lote);
+            Long uid = obterUsuarioId(lote);
 
-			final Long uid = lote.get(0).getUsuario().getId();
+            Map<String, Categoria> mapaPorNome = resolverCategorias(uid, catsPorLanc);
+            aplicarCategorias(lote, catsPorLanc, mapaPorNome);
 
-			final Set<String> todosNomes = catsPorLanc.values()
-				.stream()
-				.filter(Objects::nonNull)
-				.flatMap(Set::stream)
-				.filter(Objects::nonNull)
-				.map(String::trim)
-				.filter(s -> !s.isEmpty())
-				.collect(Collectors.toCollection(LinkedHashSet::new));
+            persistirLote(lote);
+            return null;
+        });
 
-			final Map<String, Categoria> mapaPorNome = todosNomes.isEmpty() ? Collections.emptyMap()
-					: carregarOuCriarCategorias(uid, todosNomes);
+        atualizarResumo(resumo, lote.size());
+    }
 
-			if (!mapaPorNome.isEmpty()) {
-				for (Lancamento l : lote) {
-					Set<String> nomes = catsPorLanc.get(l);
-					if (nomes == null || nomes.isEmpty())
-						continue;
+    private void anexarUsuariosGerenciados(List<Lancamento> lote) {
+        lote.forEach(l -> l.setUsuario(em.getReference(Usuario.class, l.getUsuario().getId())));
+    }
 
-					Set<Categoria> categorias = nomes.stream()
-						.map(mapaPorNome::get)
-						.filter(Objects::nonNull)
-						.collect(Collectors.toCollection(LinkedHashSet::new));
+    private Long obterUsuarioId(List<Lancamento> lote) {
+        return lote.get(0).getUsuario().getId();
+    }
 
-					if (!categorias.isEmpty()) {
-						l.setCategorias(categorias);
-					}
-				}
-			}
+    private Map<String, Categoria> resolverCategorias(Long uid,
+                                                      Map<Lancamento, Set<String>> catsPorLanc) {
+        Set<String> nomes = catsPorLanc.values().stream()
+                .filter(Objects::nonNull)
+                .flatMap(Set::stream)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
 
-			lancamentoService.salvarTodos(lote);
-			em.flush();
-			em.clear();
-			return null;
-		});
+        return nomes.isEmpty() ? Collections.emptyMap() : carregarOuCriarCategorias(uid, nomes);
+    }
 
-		for (int i = 0; i < lote.size(); i++)
-			resumo.incSucesso();
-	}
+    private void aplicarCategorias(List<Lancamento> lote,
+                                   Map<Lancamento, Set<String>> catsPorLanc,
+                                   Map<String, Categoria> mapaPorNome) {
+        if (mapaPorNome.isEmpty()) return;
 
-	private Map<String, Categoria> carregarOuCriarCategorias(Long uid, Set<String> nomes) {
+        lote.forEach(l -> {
+            Set<Categoria> categorias = catsPorLanc.getOrDefault(l, Collections.emptySet())
+                    .stream()
+                    .map(mapaPorNome::get)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+            if (!categorias.isEmpty()) {
+                l.setCategorias(categorias);
+            }
+        });
+    }
+
+    private void persistirLote(List<Lancamento> lote) {
+        lancamentoService.salvarTodos(lote);
+        em.flush();
+        em.clear();
+    }
+
+    private void atualizarResumo(ImportResultadoDTO resumo, int quantidade) {
+        for (int i = 0; i < quantidade; i++) {
+            resumo.incSucesso();
+        }
+    }
+
+
+    private Map<String, Categoria> carregarOuCriarCategorias(Long uid, Set<String> nomes) {
 		Map<String, Categoria> mapa = new HashMap<>();
 
 		List<Categoria> existentes = em
