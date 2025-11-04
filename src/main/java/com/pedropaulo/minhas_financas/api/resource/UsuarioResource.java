@@ -52,7 +52,7 @@ public class UsuarioResource {
 	}
 
 	// id que vem da autenticacao eh usado no lugar da url
-	@GetMapping("/saldo")
+	@GetMapping
 	public ResponseEntity obterSaldo(Authentication authtentication) {
 
 		try {

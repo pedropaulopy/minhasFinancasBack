@@ -1,92 +1,102 @@
 package com.pedropaulo.minhas_financas.service.impl;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
-import static org.junit.jupiter.api.Assertions.*;
-
 import com.pedropaulo.minhas_financas.model.entity.Usuario;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
+import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
+
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
-import org.springframework.test.util.ReflectionTestUtils;
+import static org.assertj.core.api.Assertions.*;
 
-@ExtendWith(SpringExtension.class)
-@ActiveProfiles("test")
-public class JwtServiceImplTest {
+class JwtServiceImplTest {
+
+	private static final String EMAIL = "pedro@exemplo.com";
+
+	private static final String NOME = "Pedro";
+
+	private static final long ID = 42L;
+
+	private static final String EXP_5_MIN = "5";
+
+	private static final String EXP_10_MIN = "10";
+
+	private static final String EXP_PAST_1_MIN = "-1";
+
+	private static final String EXP_PAST_2_MIN = "-2";
+
+	private static final DateTimeFormatter HHMM = DateTimeFormatter.ofPattern("HH:mm");
 
 	@Test
-	public void deveGerarTokenComClaims() {
-		JwtServiceImpl svc = buildService("5", strongBase64Key());
+	void deveGerarTokenComClaims() {
+		JwtServiceImpl svc = buildService(EXP_5_MIN, strongBase64Key());
 		String token = svc.gerarToken(usuario());
 		Claims claims = svc.obterClaims(token);
 
-		assertEquals("pedro@exemplo.com", claims.getSubject());
-		assertEquals("Pedro", claims.get("nome"));
-		assertEquals(42, ((Number) claims.get("idUsuario")).intValue());
-		assertThat((String) claims.get("horaExpiracao"), matchesPattern("\\d{2}:\\d{2}"));
-		assertThat(claims.getExpiration(), notNullValue());
+		assertThat(claims.getSubject()).isEqualTo(EMAIL);
+		assertThat(claims.get("nome")).isEqualTo(NOME);
+		assertThat(((Number) claims.get("idUsuario")).longValue()).isEqualTo(ID);
+		assertThat((String) claims.get("horaExpiracao")).matches("\\d{2}:\\d{2}");
+		assertThat(claims.getExpiration()).isNotNull();
 	}
 
 	@Test
-	public void deveValidarTokenValido() {
-		JwtServiceImpl svc = buildService("10", strongBase64Key());
+	void deveValidarTokenValido() {
+		JwtServiceImpl svc = buildService(EXP_10_MIN, strongBase64Key());
 		String token = svc.gerarToken(usuario());
-		assertTrue(svc.isTokenValido(token));
+		assertThat(svc.isTokenValido(token)).isTrue();
 	}
 
 	@Test
-	public void deveRetornarFalseParaTokenExpirado() {
-		JwtServiceImpl svc = buildService("-1", strongBase64Key());
+	void deveRetornarFalseParaTokenExpirado() {
+		JwtServiceImpl svc = buildService(EXP_PAST_1_MIN, strongBase64Key());
 		String token = svc.gerarToken(usuario());
-		assertFalse(svc.isTokenValido(token));
+		assertThat(svc.isTokenValido(token)).isFalse();
 	}
 
 	@Test
-	public void deveObterLoginUsuario() {
-		JwtServiceImpl svc = buildService("3", strongBase64Key());
+	void deveObterLoginUsuario() {
+		JwtServiceImpl svc = buildService(EXP_5_MIN, strongBase64Key());
 		String token = svc.gerarToken(usuario());
-		assertEquals("pedro@exemplo.com", svc.obterLoginUsuario(token));
+		assertThat(svc.obterLoginUsuario(token)).isEqualTo(EMAIL);
 	}
 
 	@Test
-	public void deveRetornarFalseParaTokenComAssinaturaInvalida() {
-		JwtServiceImpl legit = buildService("5", strongBase64Key());
+	void deveRetornarFalseParaTokenComAssinaturaInvalida() {
+		JwtServiceImpl legit = buildService(EXP_5_MIN, strongBase64Key());
 		String tokenAssinado = legit.gerarToken(usuario());
 
 		byte[] otherKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".getBytes(StandardCharsets.UTF_8);
 		String otherBase64 = Base64.getEncoder().encodeToString(otherKey);
-		JwtServiceImpl verificadorComOutraChave = buildService("5", otherBase64);
+		JwtServiceImpl verificadorOutraChave = buildService(EXP_5_MIN, otherBase64);
 
-		assertFalse(verificadorComOutraChave.isTokenValido(tokenAssinado));
+		assertThat(verificadorOutraChave.isTokenValido(tokenAssinado)).isFalse();
 	}
 
 	@Test
-	public void deveLancarExpiredAoObterClaimsDeTokenExpirado() {
-		JwtServiceImpl svc = buildService("-2", strongBase64Key());
+	void deveLancarExpiredAoObterClaimsDeTokenExpirado() {
+		JwtServiceImpl svc = buildService(EXP_PAST_2_MIN, strongBase64Key());
 		String token = svc.gerarToken(usuario());
-		Assertions.assertThrows(ExpiredJwtException.class, () -> {
-			svc.obterClaims(token);
-		});
+		assertThatThrownBy(() -> svc.obterClaims(token)).isInstanceOf(ExpiredJwtException.class);
 	}
 
 	@Test
-	public void horaExpiracaoNoFormatoHHmm() {
+	void horaExpiracaoNoFormatoHHmm() {
 		JwtServiceImpl svc = buildService("1", strongBase64Key());
 		String token = svc.gerarToken(usuario());
 		Claims claims = svc.obterClaims(token);
 
-		String esperado = LocalDateTime.now().plusMinutes(1).format(DateTimeFormatter.ofPattern("HH:mm"));
-		assertThat((String) claims.get("horaExpiracao"), hasLength(5));
-		assertThat(((String) claims.get("horaExpiracao")).charAt(2), is(':'));
+		String hora = (String) claims.get("horaExpiracao");
+		assertThat(hora).hasSize(5);
+		assertThat(hora.charAt(2)).isEqualTo(':');
+		assertThat(hora).matches("\\d{2}:\\d{2}");
+		assertThatCode(() -> LocalDateTime.now()
+			.withHour(Integer.parseInt(hora.substring(0, 2)))
+			.withMinute(Integer.parseInt(hora.substring(3, 5)))).doesNotThrowAnyException();
 	}
 
 	private JwtServiceImpl buildService(String expiracaoMinutos, String base64Key) {
@@ -102,7 +112,7 @@ public class JwtServiceImplTest {
 	}
 
 	private Usuario usuario() {
-		return Usuario.builder().id(42L).nome("Pedro").email("pedro@exemplo.com").build();
+		return Usuario.builder().id(ID).nome(NOME).email(EMAIL).build();
 	}
 
 }

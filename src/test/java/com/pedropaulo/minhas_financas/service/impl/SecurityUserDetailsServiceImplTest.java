@@ -1,64 +1,59 @@
 package com.pedropaulo.minhas_financas.service.impl;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
-
 import com.pedropaulo.minhas_financas.model.entity.Usuario;
 import com.pedropaulo.minhas_financas.model.repository.UsuarioRepository;
-import java.util.Optional;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-@ExtendWith(SpringExtension.class)
-public class SecurityUserDetailsServiceImplTest {
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
+
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.STRICT_STUBS)
+class SecurityUserDetailsServiceImplTest {
+
+	private static final String EMAIL = "pedro@exemplo.com";
+
+	private static final String SENHA = "senha-secreta";
 
 	@Mock
-	private UsuarioRepository usuarioRepository;
+	UsuarioRepository usuarioRepository;
 
 	@InjectMocks
-	private SecurityUserDetailsServiceImpl service;
+	SecurityUserDetailsServiceImpl service;
 
 	@Test
-	public void deveCarregarUsuarioPorEmail() {
-		Usuario usuario = Usuario.builder()
-			.id(1L)
-			.nome("Pedro")
-			.email("pedro@exemplo.com")
-			.senha("senha-secreta")
-			.build();
+	void deveCarregarUsuarioPorEmail() {
+		Usuario usuario = Usuario.builder().id(1L).nome("Pedro").email(EMAIL).senha(SENHA).build();
 
-		when(usuarioRepository.findByEmail(anyString())).thenReturn(Optional.of(usuario));
+		given(usuarioRepository.findByEmail(anyString())).willReturn(Optional.of(usuario));
 
-		UserDetails details = service.loadUserByUsername("pedro@exemplo.com");
+		UserDetails details = service.loadUserByUsername(EMAIL);
 
-		assertThat(details.getUsername(), is("pedro@exemplo.com"));
-		assertThat(details.getPassword(), is("senha-secreta"));
-		assertThat(details.getAuthorities()
-			.stream()
-			.map(a -> a.getAuthority())
-			.collect(java.util.stream.Collectors.toSet()), hasItem("ROLE_USER"));
+		assertThat(details.getUsername()).isEqualTo(EMAIL);
+		assertThat(details.getPassword()).isEqualTo(SENHA);
+		assertThat(details.getAuthorities().stream().map(a -> a.getAuthority()).collect(Collectors.toSet()))
+			.contains("ROLE_USER");
 	}
 
 	@Test
-	public void deveLancarExcecaoQuandoEmailNaoCadastrado() {
-		when(usuarioRepository.findByEmail(anyString())).thenReturn(Optional.empty());
+	void deveLancarExcecaoQuandoEmailNaoCadastrado() {
+		given(usuarioRepository.findByEmail(anyString())).willReturn(Optional.empty());
 
-		try {
-			service.loadUserByUsername("naoexiste@exemplo.com");
-		}
-		catch (UsernameNotFoundException e) {
-			assertThat(e.getMessage(), is("Email não cadastrado."));
-			return;
-		}
-		throw new AssertionError("Era esperado UsernameNotFoundException");
+		assertThatThrownBy(() -> service.loadUserByUsername("naoexiste@exemplo.com"))
+			.isInstanceOf(UsernameNotFoundException.class)
+			.hasMessage("Email não cadastrado.");
 	}
 
 }

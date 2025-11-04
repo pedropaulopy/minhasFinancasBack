@@ -24,41 +24,93 @@ customizadas.
 ## Estrutura do Projeto
 
 ```
-src/
- └── main/
-     ├── java/
-     │   └── .com.pedropaulo.minhas_financas/
-     │       ├── model/
-     │       │   ├── Lancamento.java
-     │       │   ├── Usuario.java
-     │       │   ├── TipoLancamento.java
-     │       │   └── StatusLancamento.java
-     │       │
-     │       ├── dto/
-     │       │   ├── LancamentoDTO.java
-     │       │   ├── LancamentoStatusDTO.java
-     │       │   └── UsuarioDTO.java
-     │       │
-     │       ├── exception/
-     │       │   ├── RegraNegocioException.java
-     │       │   └── AutenticacaoException.java
-     │       │
-     │       ├── repository/
-     │       │   ├── LancamentoRepository.java
-     │       │   └── UsuarioRepository.java
-     │       │
-     │       ├── service/
-     │       │   ├── LancamentoService.java
-     │       │   ├── LancamentoServiceImpl.java
-     │       │   ├── UsuarioService.java
-     │       │   └── UsuarioServiceImpl.java
-     │       │
-     │       └── resource/
-     │           ├── LancamentoResource.java
-     │           └── UsuarioResource.java
-     │
-     └── resources/
-         └── application.properties
+minhas-financas-backend/
+├── minhasFinancas/
+├── src/
+│   ├── main/
+│   │   ├── java/
+│   │   │   ├── com/
+│   │   │       ├── pedropaulo/
+│   │   │           ├── minhas_financas/
+│   │   │               ├── api/
+│   │   │               │   ├── config/
+│   │   │               │   │   └── SecurityConfig.java
+│   │   │               │   ├── dto/
+│   │   │               │   │   ├── CategoriaDTO.java
+│   │   │               │   │   ├── LancamentoDTO.java
+│   │   │               │   │   ├── LancamentoStatusDTO.java
+│   │   │               │   │   ├── TokenDTO.java
+│   │   │               │   │   └── UsuarioDTO.java
+│   │   │               │   ├── resource/
+│   │   │               │   │   ├── CategoriaResource.java
+│   │   │               │   │   ├── LancamentoResource.java
+│   │   │               │   │   └── UsuarioResource.java
+│   │   │               │   └── JwtTokenFilter.java
+│   │   │               ├── exception/
+│   │   │               │   ├── AutenticacaoException.java
+│   │   │               │   ├── EntidadeNaoProcessavelException.java
+│   │   │               │   └── RegraNegocioException.java
+│   │   │               ├── model/
+│   │   │               │   ├── entity/
+│   │   │               │   │   ├── Categoria.java
+│   │   │               │   │   ├── Lancamento.java
+│   │   │               │   │   └── Usuario.java
+│   │   │               │   ├── enums/
+│   │   │               │   │   ├── StatusLancamento.java
+│   │   │               │   │   └── TipoLancamento.java
+│   │   │               │   ├── repository/
+│   │   │               │       ├── CategoriaRepository.java
+│   │   │               │       ├── LancamentoRepository.java
+│   │   │               │       └── UsuarioRepository.java
+│   │   │               ├── service/
+│   │   │               │   ├── impl/
+│   │   │               │   │   ├── CategoriaServiceImpl.java
+│   │   │               │   │   ├── JwtServiceImpl.java
+│   │   │               │   │   ├── LancamentoServiceImpl.java
+│   │   │               │   │   ├── SecurityUserDetailsServiceImpl.java
+│   │   │               │   │   └── UsuarioServiceImpl.java
+│   │   │               │   ├── CategoriaService.java
+│   │   │               │   ├── JwtService.java
+│   │   │               │   ├── LancamentoService.java
+│   │   │               │   ├── SecurityUserDetailsService.java
+│   │   │               │   └── UsuarioService.java
+│   │   │               └── MinhasFinancasApplication.java
+│   │   ├── resources/
+│   │       └── application.properties
+│   ├── test/
+│       ├── java/
+│           ├── com/
+│           │   ├── pedropaulo/
+│           │       ├── minhas_financas/
+│           │           ├── api/
+│           │           │   ├── dto/
+│           │           │       └── LancamentoDTOFactory.java
+│           │           ├── exception/
+│           │           ├── model/
+│           │           │   ├── repository/
+│           │           │       ├── LancamentoRepositoryTest.java
+│           │           │       └── UsuarioRepositoryTest.java
+│           │           ├── resource/
+│           │           │   ├── CategoriaResourceTest.java
+│           │           │   ├── LancamentoResourceTest.java
+│           │           │   └── UsuarioResourceTest.java
+│           │           ├── service/
+│           │           │   ├── impl/
+│           │           │   │   ├── JwtServiceImplTest.java
+│           │           │   │   └── SecurityUserDetailsServiceImplTest.java
+│           │           │   ├── CategoriaServiceTest.java
+│           │           │   ├── LancamentoServiceTest.java
+│           │           │   └── UsuarioServiceTest.java
+│           │           ├── JwtTokenFilterTest.java
+│           │           └── MinhasFinancasApplicationTest.java
+│           ├── resources/
+│               └── application-test.properties
+├── HELP.md
+├── README.md
+├── mvnw
+├── mvnw.cmd
+└── pom.xml
+
 ```
 
 ---
