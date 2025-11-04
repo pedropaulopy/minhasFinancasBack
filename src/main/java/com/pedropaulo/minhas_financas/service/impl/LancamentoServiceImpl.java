@@ -203,49 +203,49 @@ public class LancamentoServiceImpl implements LancamentoService {
 		}
 	}
 
-	public Set<Categoria> resolverCategoriasDoUsuario(List<String> nomes, Authentication authentication)
-			throws RegraNegocioException {
+    public Set<Categoria> resolverCategoriasDoUsuario(List<String> nomes, Authentication authentication)
+            throws RegraNegocioException {
 
-		Set<Categoria> resolvidas = new java.util.LinkedHashSet<>();
-		if (nomes == null || nomes.isEmpty()) {
-			return resolvidas;
-		}
+        Set<Categoria> resolvidas = new java.util.LinkedHashSet<>();
+        if (nomes == null || nomes.isEmpty()) {
+            return resolvidas;
+        }
 
-		Usuario usuario = usuarioService.obterIdUsuarioPorEmail(authentication.getName());
+        Usuario usuario = usuarioService.obterIdUsuarioPorEmail(authentication.getName());
 
-		for (String raw : nomes) {
-			String nome = (raw == null) ? null : raw.trim();
-			if (nome != null && !nome.isEmpty()) {
-				Categoria filtro = new Categoria();
-				filtro.setUsuario(usuario);
-				filtro.setNome(nome);
+        for (String raw : nomes) {
+            String nome = (raw == null) ? "" : raw.trim();
+            if (nome.isEmpty()) continue; // único continue
 
-				List<Categoria> candidatas;
-				try {
-					candidatas = categoriaService.buscarPorNome(filtro);
-				}
-				catch (RegraNegocioException e) {
-					candidatas = java.util.Collections.emptyList();
-				}
+            Categoria filtro = new Categoria();
+            filtro.setUsuario(usuario);
+            filtro.setNome(nome);
 
-				Categoria exata = candidatas.stream()
-					.filter(c -> c.getNome() != null && c.getNome().equalsIgnoreCase(nome))
-					.findFirst()
-					.orElse(null);
+            List<Categoria> candidatas;
+            try {
+                candidatas = categoriaService.buscarPorNome(filtro);
+            } catch (RegraNegocioException e) {
+                candidatas = java.util.Collections.emptyList();
+            }
 
-				if (exata != null) {
-					resolvidas.add(exata);
-				}
-				else {
-					CategoriaDTO dto = new CategoriaDTO();
-					dto.setNome(nome);
-					Categoria criada = categoriaService.salvar(dto, authentication);
-					resolvidas.add(criada);
-				}
-			}
-		}
+            Categoria resolvida = candidatas.stream()
+                    .filter(c -> c.getNome() != null && c.getNome().equalsIgnoreCase(nome))
+                    .findFirst()
+                    .orElseGet(() -> {
+                        CategoriaDTO dto = new CategoriaDTO();
+                        dto.setNome(nome);
+                        try {
+                            return categoriaService.salvar(dto, authentication);
+                        } catch (RegraNegocioException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
 
-		return resolvidas;
-	}
+            resolvidas.add(resolvida);
+        }
+
+        return resolvidas;
+    }
+
 
 }
