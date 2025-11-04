@@ -133,8 +133,6 @@ public class LancamentoResource {
 		}
 	}
 
-	private static final String UPLOAD_DIR = "Documents/";
-
 	@PostMapping(value = "/upload", consumes = "multipart/form-data")
 	public ResponseEntity<ImportResultadoDTO> importarLancamentos(@RequestParam("file") MultipartFile file,
 			Authentication authentication) {
