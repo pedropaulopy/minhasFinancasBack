@@ -509,93 +509,89 @@ class LancamentoServiceTest {
 			.hasMessage("Lançamentos efetivados ou cancelados não podem ser editados ou deletados.");
 	}
 
-    @Test
-    void resolverCategoriasDoUsuario_quandoListaNulaOuVazia_retornaVazioENaoInterage() throws Exception {
-        Set<Categoria> resolvidas1 = service.resolverCategoriasDoUsuario(null, authentication);
-        Set<Categoria> resolvidas2 = service.resolverCategoriasDoUsuario(Collections.emptyList(), authentication);
+	@Test
+	void resolverCategoriasDoUsuario_quandoListaNulaOuVazia_retornaVazioENaoInterage() throws Exception {
+		Set<Categoria> resolvidas1 = service.resolverCategoriasDoUsuario(null, authentication);
+		Set<Categoria> resolvidas2 = service.resolverCategoriasDoUsuario(Collections.emptyList(), authentication);
 
-        assertThat(resolvidas1).isEmpty();
-        assertThat(resolvidas2).isEmpty();
+		assertThat(resolvidas1).isEmpty();
+		assertThat(resolvidas2).isEmpty();
 
-        then(usuarioService).shouldHaveNoInteractions();
-        then(categoriaService).shouldHaveNoInteractions();
-    }
+		then(usuarioService).shouldHaveNoInteractions();
+		then(categoriaService).shouldHaveNoInteractions();
+	}
 
-    @Test
-    void resolverCategoriasDoUsuario_misturaDeExistenteNovoEBranco_resolveEChamaSalvarParaNovo() throws Exception {
-        String email = "u@t.com";
-        Usuario usuario = new Usuario();
-        usuario.setId(1L);
-        usuario.setEmail(email);
+	@Test
+	void resolverCategoriasDoUsuario_misturaDeExistenteNovoEBranco_resolveEChamaSalvarParaNovo() throws Exception {
+		String email = "u@t.com";
+		Usuario usuario = new Usuario();
+		usuario.setId(1L);
+		usuario.setEmail(email);
 
-        given(authentication.getName()).willReturn(email);
-        given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(usuario);
+		given(authentication.getName()).willReturn(email);
+		given(usuarioService.obterIdUsuarioPorEmail(email)).willReturn(usuario);
 
-        Categoria existente = Categoria.builder().id(10L).nome("Mercado").usuario(usuario).build();
-        given(categoriaService.buscarPorNome(argThat(categoriaArg ->
-                categoriaArg != null && usuario.equals(categoriaArg.getUsuario()) && "Mercado".equalsIgnoreCase(categoriaArg.getNome())
-        ))).willReturn(List.of(existente));
+		Categoria existente = Categoria.builder().id(10L).nome("Mercado").usuario(usuario).build();
+		given(categoriaService.buscarPorNome(argThat(categoriaArg -> categoriaArg != null
+				&& usuario.equals(categoriaArg.getUsuario()) && "Mercado".equalsIgnoreCase(categoriaArg.getNome()))))
+			.willReturn(List.of(existente));
 
-        given(categoriaService.buscarPorNome(argThat(categoriaArg ->
-                categoriaArg != null && usuario.equals(categoriaArg.getUsuario()) && "Transporte".equalsIgnoreCase(categoriaArg.getNome())
-        ))).willThrow(new RegraNegocioException("nenhuma encontrada"));
+		given(categoriaService.buscarPorNome(argThat(categoriaArg -> categoriaArg != null
+				&& usuario.equals(categoriaArg.getUsuario()) && "Transporte".equalsIgnoreCase(categoriaArg.getNome()))))
+			.willThrow(new RegraNegocioException("nenhuma encontrada"));
 
-        Categoria criada = Categoria.builder().id(11L).nome("Transporte").usuario(usuario).build();
-        given(categoriaService.salvar(any(CategoriaDTO.class), eq(authentication))).willReturn(criada);
+		Categoria criada = Categoria.builder().id(11L).nome("Transporte").usuario(usuario).build();
+		given(categoriaService.salvar(any(CategoriaDTO.class), eq(authentication))).willReturn(criada);
 
-        List<String> nomes = Arrays.asList("Mercado", "  ", "Transporte");
+		List<String> nomes = Arrays.asList("Mercado", "  ", "Transporte");
 
-        Set<Categoria> out = service.resolverCategoriasDoUsuario(nomes, authentication);
+		Set<Categoria> out = service.resolverCategoriasDoUsuario(nomes, authentication);
 
-        assertThat(out).extracting(Categoria::getNome)
-                .containsExactlyInAnyOrder("Mercado", "Transporte");
+		assertThat(out).extracting(Categoria::getNome).containsExactlyInAnyOrder("Mercado", "Transporte");
 
-        then(categoriaService).should().salvar(argThat(dto -> "Transporte".equals(dto.getNome())), eq(authentication));
-        then(categoriaService).shouldHaveNoMoreInteractions();
-    }
+		then(categoriaService).should().salvar(argThat(dto -> "Transporte".equals(dto.getNome())), eq(authentication));
+		then(categoriaService).shouldHaveNoMoreInteractions();
+	}
 
+	@Test
+	void buscar_quandoFiltroVazio_retornaListaDoRepositorio() {
+		Lancamento l = new Lancamento();
+		l.setId(1L);
 
-    @Test
-    void buscar_quandoFiltroVazio_retornaListaDoRepositorio() {
-        Lancamento l = new Lancamento();
-        l.setId(1L);
+		given(repository.findAll(any(org.springframework.data.jpa.domain.Specification.class))).willReturn(List.of(l));
 
-        given(repository.findAll(any(org.springframework.data.jpa.domain.Specification.class)))
-                .willReturn(List.of(l));
+		List<Lancamento> out = service.buscar(new Lancamento(), Collections.emptyList());
 
-        List<Lancamento> out = service.buscar(new Lancamento(), Collections.emptyList());
+		assertThat(out).hasSize(1).containsExactly(l);
+		then(repository).should().findAll(any(org.springframework.data.jpa.domain.Specification.class));
+	}
 
-        assertThat(out).hasSize(1).containsExactly(l);
-        then(repository).should().findAll(any(org.springframework.data.jpa.domain.Specification.class));
-    }
+	@Test
+	void buscar_quandoTodosFiltrosEComCategorias_aplicaEspecificacaoEDevolveResultado() {
+		Usuario u = new Usuario();
+		u.setId(99L);
 
-    @Test
-    void buscar_quandoTodosFiltrosEComCategorias_aplicaEspecificacaoEDevolveResultado() {
-        Usuario u = new Usuario();
-        u.setId(99L);
+		Lancamento filtro = new Lancamento();
+		filtro.setUsuario(u);
+		filtro.setDescricao("Aluguel");
+		filtro.setMes(10);
+		filtro.setAno(2025);
+		filtro.setValor(BigDecimal.valueOf(1200));
+		filtro.setTipoLancamento(TipoLancamento.DESPESA);
+		filtro.setStatusLancamento(StatusLancamento.PENDENTE);
 
-        Lancamento filtro = new Lancamento();
-        filtro.setUsuario(u);
-        filtro.setDescricao("Aluguel");
-        filtro.setMes(10);
-        filtro.setAno(2025);
-        filtro.setValor(BigDecimal.valueOf(1200));
-        filtro.setTipoLancamento(TipoLancamento.DESPESA);
-        filtro.setStatusLancamento(StatusLancamento.PENDENTE);
+		List<Long> categoriaIds = Arrays.asList(1L, 2L);
 
-        List<Long> categoriaIds = Arrays.asList(1L, 2L);
+		Lancamento resultado = new Lancamento();
+		resultado.setId(42L);
 
-        Lancamento resultado = new Lancamento();
-        resultado.setId(42L);
+		given(repository.findAll(any(org.springframework.data.jpa.domain.Specification.class)))
+			.willReturn(List.of(resultado));
 
-        given(repository.findAll(any(org.springframework.data.jpa.domain.Specification.class)))
-                .willReturn(List.of(resultado));
+		List<Lancamento> out = service.buscar(filtro, categoriaIds);
 
-        List<Lancamento> out = service.buscar(filtro, categoriaIds);
-
-        assertThat(out).hasSize(1).containsExactly(resultado);
-        then(repository).should().findAll(any(org.springframework.data.jpa.domain.Specification.class));
-    }
-
+		assertThat(out).hasSize(1).containsExactly(resultado);
+		then(repository).should().findAll(any(org.springframework.data.jpa.domain.Specification.class));
+	}
 
 }
