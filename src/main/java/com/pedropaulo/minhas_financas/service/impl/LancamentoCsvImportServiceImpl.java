@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
@@ -61,7 +62,7 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 	}
 
 	@Override
-	public ImportResultadoDTO importar(InputStream in, int tamanhoDoLote, Long usuarioAutenticadoId) throws Exception {
+	public ImportResultadoDTO importar(InputStream in, int tamanhoDoLote, Long usuarioAutenticadoId) throws RegraNegocioException {
 		ImportResultadoDTO resumo = new ImportResultadoDTO();
 
 		try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
@@ -104,9 +105,11 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 				persistirEmLote(bufferLote, catsPorLanc, resumo); // OPT: idem para o
 																	// último lote
 			}
-		}
+		} catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 
-		return resumo;
+        return resumo;
 	}
 
 	private void validarCabecalho(Set<String> header) {
@@ -143,7 +146,6 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 		if (partes.length != 3)
 			throw new RegraNegocioException("Data inválida: " + dataStr);
 
-		int dia = Integer.parseInt(partes[0]);
 		int mes = Integer.parseInt(partes[1]);
 		int ano = Integer.parseInt(partes[2]);
 		if (mes < 1 || mes > 12)
@@ -191,64 +193,93 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 		return new BigDecimal(clean);
 	}
 
-	private void persistirEmLote(List<Lancamento> lote, Map<Lancamento, Set<String>> catsPorLanc,
-			ImportResultadoDTO resumo) {
+    private void persistirEmLote(
+            List<Lancamento> lote,
+            Map<Lancamento, Set<String>> catsPorLanc,
+            ImportResultadoDTO resumo
+    ) {
+        if (lote == null || lote.isEmpty()) {
+            return;
+        }
 
-		txTemplate.execute(status -> {
-			for (Lancamento l : lote) {
-				l.setUsuario(em.getReference(Usuario.class, l.getUsuario().getId()));
-			}
-			Long uid = lote.get(0).getUsuario().getId();
+        txTemplate.execute(status -> {
+            // Anexa referência "managed" de Usuário a cada lançamento (evita SELECTs extras)
+            lote.forEach(l ->
+                    l.setUsuario(em.getReference(Usuario.class, l.getUsuario().getId()))
+            );
 
-			Set<String> todosNomes = new LinkedHashSet<>();
-			for (Lancamento l : lote) {
-				todosNomes.addAll(catsPorLanc.getOrDefault(l, Collections.emptySet()));
-			}
+            final Long uid = lote.get(0).getUsuario().getId();
 
-			Map<String, Categoria> mapaPorNome = new HashMap<>();
-			if (!todosNomes.isEmpty()) {
-				List<Categoria> existentes = em
-					.createQuery("select c from Categoria c " + "where c.usuario.id = :uid and c.nome in :nomes",
-							Categoria.class)
-					.setParameter("uid", uid)
-					.setParameter("nomes", todosNomes)
-					.getResultList();
-				for (Categoria c : existentes) {
-					mapaPorNome.put(c.getNome(), c);
-				}
+            // Coleta todos os nomes de categorias (limpos) presentes no lote
+            final Set<String> todosNomes = catsPorLanc.values().stream()
+                    .filter(Objects::nonNull)
+                    .flatMap(Set::stream)
+                    .filter(Objects::nonNull)
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
 
-				Usuario usuarioRef = em.getReference(Usuario.class, uid);
-				for (String nome : todosNomes) {
-					if (!mapaPorNome.containsKey(nome)) {
-						Categoria nova = new Categoria();
-						nova.setUsuario(usuarioRef);
-						nova.setNome(nome);
-						em.persist(nova); // batched insert
-						mapaPorNome.put(nome, nova);
-					}
-				}
-			}
+            // Carrega/cria categorias apenas se houver nomes
+            final Map<String, Categoria> mapaPorNome = todosNomes.isEmpty()
+                    ? Collections.emptyMap()
+                    : carregarOuCriarCategorias(uid, todosNomes);
 
-			for (Lancamento l : lote) {
-				Set<String> nomes = catsPorLanc.getOrDefault(l, Collections.emptySet());
-				if (!nomes.isEmpty()) {
-					Set<Categoria> categorias = new LinkedHashSet<>(nomes.size());
-					for (String n : nomes)
-						categorias.add(mapaPorNome.get(n));
-					l.setCategorias(categorias);
-				}
-			}
+            // Aplica categorias aos lançamentos
+            if (!mapaPorNome.isEmpty()) {
+                for (Lancamento l : lote) {
+                    Set<String> nomes = catsPorLanc.getOrDefault(l, Collections.emptySet());
+                    if (!nomes.isEmpty()) {
+                        Set<Categoria> categorias = nomes.stream()
+                                .map(mapaPorNome::get)
+                                .filter(Objects::nonNull)
+                                .collect(Collectors.toCollection(LinkedHashSet::new));
+                        if (!categorias.isEmpty()) {
+                            l.setCategorias(categorias);
+                        }
+                    }
+                }
+            }
 
-			lancamentoService.salvarTodos(lote);
+            // Persistência em lote
+            lancamentoService.salvarTodos(lote);
+            em.flush();
+            em.clear();
+            return null;
+        });
 
-			em.flush();
-			em.clear();
+        // Atualiza resumo
+        for (int i = 0; i < lote.size(); i++) {
+            resumo.incSucesso();
+        }
+    }
 
-			return null;
-		});
+    /**
+     * Carrega as categorias existentes por nome para um usuário e cria as ausentes, devolvendo um mapa nome->Categoria.
+     */
+    private Map<String, Categoria> carregarOuCriarCategorias(Long uid, Set<String> nomes) {
+        Map<String, Categoria> mapa = new HashMap<>();
 
-		for (int i = 0; i < lote.size(); i++)
-			resumo.incSucesso();
-	}
+        List<Categoria> existentes = em.createQuery(
+                        "select c from Categoria c where c.usuario.id = :uid and c.nome in :nomes",
+                        Categoria.class)
+                .setParameter("uid", uid)
+                .setParameter("nomes", nomes)
+                .getResultList();
+
+        existentes.forEach(c -> mapa.put(c.getNome(), c));
+
+        Usuario usuarioRef = em.getReference(Usuario.class, uid);
+        for (String nome : nomes) {
+            if (!mapa.containsKey(nome)) {
+                Categoria nova = new Categoria();
+                nova.setUsuario(usuarioRef);
+                nova.setNome(nome);
+                em.persist(nova); // insert batched
+                mapa.put(nome, nova);
+            }
+        }
+        return mapa;
+    }
+
 
 }
