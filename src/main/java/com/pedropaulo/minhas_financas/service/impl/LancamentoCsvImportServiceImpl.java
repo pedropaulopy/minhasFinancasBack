@@ -31,6 +31,8 @@ import java.util.stream.Collectors;
 @Service
 public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportService {
 
+    private static final int TAMANHO_LOTE = 1000;
+
 	private static final String H_DESC = "DESC";
 
 	private static final String H_VALOR_LANC = "VALOR_LANC";
@@ -45,9 +47,7 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 
 	private static final String H_CATEGORIA = "CATEGORIA";
 
-	private final CategoriaService categoriaService;
-
-	private final LancamentoService lancamentoService;
+    private final LancamentoService lancamentoService;
 
 	private final TransactionTemplate txTemplate;
 
@@ -56,13 +56,12 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 
 	public LancamentoCsvImportServiceImpl(CategoriaService categoriaService, LancamentoService lancamentoService,
 			TransactionTemplate txTemplate) {
-		this.categoriaService = categoriaService;
-		this.lancamentoService = lancamentoService;
+        this.lancamentoService = lancamentoService;
 		this.txTemplate = txTemplate;
 	}
 
 	@Override
-	public ImportResultadoDTO importar(InputStream in, int tamanhoDoLote, Long usuarioAutenticadoId)
+	public ImportResultadoDTO importar(InputStream in, Long usuarioAutenticadoId)
 			throws RegraNegocioException {
 		ImportResultadoDTO resumo = new ImportResultadoDTO();
 
@@ -76,7 +75,7 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 			validarCabecalho(parser.getHeaderMap().keySet());
 
 			Map<Lancamento, Set<String>> catsPorLanc = new IdentityHashMap<>();
-			List<Lancamento> bufferLote = new ArrayList<>(tamanhoDoLote);
+			List<Lancamento> bufferLote = new ArrayList<>(TAMANHO_LOTE);
 			long linhaAbsoluta;
 
 			for (CSVRecord rec : parser) {
@@ -85,7 +84,7 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 
 				processarLinhaCsv(rec, usuarioAutenticadoId, catsPorLanc, bufferLote, resumo, linhaAbsoluta);
 
-				if (bufferLote.size() >= tamanhoDoLote) {
+				if (bufferLote.size() >= TAMANHO_LOTE) {
 					persistirEmLote(bufferLote, catsPorLanc, resumo);
 					bufferLote.clear();
 					catsPorLanc.clear();
