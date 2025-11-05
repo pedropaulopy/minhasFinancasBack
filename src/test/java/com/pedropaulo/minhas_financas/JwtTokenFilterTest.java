@@ -3,6 +3,7 @@ package com.pedropaulo.minhas_financas;
 import com.pedropaulo.minhas_financas.api.JwtTokenFilter;
 import com.pedropaulo.minhas_financas.service.JwtService;
 import com.pedropaulo.minhas_financas.service.impl.SecurityUserDetailsServiceImpl;
+import com.pedropaulo.minhas_financas.service.testUtils.StubUserDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -106,19 +107,6 @@ class JwtTokenFilterTest {
 		then(filterChain).should().doFilter(request, response);
 
 		assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
-	}
-
-	private static class StubUserDetailsService extends SecurityUserDetailsServiceImpl {
-
-		StubUserDetailsService() {
-			super(null);
-		}
-
-		@Override
-		public UserDetails loadUserByUsername(String username) {
-			return User.withUsername(username).password("123").roles("USER").build();
-		}
-
 	}
 
 }
