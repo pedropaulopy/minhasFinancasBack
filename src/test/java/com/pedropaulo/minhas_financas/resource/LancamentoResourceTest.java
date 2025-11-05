@@ -38,309 +38,310 @@ import static org.mockito.Mockito.*;
 @MockitoSettings(strictness = Strictness.STRICT_STUBS)
 class LancamentoResourceTest {
 
-    private static final String EMAIL = "usuario@teste.com";
-
-    private static final LocalDate DATA_FIXA = LocalDate.of(2025, 10, 1);
-
-    @Mock
-    private LancamentoService lancamentoService;
-
-    @Mock
-    private UsuarioService usuarioService;
-
-    @Mock
-    private LancamentoCsvImportService lancamentoCsvImportService;
-
-    private LancamentoResource resource;
-
-    private Authentication authentication;
-
-    @BeforeEach
-    void setUp() {
-        resource = new LancamentoResource(lancamentoService, usuarioService, lancamentoCsvImportService);
-        authentication = auth(EMAIL);
-    }
-
-    @Test
-    void salvar_deveRetornarCreated_quandoSucesso() throws Exception {
-        LancamentoDTO dto = dtoValido();
-        Lancamento entidade = novoLancamento();
-        Lancamento salvo = Lancamento.builder()
-                .id(99L)
-                .ano(entidade.getAno())
-                .mes(entidade.getMes())
-                .descricao(entidade.getDescricao())
-                .valor(entidade.getValor())
-                .tipoLancamento(entidade.getTipoLancamento())
-                .statusLancamento(entidade.getStatusLancamento())
-                .dataCadastro(entidade.getDataCadastro())
-                .build();
-
-        when(lancamentoService.converterDTO(eq(dto), eq(authentication))).thenReturn(entidade);
-        when(lancamentoService.salvar(eq(entidade))).thenReturn(salvo);
-
-        ResponseEntity<?> response = resource.salvar(dto, authentication);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        assertThat(response.getBody()).isEqualTo(salvo);
-        verify(lancamentoService).converterDTO(dto, authentication);
-        verify(lancamentoService).salvar(entidade);
-        verifyNoMoreInteractions(lancamentoService, usuarioService);
-    }
-
-    @Test
-    void salvar_deveRetornarBadRequest_quandoRegraNegocio() throws Exception {
-        LancamentoDTO dto = dtoValido();
-
-        when(lancamentoService.converterDTO(any(LancamentoDTO.class), eq(authentication))).thenReturn(novoLancamento());
-        when(lancamentoService.salvar(any(Lancamento.class)))
-                .thenThrow(new RegraNegocioException("Insira um valor válido."));
-
-        ResponseEntity<?> response = resource.salvar(dto, authentication);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody()).isEqualTo("Insira um valor válido.");
-        verify(lancamentoService).converterDTO(any(LancamentoDTO.class), eq(authentication));
-        verify(lancamentoService).salvar(any(Lancamento.class));
-        verifyNoMoreInteractions(lancamentoService, usuarioService);
-    }
-
-    @Test
-    void atualizar_deveRetornarOk_quandoSucesso() throws Exception {
-        Long id = 1L;
-        LancamentoDTO dto = dtoValido();
-        Lancamento atualizado = Lancamento.builder()
-                .id(id)
-                .descricao("Atualizado")
-                .mes(10)
-                .ano(2025)
-                .valor(BigDecimal.valueOf(5500))
-                .tipoLancamento(TipoLancamento.RECEITA)
-                .statusLancamento(StatusLancamento.EFETIVADO)
-                .dataCadastro(DATA_FIXA)
-                .build();
-
-        when(lancamentoService.atualizar(eq(id), eq(authentication), eq(dto))).thenReturn(atualizado);
-
-        ResponseEntity<?> response = resource.atualizar(id, dto, authentication);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isEqualTo(atualizado);
-        verify(lancamentoService).atualizar(id, authentication, dto);
-        verifyNoMoreInteractions(lancamentoService, usuarioService);
-    }
-
-    @Test
-    void atualizar_deveRetornarBadRequest_quandoRegraNegocio() throws Exception {
-        Long id = 7L;
-        LancamentoDTO dto = dtoValido();
-
-        when(lancamentoService.atualizar(eq(id), eq(authentication), eq(dto)))
-                .thenThrow(new RegraNegocioException("Dados inválidos para atualização."));
-
-        ResponseEntity<?> response = resource.atualizar(id, dto, authentication);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody()).isEqualTo("Dados inválidos para atualização.");
-        verify(lancamentoService).atualizar(id, authentication, dto);
-        verifyNoMoreInteractions(lancamentoService, usuarioService);
-    }
-
-    @Test
-    void atualizar_deveRetornarUnprocessableEntity_quandoEntidadeNaoProcessavel() throws Exception {
-        Long id = 1L;
-        LancamentoDTO dto = dtoValido();
-        String mensagem = "Lançamentos efetivados ou cancelados não podem ser editados.";
-
-        when(lancamentoService.atualizar(eq(id), eq(authentication), eq(dto)))
-                .thenThrow(new EntidadeNaoProcessavelException(mensagem));
-
-        ResponseEntity<?> response = resource.atualizar(id, dto, authentication);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
-        assertThat(response.getBody()).isEqualTo(mensagem);
-        verify(lancamentoService).atualizar(id, authentication, dto);
-        verifyNoMoreInteractions(lancamentoService, usuarioService);
-    }
-
-    @Test
-    void atualizarStatus_deveRetornarCreated_quandoSucesso() throws Exception {
-        Long id = 5L;
-        LancamentoStatusDTO dto = new LancamentoStatusDTO();
-        dto.setStatus("EFETIVADO");
-
-        doNothing().when(lancamentoService).atualizarStatus(eq(id), eq(authentication), eq(StatusLancamento.EFETIVADO));
-
-        ResponseEntity<?> response = resource.atualizarStatus(id, dto, authentication);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        verify(lancamentoService).atualizarStatus(id, authentication, StatusLancamento.EFETIVADO);
-        verifyNoMoreInteractions(lancamentoService, usuarioService);
-    }
-
-    @Test
-    void atualizarStatus_deveRetornarBadRequest_quandoRegraNegocio() throws Exception {
-        Long id = 999L;
-        LancamentoStatusDTO dto = new LancamentoStatusDTO();
-        dto.setStatus("EFETIVADO");
-
-        doThrow(new RegraNegocioException("Lançamento não encontrado.")).when(lancamentoService)
-                .atualizarStatus(eq(id), eq(authentication), any(StatusLancamento.class));
-
-        ResponseEntity<?> response = resource.atualizarStatus(id, dto, authentication);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody()).isEqualTo("Lançamento não encontrado.");
-        verify(lancamentoService).atualizarStatus(eq(id), eq(authentication), any(StatusLancamento.class));
-        verifyNoMoreInteractions(lancamentoService, usuarioService);
-    }
-
-    @Test
-    void atualizarStatus_deveRetornarUnprocessableEntity_quandoEntidadeNaoProcessavel() throws Exception {
-        Long id = 1L;
-        LancamentoStatusDTO dto = new LancamentoStatusDTO();
-        dto.setStatus("EFETIVADO");
-        String msg = "Lançamentos efetivados ou cancelados não podem ser editados.";
-
-        doThrow(new EntidadeNaoProcessavelException(msg)).when(lancamentoService)
-                .atualizarStatus(eq(id), eq(authentication), any(StatusLancamento.class));
-
-        ResponseEntity<?> response = resource.atualizarStatus(id, dto, authentication);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
-        assertThat(response.getBody()).isEqualTo(msg);
-        verify(lancamentoService).atualizarStatus(eq(id), eq(authentication), any(StatusLancamento.class));
-        verifyNoMoreInteractions(lancamentoService, usuarioService);
-    }
-
-    @Test
-    void deletar_deveRetornarNoContent_quandoSucesso() throws Exception {
-        Long id = 3L;
-
-        doNothing().when(lancamentoService).deletar(eq(id), eq(authentication));
-
-        ResponseEntity<?> response = resource.deletar(id, authentication);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-        verify(lancamentoService).deletar(id, authentication);
-        verifyNoMoreInteractions(lancamentoService, usuarioService);
-    }
-
-    @Test
-    void deletar_deveRetornarNotFound_quandoRegraNegocio() throws Exception {
-        Long id = 44L;
-
-        doThrow(new RegraNegocioException("Lançamento não encontrado.")).when(lancamentoService)
-                .deletar(eq(id), eq(authentication));
-
-        ResponseEntity<?> response = resource.deletar(id, authentication);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(response.getBody()).isEqualTo("Lançamento não encontrado.");
-        verify(lancamentoService).deletar(id, authentication);
-        verifyNoMoreInteractions(lancamentoService, usuarioService);
-    }
-
-    @Test
-    void buscar_deveRetornarOk_comListaVazia() throws Exception {
-        Usuario usuario = criarUsuario();
-        when(usuarioService.obterIdUsuarioPorEmail(EMAIL)).thenReturn(usuario);
-        when(lancamentoService.buscar(any(Lancamento.class), anyList())).thenReturn(Collections.emptyList());
-
-        ResponseEntity<List<Lancamento>> response = resource.buscar("Aluguel", 10, 2025, BigDecimal.valueOf(1200),
-                TipoLancamento.DESPESA, StatusLancamento.PENDENTE, Collections.emptyList(), authentication);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isNotNull().isEmpty();
-        verify(usuarioService).obterIdUsuarioPorEmail(EMAIL);
-        verify(lancamentoService).buscar(any(Lancamento.class), anyList());
-        verifyNoMoreInteractions(lancamentoService, usuarioService);
-    }
-
-    @Test
-    void buscar_deveRetornarOk_comListaPreenchida() throws Exception {
-        Usuario usuario = criarUsuario();
-        when(usuarioService.obterIdUsuarioPorEmail(EMAIL)).thenReturn(usuario);
-
-        Lancamento lancamento = new Lancamento();
-        lancamento.setId(10L);
-        lancamento.setUsuario(usuario);
-        lancamento.setDescricao("Aluguel");
-        lancamento.setMes(10);
-        lancamento.setAno(2025);
-        lancamento.setValor(BigDecimal.valueOf(1200));
-        lancamento.setTipoLancamento(TipoLancamento.DESPESA);
-        lancamento.setStatusLancamento(StatusLancamento.PENDENTE);
-
-        when(lancamentoService.buscar(any(Lancamento.class), anyList())).thenReturn(List.of(lancamento));
-
-        ResponseEntity<List<Lancamento>> response = resource.buscar("Aluguel", 10, 2025, BigDecimal.valueOf(1200),
-                TipoLancamento.DESPESA, StatusLancamento.PENDENTE, Collections.emptyList(), authentication);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        Assertions.assertThat(response.getBody()).isNotNull().hasSize(1).contains(lancamento);
-        verify(usuarioService).obterIdUsuarioPorEmail(EMAIL);
-        verify(lancamentoService).buscar(any(Lancamento.class), anyList());
-        verifyNoMoreInteractions(lancamentoService, usuarioService);
-    }
-
-    @Test
-    void obterLancamento_deveRetornarOk_quandoExiste() throws Exception {
-        Lancamento lancamento = novoLancamento();
-        lancamento.setId(77L);
-
-        when(lancamentoService.obterPorIdLancamento(eq(77L), eq(authentication))).thenReturn(lancamento);
-
-        ResponseEntity<?> response = resource.obterLancamento(77L, authentication);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isEqualTo(lancamento);
-        verify(lancamentoService).obterPorIdLancamento(77L, authentication);
-        verifyNoMoreInteractions(lancamentoService, usuarioService);
-    }
-
-    @Test
-    void obterLancamento_deveRetornarNotFound_quandoNaoExiste() throws Exception {
-        when(lancamentoService.obterPorIdLancamento(eq(321L), eq(authentication)))
-                .thenThrow(new RegraNegocioException("Lançamento não encontrado."));
-
-        ResponseEntity<?> response = resource.obterLancamento(321L, authentication);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(response.getBody()).isEqualTo("Lançamento não encontrado.");
-        verify(lancamentoService).obterPorIdLancamento(321L, authentication);
-        verifyNoMoreInteractions(lancamentoService, usuarioService);
-    }
-
-    private LancamentoDTO dtoValido() {
-        LancamentoDTO dto = new LancamentoDTO();
-        dto.setUsuario(1L);
-        dto.setDescricao("Salário");
-        dto.setValor(BigDecimal.valueOf(5000));
-        dto.setMes(10);
-        dto.setAno(2025);
-        dto.setTipoLancamento("RECEITA");
-        dto.setStatusLancamento("PENDENTE");
-        return dto;
-    }
-
-    private Lancamento novoLancamento() {
-        return Lancamento.builder()
-                .ano(2025)
-                .mes(10)
-                .descricao("Salário")
-                .valor(BigDecimal.valueOf(5000))
-                .tipoLancamento(TipoLancamento.RECEITA)
-                .statusLancamento(StatusLancamento.PENDENTE)
-                .dataCadastro(DATA_FIXA)
-                .build();
-    }
-
-    private Usuario criarUsuario() {
-        Usuario usuario = new Usuario();
-        usuario.setId(1L);
-        usuario.setEmail(EMAIL);
-        usuario.setNome("Pedro");
-        return usuario;
-    }
+	private static final String EMAIL = "usuario@teste.com";
+
+	private static final LocalDate DATA_FIXA = LocalDate.of(2025, 10, 1);
+
+	@Mock
+	private LancamentoService lancamentoService;
+
+	@Mock
+	private UsuarioService usuarioService;
+
+	@Mock
+	private LancamentoCsvImportService lancamentoCsvImportService;
+
+	private LancamentoResource resource;
+
+	private Authentication authentication;
+
+	@BeforeEach
+	void setUp() {
+		resource = new LancamentoResource(lancamentoService, usuarioService, lancamentoCsvImportService);
+		authentication = auth(EMAIL);
+	}
+
+	@Test
+	void salvar_deveRetornarCreated_quandoSucesso() throws Exception {
+		LancamentoDTO dto = dtoValido();
+		Lancamento entidade = novoLancamento();
+		Lancamento salvo = Lancamento.builder()
+			.id(99L)
+			.ano(entidade.getAno())
+			.mes(entidade.getMes())
+			.descricao(entidade.getDescricao())
+			.valor(entidade.getValor())
+			.tipoLancamento(entidade.getTipoLancamento())
+			.statusLancamento(entidade.getStatusLancamento())
+			.dataCadastro(entidade.getDataCadastro())
+			.build();
+
+		when(lancamentoService.converterDTO(eq(dto), eq(authentication))).thenReturn(entidade);
+		when(lancamentoService.salvar(eq(entidade))).thenReturn(salvo);
+
+		ResponseEntity<?> response = resource.salvar(dto, authentication);
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+		assertThat(response.getBody()).isEqualTo(salvo);
+		verify(lancamentoService).converterDTO(dto, authentication);
+		verify(lancamentoService).salvar(entidade);
+		verifyNoMoreInteractions(lancamentoService, usuarioService);
+	}
+
+	@Test
+	void salvar_deveRetornarBadRequest_quandoRegraNegocio() throws Exception {
+		LancamentoDTO dto = dtoValido();
+
+		when(lancamentoService.converterDTO(any(LancamentoDTO.class), eq(authentication))).thenReturn(novoLancamento());
+		when(lancamentoService.salvar(any(Lancamento.class)))
+			.thenThrow(new RegraNegocioException("Insira um valor válido."));
+
+		ResponseEntity<?> response = resource.salvar(dto, authentication);
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+		assertThat(response.getBody()).isEqualTo("Insira um valor válido.");
+		verify(lancamentoService).converterDTO(any(LancamentoDTO.class), eq(authentication));
+		verify(lancamentoService).salvar(any(Lancamento.class));
+		verifyNoMoreInteractions(lancamentoService, usuarioService);
+	}
+
+	@Test
+	void atualizar_deveRetornarOk_quandoSucesso() throws Exception {
+		Long id = 1L;
+		LancamentoDTO dto = dtoValido();
+		Lancamento atualizado = Lancamento.builder()
+			.id(id)
+			.descricao("Atualizado")
+			.mes(10)
+			.ano(2025)
+			.valor(BigDecimal.valueOf(5500))
+			.tipoLancamento(TipoLancamento.RECEITA)
+			.statusLancamento(StatusLancamento.EFETIVADO)
+			.dataCadastro(DATA_FIXA)
+			.build();
+
+		when(lancamentoService.atualizar(eq(id), eq(authentication), eq(dto))).thenReturn(atualizado);
+
+		ResponseEntity<?> response = resource.atualizar(id, dto, authentication);
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+		assertThat(response.getBody()).isEqualTo(atualizado);
+		verify(lancamentoService).atualizar(id, authentication, dto);
+		verifyNoMoreInteractions(lancamentoService, usuarioService);
+	}
+
+	@Test
+	void atualizar_deveRetornarBadRequest_quandoRegraNegocio() throws Exception {
+		Long id = 7L;
+		LancamentoDTO dto = dtoValido();
+
+		when(lancamentoService.atualizar(eq(id), eq(authentication), eq(dto)))
+			.thenThrow(new RegraNegocioException("Dados inválidos para atualização."));
+
+		ResponseEntity<?> response = resource.atualizar(id, dto, authentication);
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+		assertThat(response.getBody()).isEqualTo("Dados inválidos para atualização.");
+		verify(lancamentoService).atualizar(id, authentication, dto);
+		verifyNoMoreInteractions(lancamentoService, usuarioService);
+	}
+
+	@Test
+	void atualizar_deveRetornarUnprocessableEntity_quandoEntidadeNaoProcessavel() throws Exception {
+		Long id = 1L;
+		LancamentoDTO dto = dtoValido();
+		String mensagem = "Lançamentos efetivados ou cancelados não podem ser editados.";
+
+		when(lancamentoService.atualizar(eq(id), eq(authentication), eq(dto)))
+			.thenThrow(new EntidadeNaoProcessavelException(mensagem));
+
+		ResponseEntity<?> response = resource.atualizar(id, dto, authentication);
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+		assertThat(response.getBody()).isEqualTo(mensagem);
+		verify(lancamentoService).atualizar(id, authentication, dto);
+		verifyNoMoreInteractions(lancamentoService, usuarioService);
+	}
+
+	@Test
+	void atualizarStatus_deveRetornarCreated_quandoSucesso() throws Exception {
+		Long id = 5L;
+		LancamentoStatusDTO dto = new LancamentoStatusDTO();
+		dto.setStatus("EFETIVADO");
+
+		doNothing().when(lancamentoService).atualizarStatus(eq(id), eq(authentication), eq(StatusLancamento.EFETIVADO));
+
+		ResponseEntity<?> response = resource.atualizarStatus(id, dto, authentication);
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+		verify(lancamentoService).atualizarStatus(id, authentication, StatusLancamento.EFETIVADO);
+		verifyNoMoreInteractions(lancamentoService, usuarioService);
+	}
+
+	@Test
+	void atualizarStatus_deveRetornarBadRequest_quandoRegraNegocio() throws Exception {
+		Long id = 999L;
+		LancamentoStatusDTO dto = new LancamentoStatusDTO();
+		dto.setStatus("EFETIVADO");
+
+		doThrow(new RegraNegocioException("Lançamento não encontrado.")).when(lancamentoService)
+			.atualizarStatus(eq(id), eq(authentication), any(StatusLancamento.class));
+
+		ResponseEntity<?> response = resource.atualizarStatus(id, dto, authentication);
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+		assertThat(response.getBody()).isEqualTo("Lançamento não encontrado.");
+		verify(lancamentoService).atualizarStatus(eq(id), eq(authentication), any(StatusLancamento.class));
+		verifyNoMoreInteractions(lancamentoService, usuarioService);
+	}
+
+	@Test
+	void atualizarStatus_deveRetornarUnprocessableEntity_quandoEntidadeNaoProcessavel() throws Exception {
+		Long id = 1L;
+		LancamentoStatusDTO dto = new LancamentoStatusDTO();
+		dto.setStatus("EFETIVADO");
+		String msg = "Lançamentos efetivados ou cancelados não podem ser editados.";
+
+		doThrow(new EntidadeNaoProcessavelException(msg)).when(lancamentoService)
+			.atualizarStatus(eq(id), eq(authentication), any(StatusLancamento.class));
+
+		ResponseEntity<?> response = resource.atualizarStatus(id, dto, authentication);
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+		assertThat(response.getBody()).isEqualTo(msg);
+		verify(lancamentoService).atualizarStatus(eq(id), eq(authentication), any(StatusLancamento.class));
+		verifyNoMoreInteractions(lancamentoService, usuarioService);
+	}
+
+	@Test
+	void deletar_deveRetornarNoContent_quandoSucesso() throws Exception {
+		Long id = 3L;
+
+		doNothing().when(lancamentoService).deletar(eq(id), eq(authentication));
+
+		ResponseEntity<?> response = resource.deletar(id, authentication);
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+		verify(lancamentoService).deletar(id, authentication);
+		verifyNoMoreInteractions(lancamentoService, usuarioService);
+	}
+
+	@Test
+	void deletar_deveRetornarNotFound_quandoRegraNegocio() throws Exception {
+		Long id = 44L;
+
+		doThrow(new RegraNegocioException("Lançamento não encontrado.")).when(lancamentoService)
+			.deletar(eq(id), eq(authentication));
+
+		ResponseEntity<?> response = resource.deletar(id, authentication);
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+		assertThat(response.getBody()).isEqualTo("Lançamento não encontrado.");
+		verify(lancamentoService).deletar(id, authentication);
+		verifyNoMoreInteractions(lancamentoService, usuarioService);
+	}
+
+	@Test
+	void buscar_deveRetornarOk_comListaVazia() throws Exception {
+		Usuario usuario = criarUsuario();
+		when(usuarioService.obterIdUsuarioPorEmail(EMAIL)).thenReturn(usuario);
+		when(lancamentoService.buscar(any(Lancamento.class), anyList())).thenReturn(Collections.emptyList());
+
+		ResponseEntity<List<Lancamento>> response = resource.buscar("Aluguel", 10, 2025, BigDecimal.valueOf(1200),
+				TipoLancamento.DESPESA, StatusLancamento.PENDENTE, Collections.emptyList(), authentication);
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+		assertThat(response.getBody()).isNotNull().isEmpty();
+		verify(usuarioService).obterIdUsuarioPorEmail(EMAIL);
+		verify(lancamentoService).buscar(any(Lancamento.class), anyList());
+		verifyNoMoreInteractions(lancamentoService, usuarioService);
+	}
+
+	@Test
+	void buscar_deveRetornarOk_comListaPreenchida() throws Exception {
+		Usuario usuario = criarUsuario();
+		when(usuarioService.obterIdUsuarioPorEmail(EMAIL)).thenReturn(usuario);
+
+		Lancamento lancamento = new Lancamento();
+		lancamento.setId(10L);
+		lancamento.setUsuario(usuario);
+		lancamento.setDescricao("Aluguel");
+		lancamento.setMes(10);
+		lancamento.setAno(2025);
+		lancamento.setValor(BigDecimal.valueOf(1200));
+		lancamento.setTipoLancamento(TipoLancamento.DESPESA);
+		lancamento.setStatusLancamento(StatusLancamento.PENDENTE);
+
+		when(lancamentoService.buscar(any(Lancamento.class), anyList())).thenReturn(List.of(lancamento));
+
+		ResponseEntity<List<Lancamento>> response = resource.buscar("Aluguel", 10, 2025, BigDecimal.valueOf(1200),
+				TipoLancamento.DESPESA, StatusLancamento.PENDENTE, Collections.emptyList(), authentication);
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+		Assertions.assertThat(response.getBody()).isNotNull().hasSize(1).contains(lancamento);
+		verify(usuarioService).obterIdUsuarioPorEmail(EMAIL);
+		verify(lancamentoService).buscar(any(Lancamento.class), anyList());
+		verifyNoMoreInteractions(lancamentoService, usuarioService);
+	}
+
+	@Test
+	void obterLancamento_deveRetornarOk_quandoExiste() throws Exception {
+		Lancamento lancamento = novoLancamento();
+		lancamento.setId(77L);
+
+		when(lancamentoService.obterPorIdLancamento(eq(77L), eq(authentication))).thenReturn(lancamento);
+
+		ResponseEntity<?> response = resource.obterLancamento(77L, authentication);
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+		assertThat(response.getBody()).isEqualTo(lancamento);
+		verify(lancamentoService).obterPorIdLancamento(77L, authentication);
+		verifyNoMoreInteractions(lancamentoService, usuarioService);
+	}
+
+	@Test
+	void obterLancamento_deveRetornarNotFound_quandoNaoExiste() throws Exception {
+		when(lancamentoService.obterPorIdLancamento(eq(321L), eq(authentication)))
+			.thenThrow(new RegraNegocioException("Lançamento não encontrado."));
+
+		ResponseEntity<?> response = resource.obterLancamento(321L, authentication);
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+		assertThat(response.getBody()).isEqualTo("Lançamento não encontrado.");
+		verify(lancamentoService).obterPorIdLancamento(321L, authentication);
+		verifyNoMoreInteractions(lancamentoService, usuarioService);
+	}
+
+	private LancamentoDTO dtoValido() {
+		LancamentoDTO dto = new LancamentoDTO();
+		dto.setUsuario(1L);
+		dto.setDescricao("Salário");
+		dto.setValor(BigDecimal.valueOf(5000));
+		dto.setMes(10);
+		dto.setAno(2025);
+		dto.setTipoLancamento("RECEITA");
+		dto.setStatusLancamento("PENDENTE");
+		return dto;
+	}
+
+	private Lancamento novoLancamento() {
+		return Lancamento.builder()
+			.ano(2025)
+			.mes(10)
+			.descricao("Salário")
+			.valor(BigDecimal.valueOf(5000))
+			.tipoLancamento(TipoLancamento.RECEITA)
+			.statusLancamento(StatusLancamento.PENDENTE)
+			.dataCadastro(DATA_FIXA)
+			.build();
+	}
+
+	private Usuario criarUsuario() {
+		Usuario usuario = new Usuario();
+		usuario.setId(1L);
+		usuario.setEmail(EMAIL);
+		usuario.setNome("Pedro");
+		return usuario;
+	}
+
 }

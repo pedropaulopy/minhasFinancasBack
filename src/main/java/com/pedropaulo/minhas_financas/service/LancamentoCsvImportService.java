@@ -7,7 +7,6 @@ import java.io.InputStream;
 
 public interface LancamentoCsvImportService {
 
-	ImportResultadoDTO importar(InputStream inputStream, Long usuarioAutenticadoId)
-			throws RegraNegocioException;
+	ImportResultadoDTO importar(InputStream inputStream, Long usuarioAutenticadoId) throws RegraNegocioException;
 
 }

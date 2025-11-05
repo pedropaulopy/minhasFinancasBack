@@ -7,9 +7,10 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
 public class StubUserDetailsService implements SecurityUserDetailsService {
-    @Override
-    public UserDetails loadUserByUsername(String username) {
-        return User.withUsername(username).password("123").roles("USER").build();
-    }
+
+	@Override
+	public UserDetails loadUserByUsername(String username) {
+		return User.withUsername(username).password("123").roles("USER").build();
+	}
 
 }

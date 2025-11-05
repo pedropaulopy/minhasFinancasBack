@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 @Service
 public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportService {
 
-    private static final int TAMANHO_LOTE = 1000;
+	private static final int TAMANHO_LOTE = 1000;
 
 	private static final String H_DESC = "DESC";
 
@@ -47,20 +47,21 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 
 	private static final String H_CATEGORIA = "CATEGORIA";
 
-    private final LancamentoService lancamentoService;
+	private final LancamentoService lancamentoService;
 
 	private final TransactionTemplate txTemplate;
-    private final CategoriaRepository categoriaRepository;
 
-    @PersistenceContext
+	private final CategoriaRepository categoriaRepository;
+
+	@PersistenceContext
 	private EntityManager entityManager;
 
-	public LancamentoCsvImportServiceImpl(LancamentoService lancamentoService,
-                                          TransactionTemplate txTemplate, CategoriaRepository categoriaRepository) {
-        this.lancamentoService = lancamentoService;
+	public LancamentoCsvImportServiceImpl(LancamentoService lancamentoService, TransactionTemplate txTemplate,
+			CategoriaRepository categoriaRepository) {
+		this.lancamentoService = lancamentoService;
 		this.txTemplate = txTemplate;
-        this.categoriaRepository = categoriaRepository;
-    }
+		this.categoriaRepository = categoriaRepository;
+	}
 
 	@Override
 	public ImportResultadoDTO importar(InputStream inputStream, Long usuarioAutenticadoId)
@@ -122,7 +123,8 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 
 		BigDecimal valor = parseValorMonetario(valorStr);
 		if (valor.compareTo(BigDecimal.ZERO) <= 0) {
-			throw new RegraNegocioException("Valor inválido (os valores não podem ser igual ou menores a zero): " + valorStr);
+			throw new RegraNegocioException(
+					"Valor inválido (os valores não podem ser igual ou menores a zero): " + valorStr);
 		}
 
 		TipoLancamento tipo = TipoLancamento.valueOf(tipoStr.toUpperCase(Locale.ROOT));

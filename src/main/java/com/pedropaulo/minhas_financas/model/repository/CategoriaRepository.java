@@ -18,7 +18,7 @@ public interface CategoriaRepository extends JpaRepository<Categoria, Long> {
 
 	Optional<Categoria> findByIdAndUsuario_Id(Long id, Long usuarioId);
 
-    @Query("select c from Categoria c where c.usuario.id = :uid and c.nome in :nomes")
-    List<Categoria> findByUsuarioIdAndNomesIn(@Param("uid") Long uid, @Param("nomes") Set<String> nomes);
+	@Query("select c from Categoria c where c.usuario.id = :uid and c.nome in :nomes")
+	List<Categoria> findByUsuarioIdAndNomesIn(@Param("uid") Long uid, @Param("nomes") Set<String> nomes);
 
 }

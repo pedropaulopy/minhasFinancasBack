@@ -5,13 +5,15 @@ import org.springframework.security.core.Authentication;
 
 public final class AuthMocks {
 
-    private AuthMocks() {}
+	private AuthMocks() {
+	}
 
-    public static Authentication auth(String email) {
-        return new TestingAuthenticationToken(email, null);
-    }
+	public static Authentication auth(String email) {
+		return new TestingAuthenticationToken(email, null);
+	}
 
-    public static Authentication auth(String principal, Object credentials) {
-        return new TestingAuthenticationToken(principal, credentials);
-    }
+	public static Authentication auth(String principal, Object credentials) {
+		return new TestingAuthenticationToken(principal, credentials);
+	}
+
 }

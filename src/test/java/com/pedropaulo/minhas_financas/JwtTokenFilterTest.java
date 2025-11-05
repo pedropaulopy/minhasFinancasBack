@@ -43,7 +43,7 @@ class JwtTokenFilterTest {
 	@Mock
 	private FilterChain filterChain;
 
-    private SecurityUserDetailsService userDetailsService;
+	private SecurityUserDetailsService userDetailsService;
 
 	private JwtTokenFilter filter;
 

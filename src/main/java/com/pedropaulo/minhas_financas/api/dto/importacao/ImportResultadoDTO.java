@@ -26,21 +26,26 @@ public class ImportResultadoDTO {
 		this.totalSucesso++;
 	}
 
-    @Getter
-    public static class AuxiliarLinhaErro {
-        public final long linha;
-        public final String motivo;
-        public final String raw;
+	@Getter
+	public static class AuxiliarLinhaErro {
 
-        public AuxiliarLinhaErro(long linha, String motivo, String raw) {
-            this.linha = linha;
-            this.motivo = motivo;
-            this.raw = raw;
-        }
-    }
+		public final long linha;
+
+		public final String motivo;
+
+		public final String raw;
+
+		public AuxiliarLinhaErro(long linha, String motivo, String raw) {
+			this.linha = linha;
+			this.motivo = motivo;
+			this.raw = raw;
+		}
+
+	}
 
 	public void addFalha(long linha, String motivo, String raw) {
 		this.totalFalha++;
 		this.erros.add(new AuxiliarLinhaErro(linha, motivo, raw));
 	}
+
 }

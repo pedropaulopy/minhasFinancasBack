@@ -7,16 +7,16 @@ import lombok.Setter;
 @Setter
 public class AuxiliarLinhaErro {
 
-    public final long linha;
+	public final long linha;
 
-    public final String motivo;
+	public final String motivo;
 
-    public final String raw;
+	public final String raw;
 
-    public AuxiliarLinhaErro(long linha, String motivo, String raw) {
-        this.linha = linha;
-        this.motivo = motivo;
-        this.raw = raw;
-    }
+	public AuxiliarLinhaErro(long linha, String motivo, String raw) {
+		this.linha = linha;
+		this.motivo = motivo;
+		this.raw = raw;
+	}
 
 }
