@@ -64,7 +64,7 @@ public class LancamentoExportServiceImpl implements LancamentoExportService {
         List<Long> clean = sanitizeIds(ids);
 
         try (var writer = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8))) {
-            writer.write("id,descricao,valor,ano,mes,tipo,status,data");
+            writer.write("ID_LANC,DESC,VALOR,ANO,MES,TIPO,STATUS,DATA");
             writer.newLine();
 
             for (List<Long> chunk : chunksOf(clean, CHUNK_SIZE)) {

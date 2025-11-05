@@ -10,10 +10,7 @@ import com.pedropaulo.minhas_financas.model.entity.Lancamento;
 import com.pedropaulo.minhas_financas.model.entity.Usuario;
 import com.pedropaulo.minhas_financas.model.enums.StatusLancamento;
 import com.pedropaulo.minhas_financas.model.enums.TipoLancamento;
-import com.pedropaulo.minhas_financas.service.LancamentoCsvImportService;
-import com.pedropaulo.minhas_financas.service.LancamentoExportService;
-import com.pedropaulo.minhas_financas.service.LancamentoService;
-import com.pedropaulo.minhas_financas.service.UsuarioService;
+import com.pedropaulo.minhas_financas.service.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,6 +41,8 @@ public class LancamentoResource {
 
     private final LancamentoExportService exportService;
 
+    private final GoogleSheetsExport sheetsExport;
+
 	@PostMapping()
 	public ResponseEntity salvar(@RequestBody LancamentoDTO dto, Authentication authentication) {
 		try {
@@ -64,8 +63,7 @@ public class LancamentoResource {
 			return ResponseEntity.ok(lancamentoAtualizado);
 		}
 		catch (EntidadeNaoProcessavelException e) {
-			return new ResponseEntity(e.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY); // Retorna
-																						// 422
+			return new ResponseEntity(e.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY);
 		}
 		catch (RegraNegocioException e) {
 			return ResponseEntity.badRequest().body(e.getMessage());
@@ -80,8 +78,7 @@ public class LancamentoResource {
 			return new ResponseEntity(HttpStatus.CREATED);
 		}
 		catch (EntidadeNaoProcessavelException e) {
-			return new ResponseEntity(e.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY); // Retorna
-																						// 422
+			return new ResponseEntity(e.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY);
 		}
 		catch (RegraNegocioException e) {
 			return new ResponseEntity(e.getMessage(), HttpStatus.BAD_REQUEST);
@@ -95,8 +92,7 @@ public class LancamentoResource {
 			return new ResponseEntity(HttpStatus.NO_CONTENT);
 		}
 		catch (EntidadeNaoProcessavelException e) {
-			return new ResponseEntity(e.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY); // Retorna
-																						// 422
+			return new ResponseEntity(e.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY);
 		}
 		catch (RegraNegocioException e) {
 			return new ResponseEntity(e.getMessage(), HttpStatus.NOT_FOUND);
@@ -165,8 +161,8 @@ public class LancamentoResource {
 
     //nesse caso é válido usar post pq os ids vão ser passados via body (json)
     @PostMapping(value = "/export/json", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<StreamingResponseBody> exportJson(@RequestBody exportLancamentosDTO body) {
-        List<Long> ids = body == null ? List.of() : body.getIdsRequisitados();
+    public ResponseEntity<StreamingResponseBody> exportJson(@RequestBody exportLancamentosDTO dto) {
+        List<Long> ids = dto == null ? List.of() : dto.getIdsRequisitados();
         if (ids == null || ids.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
@@ -179,9 +175,9 @@ public class LancamentoResource {
                 .body(stream);
     }
 
-    @PostMapping(value = "/export.csv", consumes = MediaType.APPLICATION_JSON_VALUE, produces = "text/csv")
-    public ResponseEntity<StreamingResponseBody> exportCsv(@RequestBody exportLancamentosDTO body) {
-        List<Long> ids = body == null ? List.of() : body.getIdsRequisitados();
+    @PostMapping(value = "/export/csv", consumes = MediaType.APPLICATION_JSON_VALUE, produces = "text/csv")
+    public ResponseEntity<StreamingResponseBody> exportCsv(@RequestBody exportLancamentosDTO dto) {
+        List<Long> ids = dto == null ? List.of() : dto.getIdsRequisitados();
         if (ids == null || ids.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
@@ -192,6 +188,21 @@ public class LancamentoResource {
                 .header("Content-Disposition", "attachment; filename=lancamentos_CSV.csv")
                 .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
                 .body(stream);
+    }
+
+    @PostMapping(value = "/google-sheets", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> exportToGoogleSheets(@RequestBody exportLancamentosSheetsDTO dto) {
+        List<Long> ids = (dto == null) ? List.of() : dto.getIdsRequisitados();
+        if (ids == null || ids.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        try {
+            var created = sheetsExport.createSheetFromCsv(ids, dto.nomePlanilha(), dto.folderId());
+            return ResponseEntity.ok(new ResultadoDTO(created.id(), created.webViewLink(), created.webContentLink()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().dto(new ErroDTO(e.getMessage()));
+        }
     }
 
 }
