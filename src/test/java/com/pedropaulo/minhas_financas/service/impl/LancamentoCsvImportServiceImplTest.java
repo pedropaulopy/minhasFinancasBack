@@ -18,10 +18,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -41,8 +43,7 @@ class LancamentoCsvImportServiceImplTest {
     @Mock
     CategoriaRepository categoriaRepository;
 
-    @Mock
-    EntityManager entityManager;
+    private EntityManager entityManager;
 
     private TransactionTemplate txTemplate;
 
@@ -52,12 +53,21 @@ class LancamentoCsvImportServiceImplTest {
     void setup() throws Exception {
         txTemplate = new NoOpTransactionTemplate();
 
-        when(entityManager.getReference(eq(Usuario.class), anyLong())).thenAnswer(inv -> {
-            Long id = inv.getArgument(1, Long.class);
-            Usuario u = new Usuario();
-            u.setId(id);
-            return u;
-        });
+        entityManager = (EntityManager) Proxy.newProxyInstance(
+                getClass().getClassLoader(),
+                new Class[]{EntityManager.class},
+                new InvocationHandler() {
+                    @Override
+                    public Object invoke(Object proxy, Method method, Object[] args) {
+                        if ("getReference".equals(method.getName()) && args != null && args.length == 2 && args[0] == Usuario.class) {
+                            Usuario u = new Usuario();
+                            u.setId((Long) args[1]);
+                            return u;
+                        }
+                        return null;
+                    }
+                }
+        );
 
         service = new LancamentoCsvImportServiceImpl(lancamentoService, txTemplate, categoriaRepository);
 

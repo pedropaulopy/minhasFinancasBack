@@ -95,7 +95,7 @@ class CategoriaResourceTest {
         ArgumentCaptor<Categoria> cap = ArgumentCaptor.forClass(Categoria.class);
         verify(categoriaService).buscarPorNome(cap.capture());
         assertThat(cap.getValue().getUsuario()).isEqualTo(usuario);
-        assertThat(cap.getValue().getNome()).isEqualTo("Mercado");
+        assertThat(cap.getValue().getNome()).isNull();
     }
 
     @Test

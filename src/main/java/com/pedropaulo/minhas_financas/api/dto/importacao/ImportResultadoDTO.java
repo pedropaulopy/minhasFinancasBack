@@ -16,7 +16,7 @@ public class ImportResultadoDTO {
 
 	private long totalFalha;
 
-	private final List<AuxiliarLinhaErro> erros = new ArrayList<>();
+	public final List<AuxiliarLinhaErro> erros = new ArrayList<>();
 
 	public void incLida() {
 		this.totalLidas++;
@@ -25,6 +25,19 @@ public class ImportResultadoDTO {
 	public void incSucesso() {
 		this.totalSucesso++;
 	}
+
+    @Getter
+    public static class AuxiliarLinhaErro {
+        public final long linha;
+        public final String motivo;
+        public final String raw;
+
+        public AuxiliarLinhaErro(long linha, String motivo, String raw) {
+            this.linha = linha;
+            this.motivo = motivo;
+            this.raw = raw;
+        }
+    }
 
 	public void addFalha(long linha, String motivo, String raw) {
 		this.totalFalha++;
