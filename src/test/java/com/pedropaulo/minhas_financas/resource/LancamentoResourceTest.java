@@ -22,7 +22,6 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.Authentication;
 
 import java.math.BigDecimal;
@@ -30,6 +29,7 @@ import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 
+import static com.pedropaulo.minhas_financas.service.testUtils.AuthMocks.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -58,39 +58,7 @@ class LancamentoResourceTest {
 	@BeforeEach
 	void setUp() {
 		resource = new LancamentoResource(lancamentoService, usuarioService, lancamentoCsvImportService);
-		authentication = new TestingAuthenticationToken(EMAIL, null);
-	}
-
-	private LancamentoDTO dtoValido() {
-		LancamentoDTO dto = new LancamentoDTO();
-		dto.setUsuario(1L);
-		dto.setDescricao("Salário");
-		dto.setValor(BigDecimal.valueOf(5000));
-		dto.setMes(10);
-		dto.setAno(2025);
-		dto.setTipoLancamento("RECEITA");
-		dto.setStatusLancamento("PENDENTE");
-		return dto;
-	}
-
-	private Lancamento novoLancamento() {
-		return Lancamento.builder()
-			.ano(2025)
-			.mes(10)
-			.descricao("Salário")
-			.valor(BigDecimal.valueOf(5000))
-			.tipoLancamento(TipoLancamento.RECEITA)
-			.statusLancamento(StatusLancamento.PENDENTE)
-			.dataCadastro(DATA_FIXA)
-			.build();
-	}
-
-	private Usuario criarUsuario() {
-		Usuario usuario = new Usuario();
-		usuario.setId(1L);
-		usuario.setEmail(EMAIL);
-		usuario.setNome("Pedro");
-		return usuario;
+		authentication = auth(EMAIL);
 	}
 
 	@Test
@@ -342,6 +310,38 @@ class LancamentoResourceTest {
 		assertThat(response.getBody()).isEqualTo("Lançamento não encontrado.");
 		verify(lancamentoService).obterPorIdLancamento(321L, authentication);
 		verifyNoMoreInteractions(lancamentoService, usuarioService);
+	}
+
+	private LancamentoDTO dtoValido() {
+		LancamentoDTO dto = new LancamentoDTO();
+		dto.setUsuario(1L);
+		dto.setDescricao("Salário");
+		dto.setValor(BigDecimal.valueOf(5000));
+		dto.setMes(10);
+		dto.setAno(2025);
+		dto.setTipoLancamento("RECEITA");
+		dto.setStatusLancamento("PENDENTE");
+		return dto;
+	}
+
+	private Lancamento novoLancamento() {
+		return Lancamento.builder()
+			.ano(2025)
+			.mes(10)
+			.descricao("Salário")
+			.valor(BigDecimal.valueOf(5000))
+			.tipoLancamento(TipoLancamento.RECEITA)
+			.statusLancamento(StatusLancamento.PENDENTE)
+			.dataCadastro(DATA_FIXA)
+			.build();
+	}
+
+	private Usuario criarUsuario() {
+		Usuario usuario = new Usuario();
+		usuario.setId(1L);
+		usuario.setEmail(EMAIL);
+		usuario.setNome("Pedro");
+		return usuario;
 	}
 
 }

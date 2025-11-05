@@ -2,7 +2,9 @@ package com.pedropaulo.minhas_financas;
 
 import com.pedropaulo.minhas_financas.api.JwtTokenFilter;
 import com.pedropaulo.minhas_financas.service.JwtService;
+import com.pedropaulo.minhas_financas.service.SecurityUserDetailsService;
 import com.pedropaulo.minhas_financas.service.impl.SecurityUserDetailsServiceImpl;
+import com.pedropaulo.minhas_financas.service.testUtils.StubUserDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,6 +20,7 @@ import org.mockito.quality.Strictness;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 
 import java.io.IOException;
 
@@ -40,7 +43,7 @@ class JwtTokenFilterTest {
 	@Mock
 	private FilterChain filterChain;
 
-	private SecurityUserDetailsServiceImpl userDetailsService;
+	private SecurityUserDetailsService userDetailsService;
 
 	private JwtTokenFilter filter;
 
@@ -106,19 +109,6 @@ class JwtTokenFilterTest {
 		then(filterChain).should().doFilter(request, response);
 
 		assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
-	}
-
-	private static class StubUserDetailsService extends SecurityUserDetailsServiceImpl {
-
-		StubUserDetailsService() {
-			super(null);
-		}
-
-		@Override
-		public UserDetails loadUserByUsername(String username) {
-			return User.withUsername(username).password("123").roles("USER").build();
-		}
-
 	}
 
 }

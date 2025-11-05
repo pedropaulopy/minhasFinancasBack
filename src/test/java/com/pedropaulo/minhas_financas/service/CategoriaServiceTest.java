@@ -16,11 +16,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.data.domain.Example;
-import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.Authentication;
 
 import java.util.Optional;
 
+import static com.pedropaulo.minhas_financas.service.testUtils.AuthMocks.auth;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
@@ -41,10 +41,6 @@ class CategoriaServiceTest {
 	LancamentoRepository lancamentoRepository;
 
 	CategoriaServiceImpl service;
-
-	private Authentication auth(String email) {
-		return new TestingAuthenticationToken(email, null);
-	}
 
 	@BeforeEach
 	void setUp() {

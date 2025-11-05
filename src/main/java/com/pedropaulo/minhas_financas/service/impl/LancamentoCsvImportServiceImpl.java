@@ -33,6 +33,8 @@ import java.util.stream.Collectors;
 @Service
 public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportService {
 
+	private static final int TAMANHO_LOTE = 1000;
+
 	private static final String H_DESC = "DESC";
 
 	private static final String H_VALOR_LANC = "VALOR_LANC";
@@ -46,8 +48,6 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 	private static final String H_DATA_LANC = "DATA_LANC";
 
 	private static final String H_CATEGORIA = "CATEGORIA";
-
-	private final CategoriaService categoriaService;
 
 	private final LancamentoService lancamentoService;
 
@@ -68,11 +68,11 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
     }
 
 	@Override
-	public ImportResultadoDTO importar(InputStream in, int tamanhoDoLote, Long usuarioAutenticadoId)
+	public ImportResultadoDTO importar(InputStream inputStream, Long usuarioAutenticadoId)
 			throws RegraNegocioException {
 		ImportResultadoDTO resumo = new ImportResultadoDTO();
 
-		try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+		try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
 			CSVParser parser = CSVFormat.DEFAULT.withFirstRecordAsHeader()
 				.withTrim()
 				.withIgnoreEmptyLines()
@@ -82,7 +82,7 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 			validarCabecalho(parser.getHeaderMap().keySet());
 
 			Map<Lancamento, Set<String>> catsPorLanc = new IdentityHashMap<>();
-			List<Lancamento> bufferLote = new ArrayList<>(tamanhoDoLote);
+			List<Lancamento> bufferLote = new ArrayList<>(TAMANHO_LOTE);
 			long linhaAbsoluta;
 
 			for (CSVRecord rec : parser) {
@@ -91,7 +91,7 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 
 				processarLinhaCsv(rec, usuarioAutenticadoId, catsPorLanc, bufferLote, resumo, linhaAbsoluta);
 
-				if (bufferLote.size() >= tamanhoDoLote) {
+				if (bufferLote.size() >= TAMANHO_LOTE) {
 					persistirEmLote(bufferLote, catsPorLanc, resumo);
 					bufferLote.clear();
 					catsPorLanc.clear();
@@ -110,24 +110,25 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 	}
 
 	private void validarCabecalho(Set<String> header) {
-		List<String> obrig = List.of(H_DESC, H_VALOR_LANC, H_TIPO, H_STATUS, H_USUARIO, H_DATA_LANC, H_CATEGORIA);
-		List<String> faltando = obrig.stream().filter(h -> !header.contains(h)).collect(Collectors.toList());
+		List<String> obrigatorio = List.of(H_DESC, H_VALOR_LANC, H_TIPO, H_STATUS, H_USUARIO, H_DATA_LANC, H_CATEGORIA);
+		List<String> faltando = obrigatorio.stream().filter(h -> !header.contains(h)).collect(Collectors.toList());
 		if (!faltando.isEmpty()) {
 			throw new IllegalArgumentException("Cabeçalho inválido. Faltando: " + faltando);
 		}
 	}
 
 	private Lancamento mapearSemEntidades(CSVRecord r, Long usuarioAutenticadoId) throws RegraNegocioException {
-		String desc = obrig(r, H_DESC);
-		String valorStr = obrig(r, H_VALOR_LANC);
-		String tipoStr = obrig(r, H_TIPO);
-		String statusStr = obrig(r, H_STATUS);
-		String usuarioIdStr = obrig(r, H_USUARIO);
-		String dataStr = obrig(r, H_DATA_LANC);
+		String desc = obrigatorio(r, H_DESC);
+		String valorStr = obrigatorio(r, H_VALOR_LANC);
+		String tipoStr = obrigatorio(r, H_TIPO);
+		String statusStr = obrigatorio(r, H_STATUS);
+		String usuarioIdStr = obrigatorio(r, H_USUARIO);
+		String dataStr = obrigatorio(r, H_DATA_LANC);
 
 		BigDecimal valor = parseValorMonetario(valorStr);
 		if (valor.compareTo(BigDecimal.ZERO) <= 0) {
-			throw new RegraNegocioException("Valor inválido (<= 0): " + valorStr);
+			throw new RegraNegocioException(
+					"Valor inválido (os valores não podem ser igual ou menores a zero): " + valorStr);
 		}
 
 		TipoLancamento tipo = TipoLancamento.valueOf(tipoStr.toUpperCase(Locale.ROOT));
@@ -178,7 +179,7 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 		return out;
 	}
 
-	private String obrig(CSVRecord r, String h) {
+	private String obrigatorio(CSVRecord r, String h) {
 		String v = r.get(h);
 		if (v == null || v.isBlank())
 			throw new IllegalArgumentException("Campo obrigatório vazio: " + h);

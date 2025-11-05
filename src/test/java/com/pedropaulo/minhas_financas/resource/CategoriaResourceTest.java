@@ -24,7 +24,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import static com.pedropaulo.minhas_financas.service.testUtils.AuthMocks.auth;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -41,53 +43,16 @@ class CategoriaResourceTest {
 
 	private CategoriaResource resource;
 
+	private Authentication authentication;
+
 	@BeforeEach
 	void setUp() {
 		resource = new CategoriaResource(usuarioService, categoriaService);
-	}
-
-	private Authentication autenticacao(final String email) {
-		return new Authentication() {
-			@Override
-			public String getName() {
-				return email;
-			}
-
-			@Override
-			public Object getCredentials() {
-				return null;
-			}
-
-			@Override
-			public Object getDetails() {
-				return null;
-			}
-
-			@Override
-			public Object getPrincipal() {
-				return email;
-			}
-
-			@Override
-			public boolean isAuthenticated() {
-				return true;
-			}
-
-			@Override
-			public void setAuthenticated(boolean isAuthenticated) {
-			}
-
-			@Override
-			public java.util.Collection<org.springframework.security.core.GrantedAuthority> getAuthorities() {
-				return Collections.emptyList();
-			}
-		};
+		authentication = auth(EMAIL);
 	}
 
 	@Test
 	void buscar_semNomeCategoria_retornaListaOk() throws Exception {
-		Authentication authentication = autenticacao(EMAIL);
-
 		Usuario usuario = new Usuario();
 		usuario.setId(1L);
 		usuario.setEmail(EMAIL);
@@ -116,8 +81,6 @@ class CategoriaResourceTest {
 
 	@Test
 	void buscar_comNomeCategoria_retornaListaOk() throws Exception {
-		Authentication authentication = autenticacao(EMAIL);
-
 		Usuario usuario = new Usuario();
 		usuario.setId(1L);
 		usuario.setEmail(EMAIL);
@@ -137,8 +100,6 @@ class CategoriaResourceTest {
 
 	@Test
 	void buscar_quandoServiceLancaRegraNegocio_retorna404ComMensagem() throws Exception {
-		Authentication authentication = autenticacao(EMAIL);
-
 		Usuario usuario = new Usuario();
 		usuario.setId(1L);
 		usuario.setEmail(EMAIL);
@@ -154,8 +115,6 @@ class CategoriaResourceTest {
 
 	@Test
 	void obterPorId_quandoExiste_retorna200ComCorpo() throws Exception {
-		Authentication authentication = autenticacao(EMAIL);
-
 		Categoria cat = new Categoria();
 		cat.setId(99L);
 		cat.setNome("Lazer");
@@ -169,29 +128,27 @@ class CategoriaResourceTest {
 
 	@Test
 	void obterPorId_quandoNaoExiste_retorna404() throws Exception {
-		Authentication authentication = autenticacao(EMAIL);
-
 		when(categoriaService.obterPorIdCategoria(eq(100L), eq(authentication))).thenReturn(Optional.empty());
+
 		ResponseEntity<Categoria> resp = resource.obterPorId(100L, authentication);
+
 		assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
 		assertThat(resp.getBody()).isNull();
 	}
 
 	@Test
 	void obterPorId_quandoServiceLanca_retorna400() throws Exception {
-		Authentication authentication = autenticacao(EMAIL);
-
 		when(categoriaService.obterPorIdCategoria(anyLong(), eq(authentication)))
 			.thenThrow(new RegraNegocioException("Não foi possível concluir a operação solicitada."));
+
 		ResponseEntity<Categoria> resp = resource.obterPorId(1L, authentication);
+
 		assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 		assertThat(resp.getBody()).isNull();
 	}
 
 	@Test
 	void criar_sucesso_retorna200ComEntidade() throws Exception {
-		Authentication authentication = autenticacao(EMAIL);
-
 		CategoriaDTO dto = new CategoriaDTO();
 		dto.setNome("Saúde");
 
@@ -210,8 +167,6 @@ class CategoriaResourceTest {
 
 	@Test
 	void criar_quandoServiceLanca_retorna400ComMensagem() throws Exception {
-		Authentication authentication = autenticacao(EMAIL);
-
 		CategoriaDTO dto = new CategoriaDTO();
 		dto.setNome("Saúde");
 
@@ -228,8 +183,6 @@ class CategoriaResourceTest {
 
 	@Test
 	void atualizar_sucesso_retorna201Created() throws Exception {
-		Authentication authentication = autenticacao(EMAIL);
-
 		CategoriaDTO dto = new CategoriaDTO();
 		dto.setNome("Investimentos");
 
@@ -244,8 +197,6 @@ class CategoriaResourceTest {
 
 	@Test
 	void atualizar_quandoServiceLanca_retorna400ComMensagem() throws Exception {
-		Authentication authentication = autenticacao(EMAIL);
-
 		CategoriaDTO dto = new CategoriaDTO();
 		dto.setNome("Investimentos");
 		doThrow(new RegraNegocioException("Não foi possível atualizar a categoria.")).when(categoriaService)
@@ -259,10 +210,10 @@ class CategoriaResourceTest {
 
 	@Test
 	void deletar_sucesso_retorna204NoContent() throws Exception {
-		Authentication authentication = autenticacao(EMAIL);
-
 		doNothing().when(categoriaService).deletar(eq(9L), eq(authentication));
+
 		ResponseEntity<?> resp = resource.deletar(9L, authentication);
+
 		assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
 		assertThat(resp.getBody()).isNull();
 		verify(categoriaService).deletar(9L, authentication);
@@ -270,11 +221,11 @@ class CategoriaResourceTest {
 
 	@Test
 	void deletar_quandoServiceLanca_retorna400ComMensagem() throws Exception {
-		Authentication authentication = autenticacao(EMAIL);
-
 		doThrow(new RegraNegocioException("Não é possível excluir a categoria no momento.")).when(categoriaService)
 			.deletar(eq(12L), eq(authentication));
+
 		ResponseEntity<?> resp = resource.deletar(12L, authentication);
+
 		assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 		assertThat(resp.getBody()).isEqualTo("Não é possível excluir a categoria no momento.");
 	}
