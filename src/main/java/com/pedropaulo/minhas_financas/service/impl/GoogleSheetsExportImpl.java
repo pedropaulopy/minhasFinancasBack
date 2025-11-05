@@ -146,7 +146,7 @@ public class GoogleSheetsExportImpl implements GoogleSheetsExport {
                                 new CellFormat().setNumberFormat(
                                         new NumberFormat()
                                                 .setType("CURRENCY")
-                                                .setPattern("R$ #,##0.00")
+                                                .setPattern("R$ #.##0,00")
                                 )))
                         .setFields("userEnteredFormat.numberFormat")
         ));
