@@ -163,12 +163,19 @@ public class LancamentoResource {
 	}
 
     //nesse caso é válido usar post pq os ids vão ser passados via body (json)
-    @PostMapping(value = "/export/json", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<StreamingResponseBody> exportJson(@RequestBody exportLancamentosDTO dto) {
-        List<Long> ids = dto == null ? List.of() : dto.getIdsRequisitados();
-        if (ids == null || ids.isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
+    @GetMapping(value = "/export/json", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<StreamingResponseBody> exportJson(
+            @RequestParam(value = "descricao", required = false) String descricao,
+            @RequestParam(value = "mes", required = false) Integer mes,
+            @RequestParam(value = "ano", required = false) Integer ano,
+            @RequestParam(value = "valor", required = false) BigDecimal valor,
+            @RequestParam(value = "tipo_lancamento", required = false) TipoLancamento tipoLancamento,
+            @RequestParam(value = "status_lancamento", required = false) StatusLancamento status,
+            @RequestParam(value = "categoriaId", required = false) List<Long> categoriaIds,
+            Authentication authentication) throws RegraNegocioException {
+
+        List<Long> ids = resolverIdsParaExportacao(descricao, mes, ano, valor, tipoLancamento, status, categoriaIds, authentication);
+        if (ids.isEmpty()) return ResponseEntity.badRequest().build();
 
         StreamingResponseBody stream = os -> exportService.streamJsonByIds(os, ids);
 
@@ -178,12 +185,19 @@ public class LancamentoResource {
                 .body(stream);
     }
 
-    @PostMapping(value = "/export/csv", consumes = MediaType.APPLICATION_JSON_VALUE, produces = "text/csv")
-    public ResponseEntity<StreamingResponseBody> exportCsv(@RequestBody exportLancamentosDTO dto) {
-        List<Long> ids = dto == null ? List.of() : dto.getIdsRequisitados();
-        if (ids == null || ids.isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
+    @GetMapping(value = "/export/csv", produces = "text/csv")
+    public ResponseEntity<StreamingResponseBody> exportCsv(
+            @RequestParam(value = "descricao", required = false) String descricao,
+            @RequestParam(value = "mes", required = false) Integer mes,
+            @RequestParam(value = "ano", required = false) Integer ano,
+            @RequestParam(value = "valor", required = false) BigDecimal valor,
+            @RequestParam(value = "tipo_lancamento", required = false) TipoLancamento tipoLancamento,
+            @RequestParam(value = "status_lancamento", required = false) StatusLancamento status,
+            @RequestParam(value = "categoriaId", required = false) List<Long> categoriaIds,
+            Authentication authentication) throws RegraNegocioException {
+
+        List<Long> ids = resolverIdsParaExportacao(descricao, mes, ano, valor, tipoLancamento, status, categoriaIds, authentication);
+        if (ids.isEmpty()) return ResponseEntity.badRequest().build();
 
         StreamingResponseBody stream = os -> exportService.streamCsvByIds(os, ids);
 
@@ -193,20 +207,56 @@ public class LancamentoResource {
                 .body(stream);
     }
 
-    @PostMapping(value = "/export/sheets", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> exportToGoogleSheets(@RequestBody exportLancamentosSheetsDTO dto) {
-        List<Long> ids = (dto == null) ? List.of() : dto.getIdsRequisitados();
-        if (ids == null || ids.isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
+    @GetMapping(value = "/export/sheets", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> exportToGoogleSheets(
+            @RequestParam(value = "descricao", required = false) String descricao,
+            @RequestParam(value = "mes", required = false) Integer mes,
+            @RequestParam(value = "ano", required = false) Integer ano,
+            @RequestParam(value = "valor", required = false) BigDecimal valor,
+            @RequestParam(value = "tipo_lancamento", required = false) TipoLancamento tipoLancamento,
+            @RequestParam(value = "status_lancamento", required = false) StatusLancamento status,
+            @RequestParam(value = "categoriaId", required = false) List<Long> categoriaIds,
+            @RequestParam(value = "nomePlanilha", required = false) String nomePlanilha,
+            @RequestParam(value = "folderId", required = false) String folderId,
+            Authentication authentication) throws RegraNegocioException {
+
+        List<Long> ids = resolverIdsParaExportacao(descricao, mes, ano, valor, tipoLancamento, status, categoriaIds, authentication);
+        if (ids.isEmpty()) return ResponseEntity.badRequest().build();
 
         try {
-            var created = sheetsExport.createSheetFromCsv(ids, dto.getNomePlanilha(), dto.getFolderId());
-      return ResponseEntity.ok(
-          new exportSheetsResultadoDTO(created.id(), created.webViewLink(), created.webContentLink()));
+            var created = sheetsExport.createSheetFromCsv(ids, nomePlanilha, folderId);
+            return ResponseEntity.ok(new exportSheetsResultadoDTO(created.id(), created.webViewLink(), created.webContentLink()));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(new exportSheetsErrosDTO(e.getMessage()));
         }
     }
+
+    private List<Long> resolverIdsParaExportacao(
+            String descricao,
+            Integer mes,
+            Integer ano,
+            BigDecimal valor,
+            TipoLancamento tipoLancamento,
+            StatusLancamento status,
+            List<Long> categoriaIds,
+            Authentication authentication) throws RegraNegocioException {
+
+        String email = authentication.getName();
+        Usuario usuario = usuarioService.obterIdUsuarioPorEmail(email);
+
+        Lancamento filtro = new Lancamento();
+        filtro.setDescricao(descricao);
+        filtro.setMes(mes);
+        filtro.setAno(ano);
+        filtro.setValor(valor);
+        filtro.setTipoLancamento(tipoLancamento);
+        filtro.setStatusLancamento(status);
+        filtro.setUsuario(usuario);
+
+        return service.buscar(filtro, categoriaIds).stream()
+                .map(Lancamento::getId)
+                .toList();
+    }
+
 
 }
