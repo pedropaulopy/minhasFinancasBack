@@ -54,6 +54,7 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 	private final TransactionTemplate txTemplate;
     private final CategoriaRepository categoriaRepository;
     private final UsuarioRepository usuarioRepository;
+    private final CategoriaService categoriaService;
 
     @PersistenceContext
 	private EntityManager entityManager;
