@@ -47,11 +47,11 @@ public class LancamentoExportServiceImpl implements LancamentoExportService {
 
     private void writeJson(JsonGenerator gen, Lancamento lancamento) throws IOException {
         gen.writeStartObject();
-        gen.writeNumberField("ID_LANC", lancamento.getId());
-        if (lancamento.getDescricao() != null) gen.writeStringField("DESC", lancamento.getDescricao());
+        gen.writeNumberField("ID LANÇAMENTO", lancamento.getId());
+        if (lancamento.getDescricao() != null) gen.writeStringField("DESCRIÇÃO", lancamento.getDescricao());
         gen.writeNumberField("VALOR", numberSafe(lancamento.getValor()));
         if (lancamento.getAno() != null) gen.writeNumberField("ANO", lancamento.getAno());
-        if (lancamento.getMes() != null) gen.writeNumberField("MES", lancamento.getMes());
+        if (lancamento.getMes() != null) gen.writeNumberField("MÊS", lancamento.getMes());
         if (lancamento.getTipoLancamento() != null) gen.writeStringField("TIPO", lancamento.getTipoLancamento().name());
         if (lancamento.getStatusLancamento() != null) gen.writeStringField("STATUS", lancamento.getStatusLancamento().name());
         String mm = String.format("%02d", lancamento.getMes());
@@ -64,7 +64,7 @@ public class LancamentoExportServiceImpl implements LancamentoExportService {
         List<Long> clean = sanitizeIds(ids);
 
         try (var writer = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8))) {
-            writer.write("ID_LANC,DESC,VALOR,ANO,MES,TIPO,STATUS,DATA");
+            writer.write("ID LANÇAMENTO,DESCRIÇÃO,VALOR,ANO,MÊS,TIPO,STATUS,DATA");
             writer.newLine();
 
             for (List<Long> chunk : chunksOf(clean, CHUNK_SIZE)) {

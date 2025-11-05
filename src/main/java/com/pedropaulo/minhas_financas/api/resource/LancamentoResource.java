@@ -3,6 +3,9 @@ package com.pedropaulo.minhas_financas.api.resource;
 import com.pedropaulo.minhas_financas.api.dto.LancamentoDTO;
 import com.pedropaulo.minhas_financas.api.dto.LancamentoStatusDTO;
 import com.pedropaulo.minhas_financas.api.dto.exportacao.exportLancamentosDTO;
+import com.pedropaulo.minhas_financas.api.dto.exportacao.exportLancamentosSheetsDTO;
+import com.pedropaulo.minhas_financas.api.dto.exportacao.exportSheetsErrosDTO;
+import com.pedropaulo.minhas_financas.api.dto.exportacao.exportSheetsResultadoDTO;
 import com.pedropaulo.minhas_financas.api.dto.importacao.ImportResultadoDTO;
 import com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException;
 import com.pedropaulo.minhas_financas.exception.RegraNegocioException;
@@ -190,7 +193,7 @@ public class LancamentoResource {
                 .body(stream);
     }
 
-    @PostMapping(value = "/google-sheets", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/export/sheets", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> exportToGoogleSheets(@RequestBody exportLancamentosSheetsDTO dto) {
         List<Long> ids = (dto == null) ? List.of() : dto.getIdsRequisitados();
         if (ids == null || ids.isEmpty()) {
@@ -198,10 +201,11 @@ public class LancamentoResource {
         }
 
         try {
-            var created = sheetsExport.createSheetFromCsv(ids, dto.nomePlanilha(), dto.folderId());
-            return ResponseEntity.ok(new ResultadoDTO(created.id(), created.webViewLink(), created.webContentLink()));
+            var created = sheetsExport.createSheetFromCsv(ids, dto.getNomePlanilha(), dto.getFolderId());
+      return ResponseEntity.ok(
+          new exportSheetsResultadoDTO(created.id(), created.webViewLink(), created.webContentLink()));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().dto(new ErroDTO(e.getMessage()));
+            return ResponseEntity.internalServerError().body(new exportSheetsErrosDTO(e.getMessage()));
         }
     }
 
