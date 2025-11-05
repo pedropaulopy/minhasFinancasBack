@@ -1,25 +1,14 @@
 package com.pedropaulo.minhas_financas.api.dto.importacao;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.ArrayList;
 import java.util.List;
 
+@Getter
+@Setter
 public class ImportResultadoDTO {
-
-	public static class LinhaErro {
-
-		public final long linha;
-
-		public final String motivo;
-
-		public final String raw;
-
-		public LinhaErro(long linha, String motivo, String raw) {
-			this.linha = linha;
-			this.motivo = motivo;
-			this.raw = raw;
-		}
-
-	}
 
 	private long totalLidas;
 
@@ -27,7 +16,7 @@ public class ImportResultadoDTO {
 
 	private long totalFalha;
 
-	private final List<LinhaErro> erros = new ArrayList<>();
+	private final List<AuxiliarLinhaErro> erros = new ArrayList<>();
 
 	public void incLida() {
 		this.totalLidas++;
@@ -39,23 +28,6 @@ public class ImportResultadoDTO {
 
 	public void addFalha(long linha, String motivo, String raw) {
 		this.totalFalha++;
-		this.erros.add(new LinhaErro(linha, motivo, raw));
+		this.erros.add(new AuxiliarLinhaErro(linha, motivo, raw));
 	}
-
-	public long getTotalLidas() {
-		return totalLidas;
-	}
-
-	public long getTotalSucesso() {
-		return totalSucesso;
-	}
-
-	public long getTotalFalha() {
-		return totalFalha;
-	}
-
-	public List<LinhaErro> getErros() {
-		return erros;
-	}
-
 }

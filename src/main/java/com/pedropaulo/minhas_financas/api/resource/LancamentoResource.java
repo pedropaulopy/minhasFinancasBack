@@ -38,7 +38,7 @@ public class LancamentoResource {
 
 	private final LancamentoCsvImportService importService;
 
-	@PostMapping()
+	@PostMapping
 	public ResponseEntity salvar(@RequestBody LancamentoDTO dto, Authentication authentication) {
 		try {
 			Lancamento entidade = service.converterDTO(dto, authentication);
