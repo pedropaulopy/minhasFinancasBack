@@ -48,8 +48,8 @@ public class JwtTokenFilter extends OncePerRequestFilter {
 
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) {
-		String p = request.getServletPath();
-		return p.startsWith("/swagger-ui") || p.equals("/swagger-ui.html") || p.startsWith("/v3/api-docs");
+		String path = request.getServletPath();
+		return path.startsWith("/swagger-ui") || path.equals("/swagger-ui.html") || path.startsWith("/v3/api-docs");
 	}
 
 }
