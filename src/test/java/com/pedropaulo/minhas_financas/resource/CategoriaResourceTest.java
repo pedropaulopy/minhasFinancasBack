@@ -17,7 +17,6 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.Authentication;
 
 import java.util.Arrays;
@@ -25,6 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import static com.pedropaulo.minhas_financas.service.testUtils.AuthMocks.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -48,7 +48,7 @@ class CategoriaResourceTest {
     @BeforeEach
     void setUp() {
         resource = new CategoriaResource(usuarioService, categoriaService);
-        authentication = new TestingAuthenticationToken(EMAIL, null);
+        authentication = auth(EMAIL);
     }
 
     @Test
