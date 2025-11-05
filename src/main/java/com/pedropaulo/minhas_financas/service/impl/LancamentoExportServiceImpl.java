@@ -2,7 +2,6 @@ package com.pedropaulo.minhas_financas.service.impl;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.pedropaulo.minhas_financas.exception.RegraNegocioException;
 import com.pedropaulo.minhas_financas.model.entity.Lancamento;
 import com.pedropaulo.minhas_financas.model.repository.LancamentoRepository;
 import com.pedropaulo.minhas_financas.service.LancamentoExportService;
@@ -29,11 +28,11 @@ public class LancamentoExportServiceImpl implements LancamentoExportService {
     private final LancamentoRepository lancamentoRepository;
 
     @Transactional(readOnly = true)
-    public void streamJsonByIds(OutputStream os, List<Long> ids) throws IOException {
+    public void streamJsonByIds(OutputStream outputStreams, List<Long> ids) throws IOException {
         List<Long> clean = sanitizeIds(ids);
 
         JsonFactory jf = new JsonFactory();
-        try (JsonGenerator gen = jf.createGenerator(os)) {
+        try (JsonGenerator gen = jf.createGenerator(outputStreams)) {
             gen.writeStartArray();
 
             for (List<Long> chunk : chunksOf(clean, CHUNK_SIZE)) {
@@ -46,40 +45,40 @@ public class LancamentoExportServiceImpl implements LancamentoExportService {
         }
     }
 
-    private void writeJson(JsonGenerator gen, Lancamento l) throws IOException {
+    private void writeJson(JsonGenerator gen, Lancamento lancamento) throws IOException {
         gen.writeStartObject();
-        gen.writeNumberField("ID_LANC", l.getId());
-        if (l.getDescricao() != null) gen.writeStringField("DESC", l.getDescricao());
-        gen.writeNumberField("VALOR", numberSafe(l.getValor()));
-        if (l.getAno() != null) gen.writeNumberField("ANO", l.getAno());
-        if (l.getMes() != null) gen.writeNumberField("MES", l.getMes());
-        if (l.getTipoLancamento() != null) gen.writeStringField("TIPO", l.getTipoLancamento().name());
-        if (l.getStatusLancamento() != null) gen.writeStringField("STATUS", l.getStatusLancamento().name());
-        String mm = String.format("%02d", l.getMes());
-        gen.writeStringField("DATA", mm + "/" + l.getAno());
+        gen.writeNumberField("ID_LANC", lancamento.getId());
+        if (lancamento.getDescricao() != null) gen.writeStringField("DESC", lancamento.getDescricao());
+        gen.writeNumberField("VALOR", numberSafe(lancamento.getValor()));
+        if (lancamento.getAno() != null) gen.writeNumberField("ANO", lancamento.getAno());
+        if (lancamento.getMes() != null) gen.writeNumberField("MES", lancamento.getMes());
+        if (lancamento.getTipoLancamento() != null) gen.writeStringField("TIPO", lancamento.getTipoLancamento().name());
+        if (lancamento.getStatusLancamento() != null) gen.writeStringField("STATUS", lancamento.getStatusLancamento().name());
+        String mm = String.format("%02d", lancamento.getMes());
+        gen.writeStringField("DATA", mm + "/" + lancamento.getAno());
         gen.writeEndObject();
     }
 
     @Transactional(readOnly = true)
-    public void streamCsvByIds(OutputStream os, List<Long> ids) throws IOException {
+    public void streamCsvByIds(OutputStream outputStream, List<Long> ids) throws IOException {
         List<Long> clean = sanitizeIds(ids);
 
-        try (var writer = new BufferedWriter(new OutputStreamWriter(os, StandardCharsets.UTF_8))) {
+        try (var writer = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8))) {
             writer.write("id,descricao,valor,ano,mes,tipo,status,data");
             writer.newLine();
 
             for (List<Long> chunk : chunksOf(clean, CHUNK_SIZE)) {
                 List<Lancamento> lote = lancamentoRepository.findAllByIdInOrderByIdAsc(chunk);
-                for (Lancamento l : lote) {
-                    String dataStr = String.format("%02d/%d", l.getMes(), l.getAno());
+                for (Lancamento lancamento : lote) {
+                    String dataStr = String.format("%02d/%d", lancamento.getMes(), lancamento.getAno());
                     writer.write(String.join(",",
-                            csv(l.getId()),
-                            csv(l.getDescricao()),
-                            csv(numberSafe(l.getValor())),
-                            csv(l.getAno()),
-                            csv(l.getMes()),
-                            csv(l.getTipoLancamento() == null ? null : l.getTipoLancamento().name()),
-                            csv(l.getStatusLancamento() == null ? null : l.getStatusLancamento().name()),
+                            csv(lancamento.getId()),
+                            csv(lancamento.getDescricao()),
+                            csv(numberSafe(lancamento.getValor())),
+                            csv(lancamento.getAno()),
+                            csv(lancamento.getMes()),
+                            csv(lancamento.getTipoLancamento() == null ? null : lancamento.getTipoLancamento().name()),
+                            csv(lancamento.getStatusLancamento() == null ? null : lancamento.getStatusLancamento().name()),
                             csv(dataStr)
                     ));
                     writer.newLine();
@@ -104,10 +103,10 @@ public class LancamentoExportServiceImpl implements LancamentoExportService {
         return out;
     }
 
-    private double numberSafe(BigDecimal v) { return v == null ? 0.0 : v.doubleValue(); }
+    private double numberSafe(BigDecimal valor) { return valor == null ? 0.0 : valor.doubleValue(); }
 
-    private String csv(Object o) {
-        String s = (o == null) ? "" : String.valueOf(o);
+    private String csv(Object object) {
+        String s = (object == null) ? "" : String.valueOf(object);
         boolean precisaAspas = s.contains(",") || s.contains("\"") || s.contains("\n") || s.contains("\r");
         if (s.contains("\"")) s = s.replace("\"", "\"\"");
         return precisaAspas ? "\"" + s + "\"" : s;
