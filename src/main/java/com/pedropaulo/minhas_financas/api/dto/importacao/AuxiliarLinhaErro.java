@@ -1,5 +1,10 @@
 package com.pedropaulo.minhas_financas.api.dto.importacao;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class AuxiliarLinhaErro {
 
     public final long linha;
