@@ -7,6 +7,7 @@ import com.pedropaulo.minhas_financas.model.entity.Lancamento;
 import com.pedropaulo.minhas_financas.model.entity.Usuario;
 import com.pedropaulo.minhas_financas.model.enums.StatusLancamento;
 import com.pedropaulo.minhas_financas.model.enums.TipoLancamento;
+import com.pedropaulo.minhas_financas.model.repository.CategoriaRepository;
 import com.pedropaulo.minhas_financas.service.CategoriaService;
 import com.pedropaulo.minhas_financas.service.LancamentoCsvImportService;
 import com.pedropaulo.minhas_financas.service.LancamentoService;
@@ -50,15 +51,17 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
     private final LancamentoService lancamentoService;
 
 	private final TransactionTemplate txTemplate;
+    private final CategoriaRepository categoriaRepository;
 
-	@PersistenceContext
-	private EntityManager entityManagerm;
+    @PersistenceContext
+	private EntityManager entityManager;
 
-	public LancamentoCsvImportServiceImpl(CategoriaService categoriaService, LancamentoService lancamentoService,
-			TransactionTemplate txTemplate) {
+	public LancamentoCsvImportServiceImpl(LancamentoService lancamentoService,
+                                          TransactionTemplate txTemplate, CategoriaRepository categoriaRepository) {
         this.lancamentoService = lancamentoService;
 		this.txTemplate = txTemplate;
-	}
+        this.categoriaRepository = categoriaRepository;
+    }
 
 	@Override
 	public ImportResultadoDTO importar(InputStream inputStream, Long usuarioAutenticadoId)
@@ -203,7 +206,7 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 	}
 
 	private void anexarUsuariosGerenciados(List<Lancamento> lote) {
-		lote.forEach(l -> l.setUsuario(entityManagerm.getReference(Usuario.class, l.getUsuario().getId())));
+		lote.forEach(l -> l.setUsuario(entityManager.getReference(Usuario.class, l.getUsuario().getId())));
 	}
 
 	private Long obterUsuarioId(List<Lancamento> lote) {
@@ -242,8 +245,8 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 
 	private void persistirLote(List<Lancamento> lote) {
 		lancamentoService.salvarTodos(lote);
-		entityManagerm.flush();
-		entityManagerm.clear();
+		entityManager.flush();
+		entityManager.clear();
 	}
 
 	private void atualizarResumo(ImportResultadoDTO resumo, int quantidade) {
@@ -255,21 +258,17 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 	private Map<String, Categoria> carregarOuCriarCategorias(Long uid, Set<String> nomes) {
 		Map<String, Categoria> mapa = new HashMap<>();
 
-		List<Categoria> existentes = entityManagerm
-			.createQuery("select c from Categoria c where c.usuario.id = :uid and c.nome in :nomes", Categoria.class)
-			.setParameter("uid", uid)
-			.setParameter("nomes", nomes)
-			.getResultList();
+		List<Categoria> existentes = categoriaRepository.findByUsuarioIdAndNomesIn(uid, nomes);
 
 		existentes.forEach(c -> mapa.put(c.getNome(), c));
 
-		Usuario usuarioRef = entityManagerm.getReference(Usuario.class, uid);
+		Usuario usuarioRef = entityManager.getReference(Usuario.class, uid);
 		for (String nome : nomes) {
 			if (!mapa.containsKey(nome)) {
 				Categoria nova = new Categoria();
 				nova.setUsuario(usuarioRef);
 				nova.setNome(nome);
-				entityManagerm.persist(nova);
+				entityManager.persist(nova);
 				mapa.put(nome, nova);
 			}
 		}
