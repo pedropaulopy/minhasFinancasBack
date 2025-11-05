@@ -31,151 +31,160 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class LancamentoCsvImportServiceImplTest {
 
-    static class NoOpTransactionTemplate extends TransactionTemplate {
-        NoOpTransactionTemplate() { super(null); }
-        @Override public <T> T execute(TransactionCallback<T> action) { return action.doInTransaction(new SimpleTransactionStatus()); }
-    }
+	static class NoOpTransactionTemplate extends TransactionTemplate {
 
-    @Mock LancamentoService lancamentoService;
-    @Mock CategoriaRepository categoriaRepository;
-    @Mock UsuarioRepository usuarioRepository;
-    @Mock CategoriaService categoriaService;
+		NoOpTransactionTemplate() {
+			super(null);
+		}
 
-    private TransactionTemplate txTemplate;
-    private LancamentoCsvImportServiceImpl service;
+		@Override
+		public <T> T execute(TransactionCallback<T> action) {
+			return action.doInTransaction(new SimpleTransactionStatus());
+		}
 
-    @BeforeEach
-    void setup() throws NoSuchFieldException, IllegalAccessException {
-        txTemplate = new NoOpTransactionTemplate();
-        service = new LancamentoCsvImportServiceImpl(
-                categoriaService,
-                lancamentoService,
-                txTemplate,
-                categoriaRepository,
-                usuarioRepository
-        );
+	}
 
-        EntityManager emStub = (EntityManager) Proxy.newProxyInstance(
-                getClass().getClassLoader(),
-                new Class[]{EntityManager.class},
-                (proxy, method, args) -> null
-        );
+	@Mock
+	LancamentoService lancamentoService;
 
-        Field field = LancamentoCsvImportServiceImpl.class.getDeclaredField("entityManager");
-        field.setAccessible(true);
-        field.set(service, emStub);
-    }
+	@Mock
+	CategoriaRepository categoriaRepository;
 
-    private static InputStream csv(String content) {
-        return new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
-    }
+	@Mock
+	UsuarioRepository usuarioRepository;
 
-    @Test
-    void importar_ok_persisteComCategoriasNovas() throws Exception {
-        when(usuarioRepository.getById(anyLong())).thenAnswer(inv -> {
-            Long id = inv.getArgument(0);
-            Usuario u = new Usuario();
-            u.setId(id);
-            return u;
-        });
+	@Mock
+	CategoriaService categoriaService;
 
-        String content = "DESC,VALOR_LANC,TIPO,STATUS,USUARIO,DATA_LANC,CATEGORIA\n"
-                + "Compra mercado,123,DESPESA,EFETIVADO,99,10/11/2025,Comida|Essencial\n"
-                + "Aluguel,2500,DESPESA,PENDENTE,99,01/11/2025,Alugel|Casa\n";
+	private TransactionTemplate txTemplate;
 
-        when(categoriaRepository.findByNomeIgnoreCaseAndUsuario(anyString(), any(Usuario.class)))
-                .thenReturn(Optional.empty());
+	private LancamentoCsvImportServiceImpl service;
 
-        ImportResultadoDTO resumo = service.importar(csv(content), 99L);
+	@BeforeEach
+	void setup() throws NoSuchFieldException, IllegalAccessException {
+		txTemplate = new NoOpTransactionTemplate();
+		service = new LancamentoCsvImportServiceImpl(categoriaService, lancamentoService, txTemplate,
+				categoriaRepository, usuarioRepository);
 
-        assertEquals(2, resumo.getTotalLidas());
-        assertEquals(2, resumo.getTotalSucesso());
-        assertEquals(0, resumo.getTotalFalha());
-        verify(lancamentoService, times(1)).salvarTodos(anyList());
-    }
+		EntityManager emStub = (EntityManager) Proxy.newProxyInstance(getClass().getClassLoader(),
+				new Class[] { EntityManager.class }, (proxy, method, args) -> null);
 
-    @Test
-    void importar_ok_semCategorias_naoCriaNemConsulta() throws Exception {
-        when(usuarioRepository.getById(anyLong())).thenAnswer(inv -> {
-            Long id = inv.getArgument(0);
-            Usuario u = new Usuario();
-            u.setId(id);
-            return u;
-        });
+		Field field = LancamentoCsvImportServiceImpl.class.getDeclaredField("entityManager");
+		field.setAccessible(true);
+		field.set(service, emStub);
+	}
 
-        String content = "DESC,VALOR_LANC,TIPO,STATUS,USUARIO,DATA_LANC,CATEGORIA\n"
-                + "Salário,10000,RECEITA,EFETIVADO,7,05/11/2025,\n";
+	private static InputStream csv(String content) {
+		return new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
+	}
 
-        ImportResultadoDTO resumo = service.importar(csv(content), 7L);
+	@Test
+	void importar_ok_persisteComCategoriasNovas() throws Exception {
+		when(usuarioRepository.getById(anyLong())).thenAnswer(inv -> {
+			Long id = inv.getArgument(0);
+			Usuario u = new Usuario();
+			u.setId(id);
+			return u;
+		});
 
-        assertEquals(1, resumo.getTotalLidas());
-        assertEquals(1, resumo.getTotalSucesso());
-        assertEquals(0, resumo.getTotalFalha());
-        verify(lancamentoService, times(1)).salvarTodos(anyList());
-        verifyNoInteractions(categoriaRepository);
-    }
+		String content = "DESC,VALOR_LANC,TIPO,STATUS,USUARIO,DATA_LANC,CATEGORIA\n"
+				+ "Compra mercado,123,DESPESA,EFETIVADO,99,10/11/2025,Comida|Essencial\n"
+				+ "Aluguel,2500,DESPESA,PENDENTE,99,01/11/2025,Alugel|Casa\n";
 
-    @Test
-    void importar_comLinhaInvalida_adicionaFalhaENaoQuebra() throws Exception {
-        when(usuarioRepository.getById(anyLong())).thenAnswer(inv -> {
-            Long id = inv.getArgument(0);
-            Usuario u = new Usuario();
-            u.setId(id);
-            return u;
-        });
+		when(categoriaRepository.findByNomeIgnoreCaseAndUsuario(anyString(), any(Usuario.class)))
+			.thenReturn(Optional.empty());
 
-        String content = "DESC,VALOR_LANC,TIPO,STATUS,USUARIO,DATA_LANC,CATEGORIA\n"
-                + "Compra inválida,0,DESPESA,EFETIVADO,5,10/11/2025,Food\n"
-                + "Venda,300,RECEITA,PENDENTE,5,12/11/2025,Vendas\n";
+		ImportResultadoDTO resumo = service.importar(csv(content), 99L);
 
-        when(categoriaRepository.findByNomeIgnoreCaseAndUsuario(anyString(), any(Usuario.class)))
-                .thenReturn(Optional.empty());
+		assertEquals(2, resumo.getTotalLidas());
+		assertEquals(2, resumo.getTotalSucesso());
+		assertEquals(0, resumo.getTotalFalha());
+		verify(lancamentoService, times(1)).salvarTodos(anyList());
+	}
 
-        ImportResultadoDTO resumo = service.importar(csv(content), 5L);
+	@Test
+	void importar_ok_semCategorias_naoCriaNemConsulta() throws Exception {
+		when(usuarioRepository.getById(anyLong())).thenAnswer(inv -> {
+			Long id = inv.getArgument(0);
+			Usuario u = new Usuario();
+			u.setId(id);
+			return u;
+		});
 
-        assertEquals(2, resumo.getTotalLidas());
-        assertEquals(1, resumo.getTotalSucesso());
-        assertEquals(1, resumo.getTotalFalha());
-        assertEquals(1, resumo.getErros().size());
-        assertTrue(resumo.getErros().get(0).getMotivo().contains("Valor inválido"));
-        verify(lancamentoService, times(1)).salvarTodos(anyList());
-    }
+		String content = "DESC,VALOR_LANC,TIPO,STATUS,USUARIO,DATA_LANC,CATEGORIA\n"
+				+ "Salário,10000,RECEITA,EFETIVADO,7,05/11/2025,\n";
 
-    @Test
-    void importar_cabecalhoInvalido_lancaIAE() {
-        String content = "DESC,VALOR_LANC,TIPO,STATUS,USUARIO,DATA_LANC\n"
-                + "Qualquer,10,RECEITA,EFETIVADO,1,01/01/2025\n";
+		ImportResultadoDTO resumo = service.importar(csv(content), 7L);
 
-        assertThrows(IllegalArgumentException.class, () -> service.importar(csv(content), 1L));
-        verifyNoInteractions(lancamentoService);
-    }
+		assertEquals(1, resumo.getTotalLidas());
+		assertEquals(1, resumo.getTotalSucesso());
+		assertEquals(0, resumo.getTotalFalha());
+		verify(lancamentoService, times(1)).salvarTodos(anyList());
+		verifyNoInteractions(categoriaRepository);
+	}
 
-    @Test
-    void importar_reutilizaCategoriasExistentes_semCriarNovas() throws Exception {
-        when(usuarioRepository.getById(anyLong())).thenAnswer(inv -> {
-            Long id = inv.getArgument(0);
-            Usuario u = new Usuario();
-            u.setId(id);
-            return u;
-        });
+	@Test
+	void importar_comLinhaInvalida_adicionaFalhaENaoQuebra() throws Exception {
+		when(usuarioRepository.getById(anyLong())).thenAnswer(inv -> {
+			Long id = inv.getArgument(0);
+			Usuario u = new Usuario();
+			u.setId(id);
+			return u;
+		});
 
-        String content = "DESC,VALOR_LANC,TIPO,STATUS,USUARIO,DATA_LANC,CATEGORIA\n"
-                + "Compra,50,DESPESA,EFETIVADO,42,02/11/2025,Comida|Essencial\n";
+		String content = "DESC,VALOR_LANC,TIPO,STATUS,USUARIO,DATA_LANC,CATEGORIA\n"
+				+ "Compra inválida,0,DESPESA,EFETIVADO,5,10/11/2025,Food\n"
+				+ "Venda,300,RECEITA,PENDENTE,5,12/11/2025,Vendas\n";
 
-        Categoria c1 = new Categoria();
-        c1.setNome("Comida");
-        Categoria c2 = new Categoria();
-        c2.setNome("Essencial");
+		when(categoriaRepository.findByNomeIgnoreCaseAndUsuario(anyString(), any(Usuario.class)))
+			.thenReturn(Optional.empty());
 
-        when(categoriaRepository.findByNomeIgnoreCaseAndUsuario(eq("Comida"), any(Usuario.class)))
-                .thenReturn(Optional.of(c1));
-        when(categoriaRepository.findByNomeIgnoreCaseAndUsuario(eq("Essencial"), any(Usuario.class)))
-                .thenReturn(Optional.of(c2));
+		ImportResultadoDTO resumo = service.importar(csv(content), 5L);
 
-        ImportResultadoDTO resumo = service.importar(csv(content), 42L);
+		assertEquals(2, resumo.getTotalLidas());
+		assertEquals(1, resumo.getTotalSucesso());
+		assertEquals(1, resumo.getTotalFalha());
+		assertEquals(1, resumo.getErros().size());
+		assertTrue(resumo.getErros().get(0).getMotivo().contains("Valor inválido"));
+		verify(lancamentoService, times(1)).salvarTodos(anyList());
+	}
 
-        assertEquals(1, resumo.getTotalSucesso());
-        assertEquals(0, resumo.getTotalFalha());
-        verify(lancamentoService, times(1)).salvarTodos(anyList());
-    }
+	@Test
+	void importar_cabecalhoInvalido_lancaIAE() {
+		String content = "DESC,VALOR_LANC,TIPO,STATUS,USUARIO,DATA_LANC\n"
+				+ "Qualquer,10,RECEITA,EFETIVADO,1,01/01/2025\n";
+
+		assertThrows(IllegalArgumentException.class, () -> service.importar(csv(content), 1L));
+		verifyNoInteractions(lancamentoService);
+	}
+
+	@Test
+	void importar_reutilizaCategoriasExistentes_semCriarNovas() throws Exception {
+		when(usuarioRepository.getById(anyLong())).thenAnswer(inv -> {
+			Long id = inv.getArgument(0);
+			Usuario u = new Usuario();
+			u.setId(id);
+			return u;
+		});
+
+		String content = "DESC,VALOR_LANC,TIPO,STATUS,USUARIO,DATA_LANC,CATEGORIA\n"
+				+ "Compra,50,DESPESA,EFETIVADO,42,02/11/2025,Comida|Essencial\n";
+
+		Categoria c1 = new Categoria();
+		c1.setNome("Comida");
+		Categoria c2 = new Categoria();
+		c2.setNome("Essencial");
+
+		when(categoriaRepository.findByNomeIgnoreCaseAndUsuario(eq("Comida"), any(Usuario.class)))
+			.thenReturn(Optional.of(c1));
+		when(categoriaRepository.findByNomeIgnoreCaseAndUsuario(eq("Essencial"), any(Usuario.class)))
+			.thenReturn(Optional.of(c2));
+
+		ImportResultadoDTO resumo = service.importar(csv(content), 42L);
+
+		assertEquals(1, resumo.getTotalSucesso());
+		assertEquals(0, resumo.getTotalFalha());
+		verify(lancamentoService, times(1)).salvarTodos(anyList());
+	}
+
 }

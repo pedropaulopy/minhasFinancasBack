@@ -52,21 +52,25 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 	private final LancamentoService lancamentoService;
 
 	private final TransactionTemplate txTemplate;
-    private final CategoriaRepository categoriaRepository;
-    private final UsuarioRepository usuarioRepository;
-    private final CategoriaService categoriaService;
 
-    @PersistenceContext
+	private final CategoriaRepository categoriaRepository;
+
+	private final UsuarioRepository usuarioRepository;
+
+	private final CategoriaService categoriaService;
+
+	@PersistenceContext
 	private EntityManager entityManager;
 
 	public LancamentoCsvImportServiceImpl(CategoriaService categoriaService, LancamentoService lancamentoService,
-                                          TransactionTemplate txTemplate, CategoriaRepository categoriaRepository, UsuarioRepository usuarioRepository) {
+			TransactionTemplate txTemplate, CategoriaRepository categoriaRepository,
+			UsuarioRepository usuarioRepository) {
 		this.categoriaService = categoriaService;
 		this.lancamentoService = lancamentoService;
 		this.txTemplate = txTemplate;
-        this.categoriaRepository = categoriaRepository;
-        this.usuarioRepository = usuarioRepository;
-    }
+		this.categoriaRepository = categoriaRepository;
+		this.usuarioRepository = usuarioRepository;
+	}
 
 	@Override
 	public ImportResultadoDTO importar(InputStream inputStream, Long usuarioAutenticadoId)
@@ -211,18 +215,18 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 		atualizarResumo(resumo, lote.size());
 	}
 
-    private void anexarUsuariosGerenciados(List<Lancamento> lote) {
-        if (lote == null || lote.isEmpty()) return;
+	private void anexarUsuariosGerenciados(List<Lancamento> lote) {
+		if (lote == null || lote.isEmpty())
+			return;
 
-        for (Lancamento lancamento : lote) {
-            Long usuarioId = lancamento.getUsuario().getId();
-            Usuario usuario = usuarioRepository.getById(usuarioId);
-            lancamento.setUsuario(usuario);
-        }
-    }
+		for (Lancamento lancamento : lote) {
+			Long usuarioId = lancamento.getUsuario().getId();
+			Usuario usuario = usuarioRepository.getById(usuarioId);
+			lancamento.setUsuario(usuario);
+		}
+	}
 
-
-    private Long obterUsuarioId(List<Lancamento> lote) {
+	private Long obterUsuarioId(List<Lancamento> lote) {
 		return lote.get(0).getUsuario().getId();
 	}
 
@@ -268,40 +272,39 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 		}
 	}
 
-    private Map<String, Categoria> carregarOuCriarCategorias(Long usuarioId, Set<String> nomes) {
-        Map<String, Categoria> categoriasMapeadas = new HashMap<>();
-        if (nomes == null || nomes.isEmpty()) return categoriasMapeadas;
+	private Map<String, Categoria> carregarOuCriarCategorias(Long usuarioId, Set<String> nomes) {
+		Map<String, Categoria> categoriasMapeadas = new HashMap<>();
+		if (nomes == null || nomes.isEmpty())
+			return categoriasMapeadas;
 
-        Usuario usuario = usuarioRepository.getById(usuarioId);
+		Usuario usuario = usuarioRepository.getById(usuarioId);
 
-        for (String raw : nomes) {
-            String nome = (raw == null) ? null : raw.trim();
-            if (nome == null || nome.isEmpty()) continue;
-            if (categoriasMapeadas.containsKey(nome)) continue;
+		for (String raw : nomes) {
+			String nome = (raw == null) ? null : raw.trim();
+			if (nome == null || nome.isEmpty())
+				continue;
+			if (categoriasMapeadas.containsKey(nome))
+				continue;
 
-            Categoria existente = categoriaRepository
-                    .findByNomeIgnoreCaseAndUsuario(nome, usuario)
-                    .orElse(null);
+			Categoria existente = categoriaRepository.findByNomeIgnoreCaseAndUsuario(nome, usuario).orElse(null);
 
-            if (existente != null) {
-                categoriasMapeadas.put(nome, existente);
-                continue;
-            }
+			if (existente != null) {
+				categoriasMapeadas.put(nome, existente);
+				continue;
+			}
 
-            Categoria nova = new Categoria();
-            nova.setUsuario(usuario);
-            nova.setNome(nome);
+			Categoria nova = new Categoria();
+			nova.setUsuario(usuario);
+			nova.setNome(nome);
 
-            Categoria salva = categoriaRepository.save(nova);
-            categoriasMapeadas.put(nome, salva);
-        }
+			Categoria salva = categoriaRepository.save(nova);
+			categoriasMapeadas.put(nome, salva);
+		}
 
-        return categoriasMapeadas;
-    }
+		return categoriasMapeadas;
+	}
 
-
-
-    private void processarLinhaCsv(CSVRecord rec, Long usuarioAutenticadoId, Map<Lancamento, Set<String>> catsPorLanc,
+	private void processarLinhaCsv(CSVRecord rec, Long usuarioAutenticadoId, Map<Lancamento, Set<String>> catsPorLanc,
 			List<Lancamento> bufferLote, ImportResultadoDTO resumo, long linhaAbsoluta) {
 		try {
 			Lancamento l = mapearSemEntidades(rec, usuarioAutenticadoId);
