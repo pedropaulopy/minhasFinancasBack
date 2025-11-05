@@ -52,7 +52,7 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 	private final TransactionTemplate txTemplate;
 
 	@PersistenceContext
-	private EntityManager em;
+	private EntityManager entityManagerm;
 
 	public LancamentoCsvImportServiceImpl(CategoriaService categoriaService, LancamentoService lancamentoService,
 			TransactionTemplate txTemplate) {
@@ -61,11 +61,11 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 	}
 
 	@Override
-	public ImportResultadoDTO importar(InputStream in, Long usuarioAutenticadoId)
+	public ImportResultadoDTO importar(InputStream inputStream, Long usuarioAutenticadoId)
 			throws RegraNegocioException {
 		ImportResultadoDTO resumo = new ImportResultadoDTO();
 
-		try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+		try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
 			CSVParser parser = CSVFormat.DEFAULT.withFirstRecordAsHeader()
 				.withTrim()
 				.withIgnoreEmptyLines()
@@ -103,8 +103,8 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 	}
 
 	private void validarCabecalho(Set<String> header) {
-		List<String> obrig = List.of(H_DESC, H_VALOR_LANC, H_TIPO, H_STATUS, H_USUARIO, H_DATA_LANC, H_CATEGORIA);
-		List<String> faltando = obrig.stream().filter(h -> !header.contains(h)).collect(Collectors.toList());
+		List<String> obrigatorio = List.of(H_DESC, H_VALOR_LANC, H_TIPO, H_STATUS, H_USUARIO, H_DATA_LANC, H_CATEGORIA);
+		List<String> faltando = obrigatorio.stream().filter(h -> !header.contains(h)).collect(Collectors.toList());
 		if (!faltando.isEmpty()) {
 			throw new IllegalArgumentException("Cabeçalho inválido. Faltando: " + faltando);
 		}
@@ -203,7 +203,7 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 	}
 
 	private void anexarUsuariosGerenciados(List<Lancamento> lote) {
-		lote.forEach(l -> l.setUsuario(em.getReference(Usuario.class, l.getUsuario().getId())));
+		lote.forEach(l -> l.setUsuario(entityManagerm.getReference(Usuario.class, l.getUsuario().getId())));
 	}
 
 	private Long obterUsuarioId(List<Lancamento> lote) {
@@ -242,8 +242,8 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 
 	private void persistirLote(List<Lancamento> lote) {
 		lancamentoService.salvarTodos(lote);
-		em.flush();
-		em.clear();
+		entityManagerm.flush();
+		entityManagerm.clear();
 	}
 
 	private void atualizarResumo(ImportResultadoDTO resumo, int quantidade) {
@@ -255,7 +255,7 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 	private Map<String, Categoria> carregarOuCriarCategorias(Long uid, Set<String> nomes) {
 		Map<String, Categoria> mapa = new HashMap<>();
 
-		List<Categoria> existentes = em
+		List<Categoria> existentes = entityManagerm
 			.createQuery("select c from Categoria c where c.usuario.id = :uid and c.nome in :nomes", Categoria.class)
 			.setParameter("uid", uid)
 			.setParameter("nomes", nomes)
@@ -263,13 +263,13 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 
 		existentes.forEach(c -> mapa.put(c.getNome(), c));
 
-		Usuario usuarioRef = em.getReference(Usuario.class, uid);
+		Usuario usuarioRef = entityManagerm.getReference(Usuario.class, uid);
 		for (String nome : nomes) {
 			if (!mapa.containsKey(nome)) {
 				Categoria nova = new Categoria();
 				nova.setUsuario(usuarioRef);
 				nova.setNome(nome);
-				em.persist(nova);
+				entityManagerm.persist(nova);
 				mapa.put(nome, nova);
 			}
 		}
