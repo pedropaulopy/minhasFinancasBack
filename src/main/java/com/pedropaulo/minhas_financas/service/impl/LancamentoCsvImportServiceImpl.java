@@ -245,8 +245,6 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 
 	private void persistirLote(List<Lancamento> lote) {
 		lancamentoService.salvarTodos(lote);
-		entityManager.flush();
-		entityManager.clear();
 	}
 
 	private void atualizarResumo(ImportResultadoDTO resumo, int quantidade) {
