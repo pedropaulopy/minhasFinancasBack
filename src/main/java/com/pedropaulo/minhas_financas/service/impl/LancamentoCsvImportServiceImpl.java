@@ -281,24 +281,14 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 
 		for (String raw : nomes) {
 			String nome = (raw == null) ? null : raw.trim();
-			if (nome == null || nome.isEmpty())
-				continue;
-			if (categoriasMapeadas.containsKey(nome))
+			if (nome == null || nome.isEmpty() || categoriasMapeadas.containsKey(nome))
 				continue;
 
 			Categoria existente = categoriaRepository.findByNomeIgnoreCaseAndUsuario(nome, usuario).orElse(null);
 
-			if (existente != null) {
-				categoriasMapeadas.put(nome, existente);
-				continue;
-			}
+			Categoria categoria = (existente != null) ? existente : categoriaRepository.save(new Categoria());
 
-			Categoria nova = new Categoria();
-			nova.setUsuario(usuario);
-			nova.setNome(nome);
-
-			Categoria salva = categoriaRepository.save(nova);
-			categoriasMapeadas.put(nome, salva);
+			categoriasMapeadas.put(nome, categoria);
 		}
 
 		return categoriasMapeadas;
