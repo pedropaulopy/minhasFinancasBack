@@ -2,6 +2,7 @@ package com.pedropaulo.minhas_financas.api.resource;
 
 import com.pedropaulo.minhas_financas.api.dto.LancamentoDTO;
 import com.pedropaulo.minhas_financas.api.dto.LancamentoStatusDTO;
+import com.pedropaulo.minhas_financas.api.dto.exportacao.exportLancamentosDTO;
 import com.pedropaulo.minhas_financas.api.dto.importacao.ImportResultadoDTO;
 import com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException;
 import com.pedropaulo.minhas_financas.exception.RegraNegocioException;
@@ -10,6 +11,7 @@ import com.pedropaulo.minhas_financas.model.entity.Usuario;
 import com.pedropaulo.minhas_financas.model.enums.StatusLancamento;
 import com.pedropaulo.minhas_financas.model.enums.TipoLancamento;
 import com.pedropaulo.minhas_financas.service.LancamentoCsvImportService;
+import com.pedropaulo.minhas_financas.service.LancamentoExportService;
 import com.pedropaulo.minhas_financas.service.LancamentoService;
 import com.pedropaulo.minhas_financas.service.UsuarioService;
 
@@ -39,6 +41,8 @@ public class LancamentoResource {
 	private final UsuarioService usuarioService;
 
 	private final LancamentoCsvImportService importService;
+
+    private final LancamentoExportService exportService;
 
 	@PostMapping()
 	public ResponseEntity salvar(@RequestBody LancamentoDTO dto, Authentication authentication) {
@@ -161,8 +165,8 @@ public class LancamentoResource {
 
     //nesse caso é válido usar post pq os ids vão ser passados via body (json)
     @PostMapping(value = "/export/json", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<StreamingResponseBody> exportJson(@RequestBody ExportIdsRequest body) {
-        List<Long> ids = body == null ? List.of() : body.getIds();
+    public ResponseEntity<StreamingResponseBody> exportJson(@RequestBody exportLancamentosDTO body) {
+        List<Long> ids = body == null ? List.of() : body.getIdsRequisitados();
         if (ids == null || ids.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
@@ -176,8 +180,8 @@ public class LancamentoResource {
     }
 
     @PostMapping(value = "/export.csv", consumes = MediaType.APPLICATION_JSON_VALUE, produces = "text/csv")
-    public ResponseEntity<StreamingResponseBody> exportCsv(@RequestBody ExportIdsRequest body) {
-        List<Long> ids = body == null ? List.of() : body.getIds();
+    public ResponseEntity<StreamingResponseBody> exportCsv(@RequestBody exportLancamentosDTO body) {
+        List<Long> ids = body == null ? List.of() : body.getIdsRequisitados();
         if (ids == null || ids.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }

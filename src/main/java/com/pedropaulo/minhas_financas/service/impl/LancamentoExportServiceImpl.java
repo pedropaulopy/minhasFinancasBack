@@ -29,7 +29,7 @@ public class LancamentoExportServiceImpl implements LancamentoExportService {
     private final LancamentoRepository lancamentoRepository;
 
     @Transactional(readOnly = true)
-    public void streamJsonByIds(OutputStream os, List<Long> ids) throws Exception {
+    public void streamJsonByIds(OutputStream os, List<Long> ids) throws IOException {
         List<Long> clean = sanitizeIds(ids);
 
         JsonFactory jf = new JsonFactory();
@@ -61,7 +61,7 @@ public class LancamentoExportServiceImpl implements LancamentoExportService {
     }
 
     @Transactional(readOnly = true)
-    public void streamCsvByIds(OutputStream os, List<Long> ids) throws Exception {
+    public void streamCsvByIds(OutputStream os, List<Long> ids) throws IOException {
         List<Long> clean = sanitizeIds(ids);
 
         try (var writer = new BufferedWriter(new OutputStreamWriter(os, StandardCharsets.UTF_8))) {
