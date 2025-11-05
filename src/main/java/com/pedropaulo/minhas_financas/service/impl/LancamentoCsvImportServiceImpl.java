@@ -209,11 +209,18 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 		atualizarResumo(resumo, lote.size());
 	}
 
-	private void anexarUsuariosGerenciados(List<Lancamento> lote) {
-		lote.forEach(l -> l.setUsuario(entityManager.getReference(Usuario.class, l.getUsuario().getId())));
-	}
+    private void anexarUsuariosGerenciados(List<Lancamento> lote) {
+        if (lote == null || lote.isEmpty()) return;
 
-	private Long obterUsuarioId(List<Lancamento> lote) {
+        for (Lancamento lancamento : lote) {
+            Long usuarioId = lancamento.getUsuario().getId();
+            Usuario usuario = usuarioRepository.getById(usuarioId);
+            lancamento.setUsuario(usuario);
+        }
+    }
+
+
+    private Long obterUsuarioId(List<Lancamento> lote) {
 		return lote.get(0).getUsuario().getId();
 	}
 
