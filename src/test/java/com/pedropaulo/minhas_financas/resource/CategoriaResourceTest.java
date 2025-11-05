@@ -46,44 +46,6 @@ class CategoriaResourceTest {
 		resource = new CategoriaResource(usuarioService, categoriaService);
 	}
 
-	private Authentication autenticacao(final String email) {
-		return new Authentication() {
-			@Override
-			public String getName() {
-				return email;
-			}
-
-			@Override
-			public Object getCredentials() {
-				return null;
-			}
-
-			@Override
-			public Object getDetails() {
-				return null;
-			}
-
-			@Override
-			public Object getPrincipal() {
-				return email;
-			}
-
-			@Override
-			public boolean isAuthenticated() {
-				return true;
-			}
-
-			@Override
-			public void setAuthenticated(boolean isAuthenticated) {
-			}
-
-			@Override
-			public java.util.Collection<org.springframework.security.core.GrantedAuthority> getAuthorities() {
-				return Collections.emptyList();
-			}
-		};
-	}
-
 	@Test
 	void buscar_semNomeCategoria_retornaListaOk() throws Exception {
 		Authentication authentication = autenticacao(EMAIL);
@@ -279,4 +241,42 @@ class CategoriaResourceTest {
 		assertThat(resp.getBody()).isEqualTo("Não é possível excluir a categoria no momento.");
 	}
 
+
+    private Authentication autenticacao(final String email) {
+        return new Authentication() {
+            @Override
+            public String getName() {
+                return email;
+            }
+
+            @Override
+            public Object getCredentials() {
+                return null;
+            }
+
+            @Override
+            public Object getDetails() {
+                return null;
+            }
+
+            @Override
+            public Object getPrincipal() {
+                return email;
+            }
+
+            @Override
+            public boolean isAuthenticated() {
+                return true;
+            }
+
+            @Override
+            public void setAuthenticated(boolean isAuthenticated) {
+            }
+
+            @Override
+            public java.util.Collection<org.springframework.security.core.GrantedAuthority> getAuthorities() {
+                return Collections.emptyList();
+            }
+        };
+    }
 }

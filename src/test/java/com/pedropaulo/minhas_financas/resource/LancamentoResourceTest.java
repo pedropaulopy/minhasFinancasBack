@@ -61,38 +61,6 @@ class LancamentoResourceTest {
 		authentication = new TestingAuthenticationToken(EMAIL, null);
 	}
 
-	private LancamentoDTO dtoValido() {
-		LancamentoDTO dto = new LancamentoDTO();
-		dto.setUsuario(1L);
-		dto.setDescricao("Salário");
-		dto.setValor(BigDecimal.valueOf(5000));
-		dto.setMes(10);
-		dto.setAno(2025);
-		dto.setTipoLancamento("RECEITA");
-		dto.setStatusLancamento("PENDENTE");
-		return dto;
-	}
-
-	private Lancamento novoLancamento() {
-		return Lancamento.builder()
-			.ano(2025)
-			.mes(10)
-			.descricao("Salário")
-			.valor(BigDecimal.valueOf(5000))
-			.tipoLancamento(TipoLancamento.RECEITA)
-			.statusLancamento(StatusLancamento.PENDENTE)
-			.dataCadastro(DATA_FIXA)
-			.build();
-	}
-
-	private Usuario criarUsuario() {
-		Usuario usuario = new Usuario();
-		usuario.setId(1L);
-		usuario.setEmail(EMAIL);
-		usuario.setNome("Pedro");
-		return usuario;
-	}
-
 	@Test
 	void salvar_deveRetornarCreated_quandoSucesso() throws Exception {
 		LancamentoDTO dto = dtoValido();
@@ -344,4 +312,36 @@ class LancamentoResourceTest {
 		verifyNoMoreInteractions(lancamentoService, usuarioService);
 	}
 
+
+    private LancamentoDTO dtoValido() {
+        LancamentoDTO dto = new LancamentoDTO();
+        dto.setUsuario(1L);
+        dto.setDescricao("Salário");
+        dto.setValor(BigDecimal.valueOf(5000));
+        dto.setMes(10);
+        dto.setAno(2025);
+        dto.setTipoLancamento("RECEITA");
+        dto.setStatusLancamento("PENDENTE");
+        return dto;
+    }
+
+    private Lancamento novoLancamento() {
+        return Lancamento.builder()
+                .ano(2025)
+                .mes(10)
+                .descricao("Salário")
+                .valor(BigDecimal.valueOf(5000))
+                .tipoLancamento(TipoLancamento.RECEITA)
+                .statusLancamento(StatusLancamento.PENDENTE)
+                .dataCadastro(DATA_FIXA)
+                .build();
+    }
+
+    private Usuario criarUsuario() {
+        Usuario usuario = new Usuario();
+        usuario.setId(1L);
+        usuario.setEmail(EMAIL);
+        usuario.setNome("Pedro");
+        return usuario;
+    }
 }
