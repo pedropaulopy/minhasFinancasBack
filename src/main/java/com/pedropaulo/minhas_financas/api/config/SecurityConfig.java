@@ -47,14 +47,12 @@ public class SecurityConfig {
 				.requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**",
 						"/v3/api-docs.yaml")
 				.permitAll()
-
 				.requestMatchers(HttpMethod.POST, "/api/usuarios")
 				.permitAll()
 				.requestMatchers(HttpMethod.POST, "/api/usuarios/autenticar")
 				.permitAll()
 				.requestMatchers(HttpMethod.OPTIONS, "/**")
 				.permitAll()
-
 				.anyRequest()
 				.authenticated())
 			.sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -66,12 +64,10 @@ public class SecurityConfig {
 	@Bean
 	public CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration config = new CorsConfiguration();
-
 		config.setAllowedOrigins(List.of("http://localhost:3000"));
 		config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 		config.setAllowedHeaders(List.of("*")); // "all" é ["*"]
 		config.setAllowCredentials(true);
-
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", config);
 
