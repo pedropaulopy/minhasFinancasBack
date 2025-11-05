@@ -8,7 +8,6 @@ import com.pedropaulo.minhas_financas.model.entity.Usuario;
 import com.pedropaulo.minhas_financas.model.enums.StatusLancamento;
 import com.pedropaulo.minhas_financas.model.enums.TipoLancamento;
 import com.pedropaulo.minhas_financas.model.repository.CategoriaRepository;
-import com.pedropaulo.minhas_financas.service.CategoriaService;
 import com.pedropaulo.minhas_financas.service.LancamentoCsvImportService;
 import com.pedropaulo.minhas_financas.service.LancamentoService;
 import jakarta.persistence.EntityManager;
@@ -114,16 +113,16 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 	}
 
 	private Lancamento mapearSemEntidades(CSVRecord r, Long usuarioAutenticadoId) throws RegraNegocioException {
-		String desc = obrig(r, H_DESC);
-		String valorStr = obrig(r, H_VALOR_LANC);
-		String tipoStr = obrig(r, H_TIPO);
-		String statusStr = obrig(r, H_STATUS);
-		String usuarioIdStr = obrig(r, H_USUARIO);
-		String dataStr = obrig(r, H_DATA_LANC);
+		String desc = obrigatorio(r, H_DESC);
+		String valorStr = obrigatorio(r, H_VALOR_LANC);
+		String tipoStr = obrigatorio(r, H_TIPO);
+		String statusStr = obrigatorio(r, H_STATUS);
+		String usuarioIdStr = obrigatorio(r, H_USUARIO);
+		String dataStr = obrigatorio(r, H_DATA_LANC);
 
 		BigDecimal valor = parseValorMonetario(valorStr);
 		if (valor.compareTo(BigDecimal.ZERO) <= 0) {
-			throw new RegraNegocioException("Valor inválido (<= 0): " + valorStr);
+			throw new RegraNegocioException("Valor inválido (os valores não podem ser igual ou menores a zero): " + valorStr);
 		}
 
 		TipoLancamento tipo = TipoLancamento.valueOf(tipoStr.toUpperCase(Locale.ROOT));
@@ -174,7 +173,7 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 		return out;
 	}
 
-	private String obrig(CSVRecord r, String h) {
+	private String obrigatorio(CSVRecord r, String h) {
 		String v = r.get(h);
 		if (v == null || v.isBlank())
 			throw new IllegalArgumentException("Campo obrigatório vazio: " + h);
