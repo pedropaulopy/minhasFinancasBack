@@ -142,9 +142,8 @@ public class LancamentoResource {
 		}
 
 		try (var in = file.getInputStream()) {
-			final int TAMANHO_LOTE = 1000;
 			Long usuarioAutenticadoId = usuarioService.obterIdUsuarioPorEmail(authentication.getName()).getId();
-			ImportResultadoDTO resultado = importService.importar(in, TAMANHO_LOTE, usuarioAutenticadoId);
+			ImportResultadoDTO resultado = importService.importar(in, usuarioAutenticadoId);
 
 			HttpStatus status = resultado.getTotalFalha() > 0 ? HttpStatus.MULTI_STATUS : HttpStatus.OK;
 			return new ResponseEntity<>(resultado, status);
