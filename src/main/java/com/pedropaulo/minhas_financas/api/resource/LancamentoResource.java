@@ -105,19 +105,9 @@ public class LancamentoResource {
 			@RequestParam(value = "status_lancamento", required = false) StatusLancamento status,
 			@RequestParam(value = "categoriaId", required = false) List<Long> categoriaIds,
 			Authentication authentication) throws RegraNegocioException {
-		String email = authentication.getName();
-		Usuario usuario = usuarioService.obterIdUsuarioPorEmail(email);
 
-		Lancamento lancamentoFiltro = new Lancamento();
-		lancamentoFiltro.setDescricao(descricao);
-		lancamentoFiltro.setMes(mes);
-		lancamentoFiltro.setAno(ano);
-		lancamentoFiltro.setValor(valor);
-		lancamentoFiltro.setTipoLancamento(tipoLancamento);
-		lancamentoFiltro.setStatusLancamento(status);
-		lancamentoFiltro.setUsuario(usuario);
-
-		List<Lancamento> lancamentos = service.buscar(lancamentoFiltro, categoriaIds);
+		Lancamento filtro = buildFiltro(authentication, descricao, mes, ano, valor, tipoLancamento, status);
+		List<Lancamento> lancamentos = service.buscar(filtro, categoriaIds);
 		return ResponseEntity.ok(lancamentos);
 	}
 
@@ -155,7 +145,6 @@ public class LancamentoResource {
 		}
 	}
 
-	// nesse caso é válido usar post pq os ids vão ser passados via body (json)
 	@GetMapping(value = "/export/json", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<StreamingResponseBody> exportJson(
 			@RequestParam(value = "descricao", required = false) String descricao,
@@ -167,13 +156,12 @@ public class LancamentoResource {
 			@RequestParam(value = "categoriaId", required = false) List<Long> categoriaIds,
 			Authentication authentication) throws RegraNegocioException {
 
-		List<Long> ids = resolverIdsParaExportacao(descricao, mes, ano, valor, tipoLancamento, status, categoriaIds,
-				authentication);
+		Lancamento filtro = buildFiltro(authentication, descricao, mes, ano, valor, tipoLancamento, status);
+		List<Long> ids = resolverIdsParaExportacao(filtro, categoriaIds);
 		if (ids.isEmpty())
 			return ResponseEntity.badRequest().build();
 
 		StreamingResponseBody stream = os -> exportService.streamJsonByIds(os, ids);
-
 		return ResponseEntity.ok()
 			.header("Content-Disposition", "attachment; filename=lancamentos_JSON.json")
 			.contentType(MediaType.APPLICATION_JSON)
@@ -191,13 +179,12 @@ public class LancamentoResource {
 			@RequestParam(value = "categoriaId", required = false) List<Long> categoriaIds,
 			Authentication authentication) throws RegraNegocioException {
 
-		List<Long> ids = resolverIdsParaExportacao(descricao, mes, ano, valor, tipoLancamento, status, categoriaIds,
-				authentication);
+		Lancamento filtro = buildFiltro(authentication, descricao, mes, ano, valor, tipoLancamento, status);
+		List<Long> ids = resolverIdsParaExportacao(filtro, categoriaIds);
 		if (ids.isEmpty())
 			return ResponseEntity.badRequest().build();
 
 		StreamingResponseBody stream = os -> exportService.streamCsvByIds(os, ids);
-
 		return ResponseEntity.ok()
 			.header("Content-Disposition", "attachment; filename=lancamentos_CSV.csv")
 			.contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
@@ -216,8 +203,8 @@ public class LancamentoResource {
 			@RequestParam(value = "folderId", required = false) String folderId, Authentication authentication)
 			throws RegraNegocioException {
 
-		List<Long> ids = resolverIdsParaExportacao(descricao, mes, ano, valor, tipoLancamento, status, categoriaIds,
-				authentication);
+		Lancamento filtro = buildFiltro(authentication, descricao, mes, ano, valor, tipoLancamento, status);
+		List<Long> ids = resolverIdsParaExportacao(filtro, categoriaIds);
 		if (ids.isEmpty())
 			return ResponseEntity.badRequest().build();
 
@@ -231,9 +218,8 @@ public class LancamentoResource {
 		}
 	}
 
-	private List<Long> resolverIdsParaExportacao(String descricao, Integer mes, Integer ano, BigDecimal valor,
-			TipoLancamento tipoLancamento, StatusLancamento status, List<Long> categoriaIds,
-			Authentication authentication) throws RegraNegocioException {
+	private Lancamento buildFiltro(Authentication authentication, String descricao, Integer mes, Integer ano,
+			BigDecimal valor, TipoLancamento tipoLancamento, StatusLancamento status) throws RegraNegocioException {
 
 		String email = authentication.getName();
 		Usuario usuario = usuarioService.obterIdUsuarioPorEmail(email);
@@ -246,7 +232,11 @@ public class LancamentoResource {
 		filtro.setTipoLancamento(tipoLancamento);
 		filtro.setStatusLancamento(status);
 		filtro.setUsuario(usuario);
+		return filtro;
+	}
 
+	private List<Long> resolverIdsParaExportacao(Lancamento filtro, List<Long> categoriaIds)
+			throws RegraNegocioException {
 		return service.buscar(filtro, categoriaIds).stream().map(Lancamento::getId).toList();
 	}
 

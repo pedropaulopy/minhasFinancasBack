@@ -8,12 +8,11 @@ import com.pedropaulo.minhas_financas.model.entity.Usuario;
 import com.pedropaulo.minhas_financas.model.enums.StatusLancamento;
 import com.pedropaulo.minhas_financas.model.enums.TipoLancamento;
 import com.pedropaulo.minhas_financas.model.repository.LancamentoRepository;
-import org.assertj.core.api.ListAssert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Answers;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -54,7 +53,6 @@ class LancamentoExportServiceImplTest {
 
 		AtomicInteger chamada = new AtomicInteger(0);
 		when(lancamentoRepository.findAllByIdInOrderByIdAsc(anyList())).thenAnswer(invocation -> {
-			List<Long> chunk = invocation.getArgument(0);
 			int idx = chamada.incrementAndGet();
 			if (idx == 1) {
 				Lancamento l1 = novoLancamentoBasico(10L, "Desc A", BigDecimal.valueOf(123.45), 3, 2024,
@@ -88,8 +86,8 @@ class LancamentoExportServiceImplTest {
 		assertThat(primeiro.get("tipoLancamento")).isEqualTo("RECEITA");
 		assertThat(primeiro.get("statusLancamento")).isEqualTo("EFETIVADO");
 		assertThat(primeiro.get("data")).isEqualTo("03/2024");
-		@SuppressWarnings("unchecked")
-		List<String> categorias = (List<String>) primeiro.get("categorias");
+
+		List<String> categorias = asStringList(primeiro.get("categorias"));
 		assertThat(categorias).containsExactlyInAnyOrder("Aluguel", "Moradia");
 
 		Map<String, Object> segundo = lista.get(1);
@@ -101,7 +99,7 @@ class LancamentoExportServiceImplTest {
 		assertThat(segundo.get("tipoLancamento")).isNull();
 		assertThat(segundo.get("statusLancamento")).isNull();
 		assertThat(segundo.get("data")).isEqualTo("null/null");
-		assertThat((List<?>) segundo.get("categorias")).isEmpty();
+		assertThat(asStringList(segundo.get("categorias"))).isEmpty();
 
 		ArgumentCaptor<List<Long>> captor = ArgumentCaptor.forClass(List.class);
 		verify(lancamentoRepository, times(2)).findAllByIdInOrderByIdAsc(captor.capture());
@@ -176,47 +174,21 @@ class LancamentoExportServiceImplTest {
 		assertThat(l1).contains(",12/2023,");
 		assertThat(l1).endsWith("Mercado|Casa");
 
-		// l2: usuário com NOME
 		String l2 = linhas.get(2);
-		assertThat(l2).startsWith("Sem email,");
 		String[] c2 = l2.split(",", -1);
-		assertThat(c2).containsExactly("Sem email", // DESC
-				"0.0", // VALOR_LANC
-				"", // TIPO
-				"", // STATUS
-				"Pedro Paulo", // USUARIO
-				"01/2022", // DATA_LANC
-				"" // CATEGORIA
-		);
+		assertThat(c2).containsExactly("Sem email", "0.0", "", "", "Pedro Paulo", "01/2022", "");
 
-		// l3: usuário com ID
 		String l3 = linhas.get(3);
-		assertThat(l3).startsWith("Sem nome,");
 		String[] c3 = l3.split(",", -1);
-		assertThat(c3).containsExactly("Sem nome", // DESC
-				"0.0", // VALOR_LANC (valor null -> 0.0 no numberSafe)
-				"", // TIPO
-				"", // STATUS
-				"77", // USUARIO
-				"02/2022", // DATA_LANC
-				"" // CATEGORIA
-		);
+		assertThat(c3).containsExactly("Sem nome", "0.0", "", "", "77", "02/2022", "");
 
-		// l4: com usuário null, tipo e status presentes
 		String l4 = linhas.get(4);
-		assertThat(l4).startsWith("Sem usuario,");
 		String[] c4 = l4.split(",", -1);
-		assertThat(c4).containsExactly("Sem usuario", "1.0", "RECEITA", "EFETIVADO", "", // USUARIO
-				"03/2022", "");
+		assertThat(c4).containsExactly("Sem usuario", "1.0", "RECEITA", "EFETIVADO", "", "03/2022", "");
 
-		// l5: categorias deduplicadas "A|B"
 		String l5 = linhas.get(5);
-		assertThat(l5).startsWith("Cats,");
 		String[] c5 = l5.split(",", -1);
-		assertThat(c5).containsExactly("Cats", "2.0", "", // TIPO
-				"", // STATUS
-				"", // USUARIO
-				"04/2022", "A|B");
+		assertThat(c5).containsExactly("Cats", "2.0", "", "", "", "04/2022", "A|B");
 
 		ArgumentCaptor<List<Long>> captor = ArgumentCaptor.forClass(List.class);
 		verify(lancamentoRepository, times(2)).findAllByIdInOrderByIdAsc(captor.capture());
@@ -227,6 +199,28 @@ class LancamentoExportServiceImplTest {
 		chunks.forEach(todosIdsConsultados::addAll);
 		assertThat(todosIdsConsultados).doesNotContainNull();
 		verifyNoMoreInteractions(lancamentoRepository);
+	}
+
+	// ----------------- Helpers -----------------
+
+	private static List<String> asStringList(Object value) {
+		if (value == null)
+			return List.of();
+		if (value instanceof Collection<?> coll) {
+			List<String> out = new ArrayList<>(coll.size());
+			for (Object o : coll)
+				out.add(String.valueOf(o));
+			return out;
+		}
+		if (value.getClass().isArray()) {
+			int len = java.lang.reflect.Array.getLength(value);
+			List<String> out = new ArrayList<>(len);
+			for (int i = 0; i < len; i++)
+				out.add(String.valueOf(java.lang.reflect.Array.get(value, i)));
+			return out;
+		}
+		// fallback: valor único
+		return List.of(String.valueOf(value));
 	}
 
 	private static Lancamento novoLancamentoBasico(Long id, String descricao, BigDecimal valor, Integer mes,

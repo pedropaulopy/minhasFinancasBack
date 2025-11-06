@@ -17,7 +17,6 @@ import java.io.OutputStreamWriter;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -65,15 +64,21 @@ public class LancamentoExportServiceImpl implements LancamentoExportService {
 			gen.writeStringField("tipoLancamento", lancamento.getTipoLancamento().name());
 		if (lancamento.getStatusLancamento() != null)
 			gen.writeStringField("statusLancamento", lancamento.getStatusLancamento().name());
-		String mm = String.format("%02d", lancamento.getMes());
-		gen.writeStringField("data", mm + "/" + lancamento.getAno());
-		writeCategoriasArray(gen, (List<Categoria>) lancamento.getCategorias());
+		gen.writeStringField("data", safeData(lancamento.getMes(), lancamento.getAno()));
+		writeCategoriasArray(gen, "categorias", lancamento.getCategorias());
 		gen.writeEndObject();
 	}
 
-	private void writeCategoriasArray(JsonGenerator gen, List<Categoria> categorias) throws IOException {
-		gen.writeStartArray();
-		if (categorias != null && !categorias.isEmpty()) {
+	private String safeData(Integer mes, Integer ano) {
+		String mm = (mes == null) ? "null" : String.format("%02d", mes);
+		String aa = (ano == null) ? "null" : String.valueOf(ano);
+		return mm + "/" + aa;
+	}
+
+	private void writeCategoriasArray(JsonGenerator gen, String fieldName, Iterable<Categoria> categorias)
+			throws IOException {
+		gen.writeArrayFieldStart(fieldName);
+		if (categorias != null) {
 			for (Categoria categoria : categorias) {
 				if (categoria != null && categoria.getNome() != null && !categoria.getNome().isBlank()) {
 					gen.writeString(categoria.getNome());
@@ -99,7 +104,7 @@ public class LancamentoExportServiceImpl implements LancamentoExportService {
 	private void writeCsvForChunk(BufferedWriter writer, List<Long> chunk) throws IOException {
 		List<Lancamento> lote = lancamentoRepository.findAllByIdInOrderByIdAsc(chunk);
 		for (Lancamento lancamento : lote) {
-			String dataStr = String.format("%02d/%d", lancamento.getMes(), lancamento.getAno());
+			String dataStr = safeData(lancamento.getMes(), lancamento.getAno());
 			String usuarioStr = resolveUsuario(lancamento);
 			String categoriasStr = resolveCategorias(lancamento);
 			writer.write(String.join(",", csv(lancamento.getDescricao()), csv(numberSafe(lancamento.getValor())),

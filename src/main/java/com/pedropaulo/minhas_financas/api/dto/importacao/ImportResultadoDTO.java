@@ -1,3 +1,4 @@
+//TODO MAIS TESTES
 package com.pedropaulo.minhas_financas.api.dto.importacao;
 
 import java.util.ArrayList;
@@ -73,10 +74,6 @@ public class ImportResultadoDTO {
 	}
 
 	public List<LinhaErro> getErros() {
-		return erros;
-	}
-
-	public List<LinhaErro> getFalhas() {
 		return erros;
 	}
 
