@@ -13,9 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.transaction.support.SimpleTransactionStatus;
-import org.springframework.transaction.support.TransactionCallback;
-import org.springframework.transaction.support.TransactionTemplate;
+import resources.TestNoOpTransactionTemplate;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -31,18 +29,6 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class LancamentoCsvImportServiceImplTest {
 
-	static class NoOpTransactionTemplate extends TransactionTemplate {
-
-		NoOpTransactionTemplate() {
-			super(null);
-		}
-
-		@Override
-		public <T> T execute(TransactionCallback<T> action) {
-			return action.doInTransaction(new SimpleTransactionStatus());
-		}
-
-	}
 
 	@Mock
 	LancamentoService lancamentoService;
@@ -56,13 +42,12 @@ class LancamentoCsvImportServiceImplTest {
 	@Mock
 	CategoriaService categoriaService;
 
-	private TransactionTemplate txTemplate;
 
 	private LancamentoCsvImportServiceImpl service;
 
 	@BeforeEach
 	void setup() throws NoSuchFieldException, IllegalAccessException {
-		txTemplate = new NoOpTransactionTemplate();
+        TestNoOpTransactionTemplate txTemplate = new TestNoOpTransactionTemplate();
 		service = new LancamentoCsvImportServiceImpl(categoriaService, lancamentoService, txTemplate,
 				categoriaRepository, usuarioRepository);
 
