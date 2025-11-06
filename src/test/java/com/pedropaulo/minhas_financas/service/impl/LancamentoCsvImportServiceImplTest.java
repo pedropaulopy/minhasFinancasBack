@@ -78,9 +78,9 @@ class LancamentoCsvImportServiceImplTest {
 	void importar_ok_persisteComCategoriasNovas() throws Exception {
 		when(usuarioRepository.getById(anyLong())).thenAnswer(inv -> {
 			Long id = inv.getArgument(0);
-			Usuario u = new Usuario();
-			u.setId(id);
-			return u;
+			Usuario usuario = new Usuario();
+			usuario.setId(id);
+			return usuario;
 		});
 
 		String content = "DESC,VALOR_LANC,TIPO,STATUS,USUARIO,DATA_LANC,CATEGORIA\n"
@@ -102,9 +102,9 @@ class LancamentoCsvImportServiceImplTest {
 	void importar_ok_semCategorias_naoCriaNemConsulta() throws Exception {
 		when(usuarioRepository.getById(anyLong())).thenAnswer(inv -> {
 			Long id = inv.getArgument(0);
-			Usuario u = new Usuario();
-			u.setId(id);
-			return u;
+			Usuario usuario = new Usuario();
+			usuario.setId(id);
+			return usuario;
 		});
 
 		String content = "DESC,VALOR_LANC,TIPO,STATUS,USUARIO,DATA_LANC,CATEGORIA\n"
@@ -123,9 +123,9 @@ class LancamentoCsvImportServiceImplTest {
 	void importar_comLinhaInvalida_adicionaFalhaENaoQuebra() throws Exception {
 		when(usuarioRepository.getById(anyLong())).thenAnswer(inv -> {
 			Long id = inv.getArgument(0);
-			Usuario u = new Usuario();
-			u.setId(id);
-			return u;
+			Usuario usuario = new Usuario();
+			usuario.setId(id);
+			return usuario;
 		});
 
 		String content = "DESC,VALOR_LANC,TIPO,STATUS,USUARIO,DATA_LANC,CATEGORIA\n"
@@ -158,23 +158,23 @@ class LancamentoCsvImportServiceImplTest {
 	void importar_reutilizaCategoriasExistentes_semCriarNovas() throws Exception {
 		when(usuarioRepository.getById(anyLong())).thenAnswer(inv -> {
 			Long id = inv.getArgument(0);
-			Usuario u = new Usuario();
-			u.setId(id);
-			return u;
+			Usuario usuario = new Usuario();
+			usuario.setId(id);
+			return usuario;
 		});
 
 		String content = "DESC,VALOR_LANC,TIPO,STATUS,USUARIO,DATA_LANC,CATEGORIA\n"
 				+ "Compra,50,DESPESA,EFETIVADO,42,02/11/2025,Comida|Essencial\n";
 
-		Categoria c1 = new Categoria();
-		c1.setNome("Comida");
-		Categoria c2 = new Categoria();
-		c2.setNome("Essencial");
+		Categoria categoria1 = new Categoria();
+		categoria1.setNome("Comida");
+		Categoria categoria2 = new Categoria();
+		categoria2.setNome("Essencial");
 
 		when(categoriaRepository.findByNomeIgnoreCaseAndUsuario(eq("Comida"), any(Usuario.class)))
-			.thenReturn(Optional.of(c1));
+			.thenReturn(Optional.of(categoria1));
 		when(categoriaRepository.findByNomeIgnoreCaseAndUsuario(eq("Essencial"), any(Usuario.class)))
-			.thenReturn(Optional.of(c2));
+			.thenReturn(Optional.of(categoria2));
 
 		ImportResultadoDTO resumo = service.importar(csv(content), 42L);
 
