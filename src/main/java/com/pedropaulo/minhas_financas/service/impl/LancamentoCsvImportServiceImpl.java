@@ -59,9 +59,6 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 
 	private final CategoriaService categoriaService;
 
-	@PersistenceContext
-	private EntityManager entityManager;
-
 	public LancamentoCsvImportServiceImpl(CategoriaService categoriaService, LancamentoService lancamentoService,
 			TransactionTemplate txTemplate, CategoriaRepository categoriaRepository,
 			UsuarioRepository usuarioRepository) {
@@ -262,8 +259,6 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
 
 	private void persistirLote(List<Lancamento> lote) {
 		lancamentoService.salvarTodos(lote);
-		entityManager.flush();
-		entityManager.clear();
 	}
 
 	private void atualizarResumo(ImportResultadoDTO resumo, int quantidade) {
