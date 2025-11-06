@@ -6,5 +6,7 @@ import java.util.List;
 
 @Data
 public class exportLancamentosDTO {
-    private List<Long> idsRequisitados;
+
+	private List<Long> idsRequisitados;
+
 }

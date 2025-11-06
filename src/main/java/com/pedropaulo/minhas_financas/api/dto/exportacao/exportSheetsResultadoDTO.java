@@ -7,9 +7,10 @@ import lombok.Data;
 @AllArgsConstructor
 public class exportSheetsResultadoDTO {
 
-    private String sheetId;
+	private String sheetId;
 
-    private String webViewLink;
+	private String webViewLink;
 
-    private String webContentLink;
+	private String webContentLink;
+
 }

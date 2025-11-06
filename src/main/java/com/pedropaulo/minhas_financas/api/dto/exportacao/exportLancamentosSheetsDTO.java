@@ -6,9 +6,10 @@ import java.util.List;
 @Data
 public class exportLancamentosSheetsDTO {
 
-    private List<Long> idsRequisitados;
+	private List<Long> idsRequisitados;
 
-    private String nomePlanilha;
+	private String nomePlanilha;
 
-    private String folderId;
+	private String folderId;
+
 }

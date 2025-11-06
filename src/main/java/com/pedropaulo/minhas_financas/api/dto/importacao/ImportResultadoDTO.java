@@ -7,6 +7,7 @@ public class ImportResultadoDTO {
 
 	public static class LinhaErro {
 
+		// públicos para manter compatibilidade com testes que fazem acesso direto
 		public final long linha;
 
 		public final String motivo;
@@ -17,6 +18,23 @@ public class ImportResultadoDTO {
 			this.linha = linha;
 			this.motivo = motivo;
 			this.raw = raw;
+		}
+
+		public long getLinha() {
+			return linha;
+		}
+
+		public String getMotivo() {
+			return motivo;
+		}
+
+		// alias usado em alguns testes
+		public String getMensagem() {
+			return motivo;
+		}
+
+		public String getRaw() {
+			return raw;
 		}
 
 	}
@@ -55,6 +73,10 @@ public class ImportResultadoDTO {
 	}
 
 	public List<LinhaErro> getErros() {
+		return erros;
+	}
+
+	public List<LinhaErro> getFalhas() {
 		return erros;
 	}
 

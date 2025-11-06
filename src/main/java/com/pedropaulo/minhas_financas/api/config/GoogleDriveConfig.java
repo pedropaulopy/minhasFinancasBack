@@ -20,47 +20,42 @@ import java.util.List;
 @Configuration
 public class GoogleDriveConfig {
 
-    private static final JacksonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
-    private static final String APPLICATION_NAME = "MinhasFinancas";
+	private static final JacksonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
 
-    @Bean
-    public Credential googleCredential() throws Exception {
-        final NetHttpTransport http = GoogleNetHttpTransport.newTrustedTransport();
-        try (var in = getClass().getResourceAsStream("/client_secret.json")) {
-            if (in == null) throw new IllegalStateException("client_secret.json não encontrado");
+	private static final String APPLICATION_NAME = "MinhasFinancas";
 
-            GoogleClientSecrets secrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
-            List<String> scopes = List.of(
-                    DriveScopes.DRIVE,
-                    DriveScopes.DRIVE_FILE,
-                    "https://www.googleapis.com/auth/spreadsheets"
-            );
+	@Bean
+	public Credential googleCredential() throws Exception {
+		final NetHttpTransport http = GoogleNetHttpTransport.newTrustedTransport();
+		try (var in = getClass().getResourceAsStream("/client_secret.json")) {
+			if (in == null)
+				throw new IllegalStateException("client_secret.json não encontrado");
 
-            GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow
-                    .Builder(http, JSON_FACTORY, secrets, scopes)
-                    .setAccessType("offline")
-                    .setApprovalPrompt("force")
-                    .build();
+			GoogleClientSecrets secrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
+			List<String> scopes = List.of(DriveScopes.DRIVE, DriveScopes.DRIVE_FILE,
+					"https://www.googleapis.com/auth/spreadsheets");
 
-            LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
-            return new AuthorizationCodeInstalledApp(flow, receiver)
-                    .authorize("minhas-financas-user");
-        }
-    }
+			GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(http, JSON_FACTORY, secrets,
+					scopes)
+				.setAccessType("offline")
+				.setApprovalPrompt("force")
+				.build();
 
-    @Bean
-    public Drive driveClient(Credential credential) throws Exception {
-        final NetHttpTransport http = GoogleNetHttpTransport.newTrustedTransport();
-        return new Drive.Builder(http, JSON_FACTORY, credential)
-                .setApplicationName(APPLICATION_NAME)
-                .build();
-    }
+			LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
+			return new AuthorizationCodeInstalledApp(flow, receiver).authorize("minhas-financas-user");
+		}
+	}
 
-    @Bean
-    public Sheets sheetsClient(Credential credential) throws Exception {
-        final NetHttpTransport http = GoogleNetHttpTransport.newTrustedTransport();
-        return new Sheets.Builder(http, JSON_FACTORY, credential)
-                .setApplicationName(APPLICATION_NAME)
-                .build();
-    }
+	@Bean
+	public Drive driveClient(Credential credential) throws Exception {
+		final NetHttpTransport http = GoogleNetHttpTransport.newTrustedTransport();
+		return new Drive.Builder(http, JSON_FACTORY, credential).setApplicationName(APPLICATION_NAME).build();
+	}
+
+	@Bean
+	public Sheets sheetsClient(Credential credential) throws Exception {
+		final NetHttpTransport http = GoogleNetHttpTransport.newTrustedTransport();
+		return new Sheets.Builder(http, JSON_FACTORY, credential).setApplicationName(APPLICATION_NAME).build();
+	}
+
 }
