@@ -20,6 +20,7 @@ import org.springframework.security.core.Authentication;
 
 import java.util.Optional;
 
+import static com.pedropaulo.minhas_financas.service.testUtils.AuthMocks.auth;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
@@ -39,9 +40,6 @@ class CategoriaServiceTest {
 	@Mock
 	LancamentoRepository lancamentoRepository;
 
-	@Mock
-	Authentication authentication;
-
 	CategoriaServiceImpl service;
 
 	@BeforeEach
@@ -49,7 +47,6 @@ class CategoriaServiceTest {
 		service = new CategoriaServiceImpl(repository, usuarioService, lancamentoRepository);
 	}
 
-	// -------- buscarPorNome --------
 	@Test
 	void buscarPorNome_quandoEncontra_retornaLista() throws Exception {
 		Categoria filtro = new Categoria();
@@ -75,7 +72,6 @@ class CategoriaServiceTest {
 		then(repository).shouldHaveNoMoreInteractions();
 	}
 
-	// -------- validar --------
 	@Test
 	void validar_quandoDuplicado_lancaExcecao() throws Exception {
 		Usuario usuario = new Usuario();
@@ -120,10 +116,9 @@ class CategoriaServiceTest {
 		then(repository).shouldHaveNoMoreInteractions();
 	}
 
-	// -------- salvar (DTO, Authentication) --------
 	@Test
 	void salvar_invocaValidarESalva() throws Exception {
-		given(authentication.getName()).willReturn(EMAIL);
+		Authentication authentication = auth(EMAIL);
 		Usuario usuario = new Usuario();
 		usuario.setId(1L);
 		usuario.setEmail(EMAIL);
@@ -132,32 +127,31 @@ class CategoriaServiceTest {
 		CategoriaDTO dto = new CategoriaDTO();
 		dto.setNome("Viagem");
 
-		// não duplicado
 		given(repository.findByNomeIgnoreCaseAndUsuario("Viagem", usuario)).willReturn(Optional.empty());
 
-		Categoria salvo = new Categoria();
-		salvo.setId(5L);
-		salvo.setNome("Viagem");
-		salvo.setUsuario(usuario);
-		given(repository.save(any(Categoria.class))).willReturn(salvo);
+		Categoria categoriaSalva = new Categoria();
+		categoriaSalva.setId(5L);
+		categoriaSalva.setNome("Viagem");
+		categoriaSalva.setUsuario(usuario);
+		given(repository.save(any(Categoria.class))).willReturn(categoriaSalva);
 
-		Categoria out = service.salvar(dto, authentication);
+		Categoria resultado = service.salvar(dto, authentication);
 
-		assertThat(out).isEqualTo(salvo);
+		assertThat(resultado).isEqualTo(categoriaSalva);
 
-		ArgumentCaptor<Categoria> cap = ArgumentCaptor.forClass(Categoria.class);
-		then(repository).should().save(cap.capture());
-		assertThat(cap.getValue().getNome()).isEqualTo("Viagem");
-		assertThat(cap.getValue().getUsuario()).isEqualTo(usuario);
+		ArgumentCaptor<Categoria> captor = ArgumentCaptor.forClass(Categoria.class);
+		then(repository).should().save(captor.capture());
+		assertThat(captor.getValue().getNome()).isEqualTo("Viagem");
+		assertThat(captor.getValue().getUsuario()).isEqualTo(usuario);
 
 		then(repository).should().findByNomeIgnoreCaseAndUsuario("Viagem", usuario);
 		then(repository).shouldHaveNoMoreInteractions();
 	}
 
-	// -------- atualizar (id, Authentication, DTO) --------
 	@Test
 	void atualizar_quandoNaoExiste_lancaExcecao() throws Exception {
-		given(authentication.getName()).willReturn(EMAIL);
+		Authentication authentication = auth(EMAIL);
+
 		Usuario usuario = new Usuario();
 		usuario.setId(1L);
 		usuario.setEmail(EMAIL);
@@ -176,17 +170,18 @@ class CategoriaServiceTest {
 
 	@Test
 	void atualizar_quandoNomeInvalido_lancaExcecao() throws Exception {
-		given(authentication.getName()).willReturn(EMAIL);
+		Authentication authentication = auth(EMAIL);
+
 		Usuario usuario = new Usuario();
 		usuario.setId(1L);
 		usuario.setEmail(EMAIL);
 		given(usuarioService.obterIdUsuarioPorEmail(EMAIL)).willReturn(usuario);
 
-		Categoria existente = new Categoria();
-		existente.setId(3L);
-		existente.setUsuario(usuario);
-		existente.setNome("Antigo");
-		given(repository.findByIdAndUsuario_Id(3L, 1L)).willReturn(Optional.of(existente));
+		Categoria categoriaExistente = new Categoria();
+		categoriaExistente.setId(3L);
+		categoriaExistente.setUsuario(usuario);
+		categoriaExistente.setNome("Antigo");
+		given(repository.findByIdAndUsuario_Id(3L, 1L)).willReturn(Optional.of(categoriaExistente));
 
 		CategoriaDTO dto = new CategoriaDTO();
 		dto.setNome(" ");
@@ -199,26 +194,27 @@ class CategoriaServiceTest {
 
 	@Test
 	void atualizar_sucesso_salvaEDepoisRetornaSalvo() throws Exception {
-		given(authentication.getName()).willReturn(EMAIL);
+		Authentication authentication = auth(EMAIL);
+
 		Usuario usuario = new Usuario();
 		usuario.setId(1L);
 		usuario.setEmail(EMAIL);
 		given(usuarioService.obterIdUsuarioPorEmail(EMAIL)).willReturn(usuario);
 
-		Categoria existente = new Categoria();
-		existente.setId(3L);
-		existente.setUsuario(usuario);
-		existente.setNome("Antigo");
+		Categoria categoriaExistente = new Categoria();
+		categoriaExistente.setId(3L);
+		categoriaExistente.setUsuario(usuario);
+		categoriaExistente.setNome("Antigo");
 
-		given(repository.findByIdAndUsuario_Id(3L, 1L)).willReturn(Optional.of(existente));
+		given(repository.findByIdAndUsuario_Id(3L, 1L)).willReturn(Optional.of(categoriaExistente));
 		given(repository.save(any(Categoria.class))).willAnswer(inv -> inv.getArgument(0));
 
 		CategoriaDTO dto = new CategoriaDTO();
 		dto.setNome("Novo");
 
-		Categoria out = service.atualizar(3L, authentication, dto);
+		Categoria resultado = service.atualizar(3L, authentication, dto);
 
-		assertThat(out.getNome()).isEqualTo("Novo");
+		assertThat(resultado.getNome()).isEqualTo("Novo");
 
 		then(repository).should().findByIdAndUsuario_Id(3L, 1L);
 		then(repository).should(times(2)).save(any(Categoria.class));
@@ -226,10 +222,10 @@ class CategoriaServiceTest {
 		then(repository).shouldHaveNoMoreInteractions();
 	}
 
-	// -------- converterDTO --------
 	@Test
 	void converterDTO_mapeiaCampos() throws Exception {
-		given(authentication.getName()).willReturn(EMAIL);
+		Authentication authentication = auth(EMAIL);
+
 		Usuario usuario = new Usuario();
 		usuario.setId(2L);
 		usuario.setEmail(EMAIL);
@@ -246,10 +242,10 @@ class CategoriaServiceTest {
 		then(repository).shouldHaveNoInteractions();
 	}
 
-	// -------- obterPorIdCategoria --------
 	@Test
 	void obterPorIdCategoria_repassaIdDoUsuario() throws Exception {
-		given(authentication.getName()).willReturn(EMAIL);
+		Authentication authentication = auth(EMAIL);
+
 		Usuario usuario = new Usuario();
 		usuario.setId(7L);
 		usuario.setEmail(EMAIL);
@@ -260,17 +256,17 @@ class CategoriaServiceTest {
 		categoria.setUsuario(usuario);
 		given(repository.findByIdAndUsuario_Id(15L, 7L)).willReturn(Optional.of(categoria));
 
-		Optional<Categoria> out = service.obterPorIdCategoria(15L, authentication);
+		Optional<Categoria> resultado = service.obterPorIdCategoria(15L, authentication);
 
-		assertThat(out).contains(categoria);
+		assertThat(resultado).contains(categoria);
 		then(repository).should().findByIdAndUsuario_Id(15L, 7L);
 		then(repository).shouldHaveNoMoreInteractions();
 	}
 
-	// -------- deletar --------
 	@Test
 	void deletar_quandoEmUso_lancaExcecaoComQuantidade() throws Exception {
-		given(authentication.getName()).willReturn(EMAIL);
+		Authentication authentication = auth(EMAIL);
+
 		Usuario usuario = new Usuario();
 		usuario.setId(1L);
 		usuario.setEmail(EMAIL);
@@ -295,7 +291,8 @@ class CategoriaServiceTest {
 
 	@Test
 	void deletar_quandoNaoEmUso_exclui() throws Exception {
-		given(authentication.getName()).willReturn(EMAIL);
+		Authentication authentication = auth(EMAIL);
+
 		Usuario usuario = new Usuario();
 		usuario.setId(1L);
 		usuario.setEmail(EMAIL);

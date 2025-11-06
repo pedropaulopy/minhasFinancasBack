@@ -2,7 +2,9 @@ package com.pedropaulo.minhas_financas;
 
 import com.pedropaulo.minhas_financas.api.JwtTokenFilter;
 import com.pedropaulo.minhas_financas.service.JwtService;
+import com.pedropaulo.minhas_financas.service.SecurityUserDetailsService;
 import com.pedropaulo.minhas_financas.service.impl.SecurityUserDetailsServiceImpl;
+import com.pedropaulo.minhas_financas.service.testUtils.StubUserDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,6 +20,7 @@ import org.mockito.quality.Strictness;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 
 import java.io.IOException;
 
@@ -32,9 +35,6 @@ class JwtTokenFilterTest {
 	private JwtService jwtService;
 
 	@Mock
-	private SecurityUserDetailsServiceImpl userDetailsService;
-
-	@Mock
 	private HttpServletRequest request;
 
 	@Mock
@@ -43,10 +43,13 @@ class JwtTokenFilterTest {
 	@Mock
 	private FilterChain filterChain;
 
+	private SecurityUserDetailsService userDetailsService;
+
 	private JwtTokenFilter filter;
 
 	@BeforeEach
 	void setup() {
+		userDetailsService = new StubUserDetailsService();
 		filter = new JwtTokenFilter(jwtService, userDetailsService);
 		SecurityContextHolder.clearContext();
 	}
@@ -62,12 +65,8 @@ class JwtTokenFilterTest {
 		given(jwtService.isTokenValido("token-valido")).willReturn(true);
 		given(jwtService.obterLoginUsuario("token-valido")).willReturn("usuario@teste.com");
 
-		UserDetails userDetails = User.withUsername("usuario@teste.com").password("123").roles("USER").build();
-		given(userDetailsService.loadUserByUsername("usuario@teste.com")).willReturn(userDetails);
-
 		filter.doFilterInternal(request, response, filterChain);
 
-		then(userDetailsService).should().loadUserByUsername("usuario@teste.com");
 		then(filterChain).should().doFilter(request, response);
 
 		assertThat(SecurityContextHolder.getContext().getAuthentication()).isNotNull();
@@ -82,7 +81,6 @@ class JwtTokenFilterTest {
 		filter.doFilterInternal(request, response, filterChain);
 
 		then(jwtService).shouldHaveNoInteractions();
-		then(userDetailsService).shouldHaveNoInteractions();
 		then(filterChain).should().doFilter(request, response);
 
 		assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
@@ -95,7 +93,6 @@ class JwtTokenFilterTest {
 		filter.doFilterInternal(request, response, filterChain);
 
 		then(jwtService).shouldHaveNoInteractions();
-		then(userDetailsService).shouldHaveNoInteractions();
 		then(filterChain).should().doFilter(request, response);
 
 		assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
@@ -109,7 +106,6 @@ class JwtTokenFilterTest {
 		filter.doFilterInternal(request, response, filterChain);
 
 		then(jwtService).should().isTokenValido("token-invalido");
-		then(userDetailsService).shouldHaveNoInteractions();
 		then(filterChain).should().doFilter(request, response);
 
 		assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();

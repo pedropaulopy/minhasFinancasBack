@@ -2,10 +2,7 @@ package com.pedropaulo.minhas_financas.model.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.Set;
 
@@ -18,16 +15,18 @@ import java.util.Set;
 public class Categoria {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "categoria_seq_gen")
+	@SequenceGenerator(name = "categoria_seq_gen", sequenceName = "categoria_seq", allocationSize = 200)
 	@Column(name = "id")
 	private Long id;
 
 	@Column(name = "nome")
 	private String nome;
 
-	@ManyToOne
+	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "id_usuario")
 	@JsonIgnore
+	@ToString.Exclude
 	private Usuario usuario;
 
 	@ManyToMany(mappedBy = "categorias", fetch = FetchType.LAZY)

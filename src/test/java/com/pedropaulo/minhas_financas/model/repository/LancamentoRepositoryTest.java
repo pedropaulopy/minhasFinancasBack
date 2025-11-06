@@ -4,6 +4,7 @@ import com.pedropaulo.minhas_financas.model.entity.Lancamento;
 import com.pedropaulo.minhas_financas.model.enums.StatusLancamento;
 import com.pedropaulo.minhas_financas.model.enums.TipoLancamento;
 import org.assertj.core.api.Assertions;
+import org.springframework.test.context.jdbc.Sql;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DataJpaTest
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Sql(executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD,
+		statements = "TRUNCATE TABLE financas.lancamento RESTART IDENTITY CASCADE")
 class LancamentoRepositoryTest {
 
 	private static final int ANO = 2025;

@@ -18,6 +18,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.domain.Example;
 import org.springframework.data.domain.ExampleMatcher;
@@ -29,11 +31,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class LancamentoServiceImpl implements LancamentoService {
 
-	private final LancamentoRepository repository;
 
-	private final UsuarioService usuarioService;
+    private final LancamentoRepository repository;
 
-	private final CategoriaService categoriaService;
+    private final UsuarioService usuarioService;
+
+    private final CategoriaService categoriaService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
 	public LancamentoServiceImpl(LancamentoRepository repository, UsuarioService usuarioService,
 			CategoriaService categoriaService) {
@@ -246,6 +252,14 @@ public class LancamentoServiceImpl implements LancamentoService {
 		}
 
 		return resolvidas;
+	}
+
+	@Override
+	@Transactional
+	public void salvarTodos(List<Lancamento> lote) {
+		repository.saveAll(lote);
+		repository.flush();
+        entityManager.clear();
 	}
 
 }

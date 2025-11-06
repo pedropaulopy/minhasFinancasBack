@@ -1,25 +1,30 @@
 package com.pedropaulo.minhas_financas.resource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pedropaulo.minhas_financas.api.config.SecurityConfig;
 import com.pedropaulo.minhas_financas.api.dto.UsuarioDTO;
 import com.pedropaulo.minhas_financas.api.resource.UsuarioResource;
-import com.pedropaulo.minhas_financas.api.config.SecurityConfig;
 import com.pedropaulo.minhas_financas.exception.AutenticacaoException;
 import com.pedropaulo.minhas_financas.exception.RegraNegocioException;
 import com.pedropaulo.minhas_financas.model.entity.Usuario;
+import com.pedropaulo.minhas_financas.service.JwtService;
 import com.pedropaulo.minhas_financas.service.LancamentoService;
+import com.pedropaulo.minhas_financas.service.SecurityUserDetailsService;
 import com.pedropaulo.minhas_financas.service.UsuarioService;
 import com.pedropaulo.minhas_financas.service.impl.JwtServiceImpl;
-import com.pedropaulo.minhas_financas.service.impl.SecurityUserDetailsServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -38,7 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(controllers = UsuarioResource.class,
 		excludeAutoConfiguration = { UserDetailsServiceAutoConfiguration.class })
 @AutoConfigureMockMvc
-@Import(SecurityConfig.class)
+@Import({ SecurityConfig.class, UsuarioResourceTest.TestStubs.class })
 class UsuarioResourceTest {
 
 	private static final String API = "/api/usuarios";
@@ -62,10 +67,40 @@ class UsuarioResourceTest {
 	LancamentoService lancamentoService;
 
 	@MockBean
-	JwtServiceImpl jwtService;
+	SecurityUserDetailsService securityUserDetailsService;
 
-	@MockBean
-	SecurityUserDetailsServiceImpl userDetailsService;
+	@Autowired
+	JwtService jwtService;
+
+	@TestConfiguration
+	static class TestStubs {
+
+		@Bean
+		JwtServiceImpl jwtServiceImpl() {
+			return new JwtServiceImpl() {
+				@Override
+				public String gerarToken(Usuario usuario) {
+					return "access-token-123";
+				}
+
+				@Override
+				public boolean isTokenValido(String token) {
+					return true;
+				}
+
+				@Override
+				public String obterLoginUsuario(String token) {
+					return EMAIL;
+				}
+			};
+		}
+
+		@Bean(name = "userDetailsService")
+		UserDetailsService userDetailsService() {
+			return username -> User.withUsername(username).password("{noop}pwd").roles("USER").build();
+		}
+
+	}
 
 	private UsuarioDTO dto(String email, String senha) {
 		return UsuarioDTO.builder().email(email).senha(senha).build();
@@ -77,19 +112,17 @@ class UsuarioResourceTest {
 
 	@Test
 	void deveAutenticarUmUsuario() throws Exception {
-		String token = "access-token-123";
 		UsuarioDTO body = dto(EMAIL, SENHA);
 		Usuario usuario = usuario(1L, "Usuário", EMAIL, SENHA);
 
 		when(service.autenticar(EMAIL, SENHA)).thenReturn(usuario);
-		when(jwtService.gerarToken(usuario)).thenReturn(token);
 
 		mvc.perform(
 				post(API + "/autenticar").contentType(JSON).accept(JSON).content(objectMapper.writeValueAsString(body)))
 			.andExpect(status().isOk())
 			.andExpect(content().contentTypeCompatibleWith(JSON))
 			.andExpect(jsonPath("$.nome").value("Usuário"))
-			.andExpect(jsonPath("$.token").value(token));
+			.andExpect(jsonPath("$.token").value("access-token-123"));
 	}
 
 	@Test

@@ -24,7 +24,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import static com.pedropaulo.minhas_financas.service.testUtils.AuthMocks.auth;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,19 +41,18 @@ class CategoriaResourceTest {
 	@Mock
 	private CategoriaService categoriaService;
 
-	@Mock
-	private Authentication authentication;
-
 	private CategoriaResource resource;
+
+	private Authentication authentication;
 
 	@BeforeEach
 	void setUp() {
 		resource = new CategoriaResource(usuarioService, categoriaService);
+		authentication = auth(EMAIL);
 	}
 
 	@Test
 	void buscar_semNomeCategoria_retornaListaOk() throws Exception {
-		when(authentication.getName()).thenReturn(EMAIL);
 		Usuario usuario = new Usuario();
 		usuario.setId(1L);
 		usuario.setEmail(EMAIL);
@@ -80,7 +81,6 @@ class CategoriaResourceTest {
 
 	@Test
 	void buscar_comNomeCategoria_retornaListaOk() throws Exception {
-		when(authentication.getName()).thenReturn(EMAIL);
 		Usuario usuario = new Usuario();
 		usuario.setId(1L);
 		usuario.setEmail(EMAIL);
@@ -100,18 +100,17 @@ class CategoriaResourceTest {
 
 	@Test
 	void buscar_quandoServiceLancaRegraNegocio_retorna404ComMensagem() throws Exception {
-		when(authentication.getName()).thenReturn(EMAIL);
 		Usuario usuario = new Usuario();
 		usuario.setId(1L);
 		usuario.setEmail(EMAIL);
 		when(usuarioService.obterIdUsuarioPorEmail(EMAIL)).thenReturn(usuario);
 		when(categoriaService.buscarPorNome(any(Categoria.class)))
-			.thenThrow(new RegraNegocioException("erro qualquer"));
+			.thenThrow(new RegraNegocioException("Ocorreu um erro ao buscar as categorias."));
 
 		ResponseEntity<?> resp = resource.buscar("x", authentication);
 
 		assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-		assertThat(resp.getBody()).isEqualTo("erro qualquer");
+		assertThat(resp.getBody()).isEqualTo("Ocorreu um erro ao buscar as categorias.");
 	}
 
 	@Test
@@ -130,7 +129,9 @@ class CategoriaResourceTest {
 	@Test
 	void obterPorId_quandoNaoExiste_retorna404() throws Exception {
 		when(categoriaService.obterPorIdCategoria(eq(100L), eq(authentication))).thenReturn(Optional.empty());
+
 		ResponseEntity<Categoria> resp = resource.obterPorId(100L, authentication);
+
 		assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
 		assertThat(resp.getBody()).isNull();
 	}
@@ -138,8 +139,10 @@ class CategoriaResourceTest {
 	@Test
 	void obterPorId_quandoServiceLanca_retorna400() throws Exception {
 		when(categoriaService.obterPorIdCategoria(anyLong(), eq(authentication)))
-			.thenThrow(new RegraNegocioException("falhou"));
+			.thenThrow(new RegraNegocioException("Não foi possível concluir a operação solicitada."));
+
 		ResponseEntity<Categoria> resp = resource.obterPorId(1L, authentication);
+
 		assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 		assertThat(resp.getBody()).isNull();
 	}
@@ -148,16 +151,17 @@ class CategoriaResourceTest {
 	void criar_sucesso_retorna200ComEntidade() throws Exception {
 		CategoriaDTO dto = new CategoriaDTO();
 		dto.setNome("Saúde");
-		Categoria salvo = new Categoria();
-		salvo.setId(7L);
-		salvo.setNome("Saúde");
 
-		when(categoriaService.salvar(eq(dto), eq(authentication))).thenReturn(salvo);
+		Categoria entidadeSalva = new Categoria();
+		entidadeSalva.setId(7L);
+		entidadeSalva.setNome("Saúde");
+
+		when(categoriaService.salvar(eq(dto), eq(authentication))).thenReturn(entidadeSalva);
 
 		ResponseEntity<?> resp = resource.criar(dto, authentication, new Categoria());
 
 		assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-		assertThat(resp.getBody()).isEqualTo(salvo);
+		assertThat(resp.getBody()).isEqualTo(entidadeSalva);
 		verify(categoriaService).salvar(eq(dto), eq(authentication));
 	}
 
@@ -165,13 +169,15 @@ class CategoriaResourceTest {
 	void criar_quandoServiceLanca_retorna400ComMensagem() throws Exception {
 		CategoriaDTO dto = new CategoriaDTO();
 		dto.setNome("Saúde");
+
 		when(categoriaService.salvar(eq(dto), eq(authentication)))
-			.thenThrow(new RegraNegocioException("categoria inválida"));
+			.thenThrow(new RegraNegocioException("A categoria informada é inválida."));
 
 		ResponseEntity<?> resp = resource.criar(dto, authentication, new Categoria());
 
 		assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-		assertThat(resp.getBody()).isEqualTo("categoria inválida");
+		assertThat(resp.getBody()).isEqualTo("A categoria informada é inválida.");
+		verify(categoriaService).salvar(eq(dto), eq(authentication));
 		verify(categoriaService, never()).deletar(anyLong(), any());
 	}
 
@@ -180,11 +186,7 @@ class CategoriaResourceTest {
 		CategoriaDTO dto = new CategoriaDTO();
 		dto.setNome("Investimentos");
 
-		when(categoriaService.atualizar(eq(5L), eq(authentication), eq(dto))).thenReturn(new Categoria()); // ou
-																											// null,
-																											// se
-																											// você
-																											// preferir
+		when(categoriaService.atualizar(eq(5L), eq(authentication), eq(dto))).thenReturn(new Categoria());
 
 		ResponseEntity<?> resp = resource.atualizar(dto, authentication, 5L);
 
@@ -197,19 +199,21 @@ class CategoriaResourceTest {
 	void atualizar_quandoServiceLanca_retorna400ComMensagem() throws Exception {
 		CategoriaDTO dto = new CategoriaDTO();
 		dto.setNome("Investimentos");
-		doThrow(new RegraNegocioException("erro atualização")).when(categoriaService)
+		doThrow(new RegraNegocioException("Não foi possível atualizar a categoria.")).when(categoriaService)
 			.atualizar(eq(6L), eq(authentication), eq(dto));
 
 		ResponseEntity<?> resp = resource.atualizar(dto, authentication, 6L);
 
 		assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-		assertThat(resp.getBody()).isEqualTo("erro atualização");
+		assertThat(resp.getBody()).isEqualTo("Não foi possível atualizar a categoria.");
 	}
 
 	@Test
 	void deletar_sucesso_retorna204NoContent() throws Exception {
 		doNothing().when(categoriaService).deletar(eq(9L), eq(authentication));
+
 		ResponseEntity<?> resp = resource.deletar(9L, authentication);
+
 		assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
 		assertThat(resp.getBody()).isNull();
 		verify(categoriaService).deletar(9L, authentication);
@@ -217,11 +221,13 @@ class CategoriaResourceTest {
 
 	@Test
 	void deletar_quandoServiceLanca_retorna400ComMensagem() throws Exception {
-		doThrow(new RegraNegocioException("nao pode excluir")).when(categoriaService)
+		doThrow(new RegraNegocioException("Não é possível excluir a categoria no momento.")).when(categoriaService)
 			.deletar(eq(12L), eq(authentication));
+
 		ResponseEntity<?> resp = resource.deletar(12L, authentication);
+
 		assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-		assertThat(resp.getBody()).isEqualTo("nao pode excluir");
+		assertThat(resp.getBody()).isEqualTo("Não é possível excluir a categoria no momento.");
 	}
 
 }

@@ -21,7 +21,8 @@ import org.springframework.data.jpa.convert.threeten.Jsr310JpaConverters;
 public class Lancamento {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "lanc_seq_gen")
+	@SequenceGenerator(name = "lanc_seq_gen", sequenceName = "lancamento_seq", allocationSize = 200)
 	@Column(name = "id")
 	private Long id;
 
