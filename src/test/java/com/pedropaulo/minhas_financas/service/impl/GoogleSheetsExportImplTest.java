@@ -118,18 +118,28 @@ class GoogleSheetsExportImplTest {
 			.forClass(BatchUpdateSpreadsheetRequest.class);
 		verify(spreadsheets).batchUpdate(eq(createdId), batchCaptor.capture());
 		BatchUpdateSpreadsheetRequest batchRequest = batchCaptor.getValue();
-		assertThat(batchRequest.getRequests()).hasSize(17);
+
+		// ### CORREÇÃO 1: O total de requisições agora é 20 ###
+		assertThat(batchRequest.getRequests()).hasSize(20);
 
 		AddBandingRequest bandingRequest = findAddBandingRequest(batchRequest.getRequests());
 		assertThat(bandingRequest).isNotNull();
 		assertThat(bandingRequest.getBandedRange().getRange().getEndRowIndex()).isEqualTo(ids.size() + 1);
 
 		List<UpdateDimensionPropertiesRequest> dimensionRequests = findDimensionUpdates(batchRequest.getRequests());
-		assertThat(dimensionRequests).hasSize(4);
+
+		// ### CORREÇÃO 2: O total de redimensionamentos de coluna agora é 7 ###
+		assertThat(dimensionRequests).hasSize(7);
+
+		// ### CORREÇÃO 3: Verificando os novos tamanhos de pixel para todas as 7 colunas
+		// ###
 		assertThat(pixelSizeForColumn(dimensionRequests, 0)).isEqualTo(170);
-		assertThat(pixelSizeForColumn(dimensionRequests, 1)).isEqualTo(300);
+		assertThat(pixelSizeForColumn(dimensionRequests, 1)).isEqualTo(240); // Era 300
 		assertThat(pixelSizeForColumn(dimensionRequests, 2)).isEqualTo(150);
-		assertThat(pixelSizeForColumn(dimensionRequests, 5)).isEqualTo(90);
+		assertThat(pixelSizeForColumn(dimensionRequests, 3)).isEqualTo(100); // Novo
+		assertThat(pixelSizeForColumn(dimensionRequests, 4)).isEqualTo(275); // Novo
+		assertThat(pixelSizeForColumn(dimensionRequests, 5)).isEqualTo(140); // Era 90
+		assertThat(pixelSizeForColumn(dimensionRequests, 6)).isEqualTo(240); // Novo
 
 		verify(exportService).streamCsvByIds(any(OutputStream.class), eq(ids));
 		verify(spreadsheets).get(createdId);
@@ -180,7 +190,9 @@ class GoogleSheetsExportImplTest {
 			.forClass(BatchUpdateSpreadsheetRequest.class);
 		verify(spreadsheets).batchUpdate(eq(createdId), batchCaptor.capture());
 		BatchUpdateSpreadsheetRequest batchRequest = batchCaptor.getValue();
-		assertThat(batchRequest.getRequests()).hasSize(17);
+
+		// ### CORREÇÃO 4: O total de requisições agora é 20 (neste teste também) ###
+		assertThat(batchRequest.getRequests()).hasSize(20);
 
 		AddBandingRequest bandingRequest = findAddBandingRequest(batchRequest.getRequests());
 		assertThat(bandingRequest.getBandedRange().getRange().getEndRowIndex()).isEqualTo(ids.size() + 1);
