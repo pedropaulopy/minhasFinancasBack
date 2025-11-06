@@ -1,4 +1,4 @@
 target/
 .idea
 .scannerwork
-/src/main/resources/client_secret.json
+resources/client_secret.json
