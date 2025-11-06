@@ -207,4 +207,42 @@ class LancamentoCsvImportServiceImplTest {
 		verify(lancamentoService, times(1)).salvarTodos(anyList());
 	}
 
+	@Test
+	void importar_csvVazio_naoChamaSalvar() throws Exception {
+		String csv = "DESC,VALOR_LANC,TIPO,STATUS,USUARIO,DATA_LANC,CATEGORIA\n";
+
+		ImportResultadoDTO resumo = service.importar(csv(csv), 10, 1L);
+
+		assertEquals(0, resumo.getTotalLidas());
+		assertEquals(0, resumo.getTotalSucesso());
+		assertEquals(0, resumo.getTotalFalha());
+
+		verifyNoInteractions(lancamentoService);
+	}
+
+	@Test
+	void importar_csvApenasComLinhasInvalidas_naoChamaSalvar() throws Exception {
+		String csv = "DESC,VALOR_LANC,TIPO,STATUS,USUARIO,DATA_LANC,CATEGORIA\n"
+				+ "Invalido 1,0,DESPESA,EFETIVADO,1,01/01/2025,Cat\n"
+				+ "Invalido 2,-10,DESPESA,EFETIVADO,1,01/01/2025,Cat\n";
+
+		ImportResultadoDTO resumo = service.importar(csv(csv), 10, 1L);
+
+		assertEquals(2, resumo.getTotalLidas());
+		assertEquals(0, resumo.getTotalSucesso());
+		assertEquals(2, resumo.getTotalFalha());
+
+		verifyNoInteractions(lancamentoService);
+	}
+
+	@Test
+	void importar_erroAoSalvar_lancaExcecao() {
+		String csv = "DESC,VALOR_LANC,TIPO,STATUS,USUARIO,DATA_LANC,CATEGORIA\n"
+				+ "Compra,50,DESPESA,EFETIVADO,42,02/11/2025,Comida\n";
+
+		doThrow(new RuntimeException("Erro de banco de dados")).when(lancamentoService).salvarTodos(anyList());
+
+		assertThrows(RuntimeException.class, () -> service.importar(csv(csv), 10, 42L));
+	}
+
 }

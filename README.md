@@ -21,6 +21,28 @@ customizadas.
 
 ---
 
+## Funcionalidades
+
+O backend oferece um conjunto de funcionalidades para o gerenciamento financeiro:
+
+- **Gerenciamento de Lançamentos:**
+    - **CRUD completo:** crie, edite, visualize e delete lançamentos (receitas e despesas).
+    - **Busca flexível:** filtre lançamentos por descrição, mês, ano, valor, tipo e status.
+    - **Atualização de status:** altere o status de um lançamento (ex: de PENDENTE para EFETIVADO).
+
+- **Gerenciamento de Categorias:**
+    - **CRUD completo:** crie, edite, visualize e delete categorias para organizar seus lançamentos.
+    - **Busca por nome:** encontre categorias pelo nome.
+
+- **Importação e Exportação de Dados:**
+    - **Importação em lote via CSV:** envie um arquivo CSV com múltiplos lançamentos para importação em massa. O sistema processa os dados e retorna um relatório detalhado, indicando sucessos e falhas.
+    - **Exportação em múltiplos formatos:**
+        - **JSON:** exporte os dados dos lançamentos em formato JSON.
+        - **CSV:** gere um arquivo CSV com os lançamentos, ideal para planilhas.
+        - **Google Sheets:** exporte os dados diretamente para uma nova planilha no Google Drive do usuário.
+
+---
+
 ## Estrutura do Projeto
 
 ```
@@ -270,5 +292,3 @@ Principais testes novos/alterados:
     - Testes de controller continuam funcionais; em ambientes com segurança ativada, é necessário simular autenticação (
       mockar serviços ou configurar header Authorization) ou desativar segurança no teste com
       `excludeAutoConfiguration`.
-
-
