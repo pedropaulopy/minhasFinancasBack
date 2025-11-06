@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class exportSheetsErrosDTO {
+public class ExportSheetsErrosDTO {
 
 	private String error;
 

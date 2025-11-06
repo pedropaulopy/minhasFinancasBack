@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class exportSheetsResultadoDTO {
+public class ExportSheetsResultadoDTO {
 
 	private String sheetId;
 

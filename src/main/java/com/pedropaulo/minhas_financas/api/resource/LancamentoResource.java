@@ -2,10 +2,8 @@ package com.pedropaulo.minhas_financas.api.resource;
 
 import com.pedropaulo.minhas_financas.api.dto.LancamentoDTO;
 import com.pedropaulo.minhas_financas.api.dto.LancamentoStatusDTO;
-import com.pedropaulo.minhas_financas.api.dto.exportacao.exportLancamentosDTO;
-import com.pedropaulo.minhas_financas.api.dto.exportacao.exportLancamentosSheetsDTO;
-import com.pedropaulo.minhas_financas.api.dto.exportacao.exportSheetsErrosDTO;
-import com.pedropaulo.minhas_financas.api.dto.exportacao.exportSheetsResultadoDTO;
+import com.pedropaulo.minhas_financas.api.dto.exportacao.ExportSheetsErrosDTO;
+import com.pedropaulo.minhas_financas.api.dto.exportacao.ExportSheetsResultadoDTO;
 import com.pedropaulo.minhas_financas.api.dto.importacao.ImportResultadoDTO;
 import com.pedropaulo.minhas_financas.exception.EntidadeNaoProcessavelException;
 import com.pedropaulo.minhas_financas.exception.RegraNegocioException;
@@ -15,12 +13,7 @@ import com.pedropaulo.minhas_financas.model.enums.StatusLancamento;
 import com.pedropaulo.minhas_financas.model.enums.TipoLancamento;
 import com.pedropaulo.minhas_financas.service.*;
 
-import java.io.File;
-import java.io.IOException;
 import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -231,10 +224,10 @@ public class LancamentoResource {
 		try {
 			var created = sheetsExport.createSheetFromCsv(ids, nomePlanilha, folderId);
 			return ResponseEntity
-				.ok(new exportSheetsResultadoDTO(created.id(), created.webViewLink(), created.webContentLink()));
+				.ok(new ExportSheetsResultadoDTO(created.id(), created.webViewLink(), created.webContentLink()));
 		}
 		catch (Exception e) {
-			return ResponseEntity.internalServerError().body(new exportSheetsErrosDTO(e.getMessage()));
+			return ResponseEntity.internalServerError().body(new ExportSheetsErrosDTO(e.getMessage()));
 		}
 	}
 
