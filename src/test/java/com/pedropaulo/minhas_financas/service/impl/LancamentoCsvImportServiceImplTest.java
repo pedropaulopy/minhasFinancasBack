@@ -74,10 +74,6 @@ class LancamentoCsvImportServiceImplTest {
 		field.set(service, emStub);
 	}
 
-	private static InputStream csv(String content) {
-		return new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
-	}
-
 	@Test
 	void importar_ok_persisteComCategoriasNovas() throws Exception {
 		when(usuarioRepository.getById(anyLong())).thenAnswer(inv -> {
@@ -187,4 +183,8 @@ class LancamentoCsvImportServiceImplTest {
 		verify(lancamentoService, times(1)).salvarTodos(anyList());
 	}
 
+
+    private static InputStream csv(String content) {
+        return new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
+    }
 }
