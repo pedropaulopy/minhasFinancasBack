@@ -34,13 +34,23 @@ minhas-financas-backend/
 │   │   │           ├── minhas_financas/
 │   │   │               ├── api/
 │   │   │               │   ├── config/
+│   │   │               │   │   ├── GoogleDriveConfig.java
 │   │   │               │   │   └── SecurityConfig.java
 │   │   │               │   ├── dto/
+│   │   │               │   │   ├── exportacao/
+│   │   │               │   │   │   ├── exportLancamentosDTO.java
+│   │   │               │   │   │   ├── exportLancamentosSheetsDTO.java
+│   │   │               │   │   │   ├── exportSheetsErrosDTO.java
+│   │   │               │   │   │   └── exportSheetsResultadoDTO.java
+│   │   │               │   │   ├── importacao/
+│   │   │               │   │   │   └── ImportResultadoDTO.java
 │   │   │               │   │   ├── CategoriaDTO.java
 │   │   │               │   │   ├── LancamentoDTO.java
 │   │   │               │   │   ├── LancamentoStatusDTO.java
 │   │   │               │   │   ├── TokenDTO.java
 │   │   │               │   │   └── UsuarioDTO.java
+│   │   │               │   ├── handler/
+│   │   │               │   │   └── GlobalExceptionHandler.java
 │   │   │               │   ├── resource/
 │   │   │               │   │   ├── CategoriaResource.java
 │   │   │               │   │   ├── LancamentoResource.java
@@ -65,12 +75,18 @@ minhas-financas-backend/
 │   │   │               ├── service/
 │   │   │               │   ├── impl/
 │   │   │               │   │   ├── CategoriaServiceImpl.java
+│   │   │               │   │   ├── GoogleSheetsExportImpl.java
 │   │   │               │   │   ├── JwtServiceImpl.java
+│   │   │               │   │   ├── LancamentoCsvImportServiceImpl.java
+│   │   │               │   │   ├── LancamentoExportServiceImpl.java
 │   │   │               │   │   ├── LancamentoServiceImpl.java
 │   │   │               │   │   ├── SecurityUserDetailsServiceImpl.java
 │   │   │               │   │   └── UsuarioServiceImpl.java
 │   │   │               │   ├── CategoriaService.java
+│   │   │               │   ├── GoogleSheetsExport.java
 │   │   │               │   ├── JwtService.java
+│   │   │               │   ├── LancamentoCsvImportService.java
+│   │   │               │   ├── LancamentoExportService.java
 │   │   │               │   ├── LancamentoService.java
 │   │   │               │   ├── SecurityUserDetailsService.java
 │   │   │               │   └── UsuarioService.java
@@ -84,6 +100,7 @@ minhas-financas-backend/
 │           │       ├── minhas_financas/
 │           │           ├── api/
 │           │           │   ├── dto/
+│           │           │       ├── ImportResultadoDTOTest.java
 │           │           │       └── LancamentoDTOFactory.java
 │           │           ├── exception/
 │           │           ├── model/
@@ -97,6 +114,7 @@ minhas-financas-backend/
 │           │           ├── service/
 │           │           │   ├── impl/
 │           │           │   │   ├── JwtServiceImplTest.java
+│           │           │   │   ├── LancamentoCsvImportServiceImplTest.java
 │           │           │   │   └── SecurityUserDetailsServiceImplTest.java
 │           │           │   ├── CategoriaServiceTest.java
 │           │           │   ├── LancamentoServiceTest.java
@@ -110,6 +128,7 @@ minhas-financas-backend/
 ├── mvnw
 ├── mvnw.cmd
 └── pom.xml
+
 
 ```
 
