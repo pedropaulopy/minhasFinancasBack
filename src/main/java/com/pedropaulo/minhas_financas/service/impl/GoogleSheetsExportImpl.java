@@ -100,7 +100,7 @@ public class GoogleSheetsExportImpl implements GoogleSheetsExport {
 	private final Sheets sheets;
 
 	@Override
-	public CreatedSheet createSheetFromCsv(List<Long> ids, String nomePlanilha, String parentFolderId)
+	public CreatedSheet criarPlanilhaCsv(List<Long> ids, String nomePlanilha, String parentFolderId)
 			throws RegraNegocioException {
 		try {
 			byte[] csvBytes = gerarCsvBytes(ids);

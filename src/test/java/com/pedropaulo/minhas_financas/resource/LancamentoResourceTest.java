@@ -546,7 +546,7 @@ class LancamentoResourceTest {
 		when(lancamentoService.buscar(any(Lancamento.class), anyList())).thenReturn(List.of(lancamento));
 
 		GoogleSheetsExport.CreatedSheet planilhaCriada = new GoogleSheetsExport.CreatedSheet("ID1", "VIEW", "CONTENT");
-		when(sheetsExport.createSheetFromCsv(eq(List.of(5L)), eq("Nome"), eq("Pasta"))).thenReturn(planilhaCriada);
+		when(sheetsExport.criarPlanilhaCsv(eq(List.of(5L)), eq("Nome"), eq("Pasta"))).thenReturn(planilhaCriada);
 
 		ResponseEntity<?> resposta = resource.export("sheets", "descricao", 2, 2023, null, null, null,
 				Collections.emptyList(), "Nome", "Pasta", authentication);
@@ -554,7 +554,7 @@ class LancamentoResourceTest {
 		assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(resposta.getBody()).isNotNull();
 
-		verify(sheetsExport).createSheetFromCsv(eq(List.of(5L)), eq("Nome"), eq("Pasta"));
+		verify(sheetsExport).criarPlanilhaCsv(eq(List.of(5L)), eq("Nome"), eq("Pasta"));
 		verify(usuarioService).obterIdUsuarioPorEmail(EMAIL);
 		verify(lancamentoService).buscar(any(Lancamento.class), anyList());
 		verifyNoMoreInteractions(sheetsExport, usuarioService, lancamentoService);
@@ -569,7 +569,7 @@ class LancamentoResourceTest {
 		lancamento.setId(9L);
 		when(lancamentoService.buscar(any(Lancamento.class), anyList())).thenReturn(List.of(lancamento));
 
-		when(sheetsExport.createSheetFromCsv(eq(List.of(9L)), any(), any()))
+		when(sheetsExport.criarPlanilhaCsv(eq(List.of(9L)), any(), any()))
 			.thenThrow(new RuntimeException("falha sheets"));
 
 		ResponseEntity<?> resposta = resource.export("sheets", null, null, null, null, null, null,
@@ -578,7 +578,7 @@ class LancamentoResourceTest {
 		assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
 		assertThat(resposta.getBody()).isNotNull();
 
-		verify(sheetsExport).createSheetFromCsv(eq(List.of(9L)), isNull(), isNull());
+		verify(sheetsExport).criarPlanilhaCsv(eq(List.of(9L)), isNull(), isNull());
 		verify(usuarioService).obterIdUsuarioPorEmail(EMAIL);
 		verify(lancamentoService).buscar(any(Lancamento.class), anyList());
 		verifyNoMoreInteractions(sheetsExport, usuarioService, lancamentoService);

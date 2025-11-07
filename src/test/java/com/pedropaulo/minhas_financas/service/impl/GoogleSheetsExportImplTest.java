@@ -72,7 +72,7 @@ class GoogleSheetsExportImplTest {
 	}
 
 	@Test
-	void createSheetFromCsv_deveCriarPlanilhaUsandoNomePadraoEComPastaPai() throws Exception {
+	void criarPlanilhaCsv_deveCriarPlanilhaUsandoNomePadraoEComPastaPai() throws Exception {
 		String createdId = "spreadsheet-123";
 		String webViewLink = "https://view/link";
 		String webContentLink = "https://content/link";
@@ -96,7 +96,7 @@ class GoogleSheetsExportImplTest {
 		String parentFolderId = "folder-999";
 		String nomePlanilha = "   ";
 
-		GoogleSheetsExport.CreatedSheet result = service.createSheetFromCsv(ids, nomePlanilha, parentFolderId);
+		GoogleSheetsExport.CreatedSheet result = service.criarPlanilhaCsv(ids, nomePlanilha, parentFolderId);
 
 		assertThat(result.id()).isEqualTo(createdId);
 		assertThat(result.webViewLink()).isEqualTo(webViewLink);
@@ -145,7 +145,7 @@ class GoogleSheetsExportImplTest {
 	}
 
 	@Test
-	void createSheetFromCsv_deveCriarPlanilhaComNomePersonalizadoSemPastaPai() throws Exception {
+	void criarPlanilhaCsv_deveCriarPlanilhaComNomePersonalizadoSemPastaPai() throws Exception {
 		String createdId = "spreadsheet-ABC";
 		String webViewLink = "https://view/link2";
 		String webContentLink = "https://content/link2";
@@ -168,7 +168,7 @@ class GoogleSheetsExportImplTest {
 		List<Long> ids = List.of(1L);
 		String nomePlanilha = "Planilha Personalizada";
 
-		GoogleSheetsExport.CreatedSheet result = service.createSheetFromCsv(ids, nomePlanilha, null);
+		GoogleSheetsExport.CreatedSheet result = service.criarPlanilhaCsv(ids, nomePlanilha, null);
 
 		assertThat(result.id()).isEqualTo(createdId);
 		assertThat(result.webViewLink()).isEqualTo(webViewLink);

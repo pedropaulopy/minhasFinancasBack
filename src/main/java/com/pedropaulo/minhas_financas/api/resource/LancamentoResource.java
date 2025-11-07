@@ -214,7 +214,7 @@ public class LancamentoResource {
         }
 
         try {
-            var created = sheetsExport.createSheetFromCsv(ids, nomePlanilha, folderId);
+            var created = sheetsExport.criarPlanilhaCsv(ids, nomePlanilha, folderId);
             return ResponseEntity.ok(new ExportSheetsResultadoDTO(
                     created.id(), created.webViewLink(), created.webContentLink()
             ));

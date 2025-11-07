@@ -6,7 +6,7 @@ import java.util.List;
 
 public interface GoogleSheetsExport {
 
-	CreatedSheet createSheetFromCsv(List<Long> ids, String nomePlanilha, String parentFolderId)
+	CreatedSheet criarPlanilhaCsv(List<Long> ids, String nomePlanilha, String parentFolderId)
 			throws RegraNegocioException;
 
 	record CreatedSheet(String id, String webViewLink, String webContentLink) {
