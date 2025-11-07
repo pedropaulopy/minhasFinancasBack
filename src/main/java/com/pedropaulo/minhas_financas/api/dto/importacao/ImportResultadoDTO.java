@@ -25,20 +25,4 @@ public class ImportResultadoDTO {
 		this.erros.add(new AuxiliarLinhaErro(linha, motivo, raw));
 	}
 
-	public long getTotalLidas() {
-		return totalLidas;
-	}
-
-	public long getTotalSucesso() {
-		return totalSucesso;
-	}
-
-	public long getTotalFalha() {
-		return totalFalha;
-	}
-
-	public List<AuxiliarLinhaErro> getErros() {
-		return erros;
-	}
-
 }
