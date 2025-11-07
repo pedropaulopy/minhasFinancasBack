@@ -4,284 +4,317 @@ import com.google.api.client.http.InputStreamContent;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.sheets.v4.Sheets;
-import com.google.api.services.sheets.v4.model.*;
+import com.google.api.services.sheets.v4.model.AddBandingRequest;
+import com.google.api.services.sheets.v4.model.AddConditionalFormatRuleRequest;
+import com.google.api.services.sheets.v4.model.BandedRange;
+import com.google.api.services.sheets.v4.model.BandingProperties;
+import com.google.api.services.sheets.v4.model.BasicFilter;
+import com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetRequest;
+import com.google.api.services.sheets.v4.model.BooleanCondition;
+import com.google.api.services.sheets.v4.model.BooleanRule;
+import com.google.api.services.sheets.v4.model.CellData;
+import com.google.api.services.sheets.v4.model.CellFormat;
+import com.google.api.services.sheets.v4.model.Color;
+import com.google.api.services.sheets.v4.model.ConditionValue;
+import com.google.api.services.sheets.v4.model.DimensionProperties;
+import com.google.api.services.sheets.v4.model.DimensionRange;
+import com.google.api.services.sheets.v4.model.GridProperties;
+import com.google.api.services.sheets.v4.model.GridRange;
+import com.google.api.services.sheets.v4.model.NumberFormat;
+import com.google.api.services.sheets.v4.model.RepeatCellRequest;
+import com.google.api.services.sheets.v4.model.Request;
+import com.google.api.services.sheets.v4.model.SetBasicFilterRequest;
+import com.google.api.services.sheets.v4.model.Sheet;
+import com.google.api.services.sheets.v4.model.SheetProperties;
+import com.google.api.services.sheets.v4.model.Spreadsheet;
+import com.google.api.services.sheets.v4.model.TextFormat;
+import com.google.api.services.sheets.v4.model.UpdateDimensionPropertiesRequest;
+import com.google.api.services.sheets.v4.model.UpdateSheetPropertiesRequest;
 import com.pedropaulo.minhas_financas.exception.RegraNegocioException;
 import com.pedropaulo.minhas_financas.service.GoogleSheetsExport;
 import com.pedropaulo.minhas_financas.service.LancamentoExportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class GoogleSheetsExportImpl implements GoogleSheetsExport {
 
-	private static final String CONDITION_TEXT_EQ = "TEXT_EQ";
+    private static final String CONDITION_TEXT_EQ = "TEXT_EQ";
+    private static final String FIELD_PIXEL_SIZE = "pixelSize";
+    private static final String DIMENSION_COLUMNS = "COLUMNS";
 
-	private static final String FIELD_PIXEL_SIZE = "pixelSize";
+    private static final String MIME_GOOGLE_SHEET = "application/vnd.google-apps.spreadsheet";
+    private static final String MIME_CSV = "text/csv";
 
-	private static final String DIMENSION_COLUMNS = "COLUMNS";
+    private static final String DRIVE_FIELDS = "id,webViewLink,webContentLink";
+    private static final String SPREADSHEET_GET_FIELDS = "sheets(properties(sheetId,gridProperties(rowCount)))";
 
-	private final Drive drive;
+    private static final String FONTE = "Inter";
+    private static final int TAM_BUFFER = 64 * 1024;
 
-	private final LancamentoExportService exportService;
+    private static final int COLS = 7;
+    private static final int COL_VALOR = 1;
+    private static final int COL_TIPO = 2;
+    private static final int COL_STATUS = 3;
+    private static final int COL_DATA = 6;
 
-	private final Sheets sheets;
+    private static final int HEADER_FONT = 12;
+    private static final int BODY_FONT = 11;
 
-	@Override
-	public CreatedSheet createSheetFromCsv(List<Long> ids, String nomePlanilha, String parentFolderId)
-			throws RegraNegocioException {
-		try {
-			var byteArrayOutputStream = new java.io.ByteArrayOutputStream(64 * 1024);
-			exportService.streamCsvByIds(byteArrayOutputStream, ids);
-			byte[] csvBytes = byteArrayOutputStream.toByteArray();
+    private static final String PADRAO_MOEDA = "R$ #.##0,00";
+    private static final String PADRAO_DATA = "mm/yyyy";
 
-			File meta = new File();
-			meta.setName((nomePlanilha == null || nomePlanilha.isBlank()) ? "Lancamentos " + java.time.LocalDate.now()
-					: nomePlanilha);
-			meta.setMimeType("application/vnd.google-apps.spreadsheet");
-			if (parentFolderId != null && !parentFolderId.isBlank()) {
-				meta.setParents(List.of(parentFolderId));
-			}
+    private static final List<Integer> LARGURAS_COLUNAS = Arrays.asList(
+            170, // DESCRIÇÃO
+            240, // VALOR
+            150, // TIPO
+            100, // STATUS
+            275, // USUÁRIO
+            140, // DATA
+            240  // CATEGORIA
+    );
 
-			var content = new InputStreamContent("text/csv", new java.io.ByteArrayInputStream(csvBytes));
-			content.setLength(csvBytes.length);
+    private final Drive drive;
+    private final LancamentoExportService exportService;
+    private final Sheets sheets;
 
-			File created = drive.files()
-				.create(meta, content)
-				.setFields("id,webViewLink,webContentLink")
-				.setSupportsAllDrives(true)
-				.execute();
+    @Override
+    public CreatedSheet createSheetFromCsv(List<Long> ids, String nomePlanilha, String parentFolderId)
+            throws RegraNegocioException {
+        try {
+            byte[] csvBytes = gerarCsvBytes(ids);
+            File arquivo = criarArquivoNoDrive(nomePlanilha, parentFolderId, csvBytes);
+            String spreadsheetId = arquivo.getId();
 
-			String spreadsheetId = created.getId();
+            Spreadsheet spreadsheet = obterSpreadsheet(spreadsheetId);
+            Sheet primeiraAba = spreadsheet.getSheets().get(0);
 
-			Spreadsheet spreadsheet = sheets.spreadsheets()
-				.get(spreadsheetId)
-				.setFields("sheets(properties(sheetId,gridProperties(rowCount)))")
-				.execute();
+            int sheetId = primeiraAba.getProperties().getSheetId();
+            int rowCount = primeiraAba.getProperties().getGridProperties().getRowCount();
 
-			Sheet first = spreadsheet.getSheets().get(0);
-			Integer firstSheetId = first.getProperties().getSheetId();
-			int rowCount = first.getProperties().getGridProperties().getRowCount();
+            List<Request> requests = montarRequests(sheetId, rowCount, ids.size());
+            aplicarBatch(spreadsheetId, requests);
 
-			final int COLS = 7;
-			final int VALOR_COL = 1;
-			final int DATA_COL = 6;
-			final int STATUS_COL = 3;
-			final int TIPO_COL = 2;
+            return new CreatedSheet(arquivo.getId(), arquivo.getWebViewLink(), arquivo.getWebContentLink());
+        } catch (IOException e) {
+            throw new RegraNegocioException("Falha ao acessar as APIs do Google: " + e.getMessage());
+        }
+    }
 
-			GridRange headerRange = new GridRange().setSheetId(firstSheetId)
-				.setStartRowIndex(0)
-				.setEndRowIndex(1)
-				.setStartColumnIndex(0)
-				.setEndColumnIndex(COLS);
+    private byte[] gerarCsvBytes(List<Long> ids) throws IOException, RegraNegocioException {
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream(TAM_BUFFER)) {
+            exportService.streamCsvByIds(out, ids);
+            return out.toByteArray();
+        }
+    }
 
-			GridRange allRowsRange = new GridRange().setSheetId(firstSheetId)
-				.setStartRowIndex(0)
-				.setEndRowIndex(rowCount)
-				.setStartColumnIndex(0)
-				.setEndColumnIndex(COLS);
+    private File criarArquivoNoDrive(String nomePlanilha, String parentFolderId, byte[] csvBytes) throws IOException {
+        File meta = new File()
+                .setName(planilhaOuPadrao(nomePlanilha))
+                .setMimeType(MIME_GOOGLE_SHEET);
 
-			GridRange bodyRange = new GridRange().setSheetId(firstSheetId)
-				.setStartRowIndex(1)
-				.setEndRowIndex(rowCount)
-				.setStartColumnIndex(0)
-				.setEndColumnIndex(COLS);
+        if (parentFolderId != null && !parentFolderId.isBlank()) {
+            meta.setParents(List.of(parentFolderId));
+        }
 
-			GridRange valorColRange = new GridRange().setSheetId(firstSheetId)
-				.setStartRowIndex(1)
-				.setEndRowIndex(rowCount)
-				.setStartColumnIndex(VALOR_COL)
-				.setEndColumnIndex(VALOR_COL + 1);
+        InputStreamContent conteudo = new InputStreamContent(MIME_CSV, new ByteArrayInputStream(csvBytes));
+        conteudo.setLength(csvBytes.length);
 
-			GridRange statusColRange = new GridRange().setSheetId(firstSheetId)
-				.setStartRowIndex(1)
-				.setEndRowIndex(rowCount)
-				.setStartColumnIndex(STATUS_COL)
-				.setEndColumnIndex(STATUS_COL + 1);
+        return drive.files()
+                .create(meta, conteudo)
+                .setFields(DRIVE_FIELDS)
+                .setSupportsAllDrives(true)
+                .execute();
+    }
 
-			GridRange tipoColRange = new GridRange().setSheetId(firstSheetId)
-				.setStartRowIndex(1)
-				.setEndRowIndex(rowCount)
-				.setStartColumnIndex(TIPO_COL)
-				.setEndColumnIndex(TIPO_COL + 1);
+    private Spreadsheet obterSpreadsheet(String spreadsheetId) throws IOException {
+        return sheets.spreadsheets()
+                .get(spreadsheetId)
+                .setFields(SPREADSHEET_GET_FIELDS)
+                .execute();
+    }
 
-			var requests = new ArrayList<Request>();
+    private void aplicarBatch(String spreadsheetId, List<Request> requests) throws IOException {
+        sheets.spreadsheets()
+                .batchUpdate(spreadsheetId, new BatchUpdateSpreadsheetRequest().setRequests(requests))
+                .execute();
+    }
 
-			requests.add(new Request().setUpdateSheetProperties(new UpdateSheetPropertiesRequest()
-				.setProperties(new SheetProperties().setSheetId(firstSheetId)
-					.setGridProperties(new GridProperties().setFrozenRowCount(1)))
-				.setFields("gridProperties.frozenRowCount")));
+    private List<Request> montarRequests(int sheetId, int rowCount, int quantidadeIds) {
+        GridRange header = range(sheetId, 0, 1, 0, COLS);
+        GridRange corpo = range(sheetId, 1, rowCount, 0, COLS);
+        GridRange todasLinhas = range(sheetId, 0, rowCount, 0, COLS);
 
-			requests.add(new Request().setRepeatCell(new RepeatCellRequest().setRange(bodyRange)
-				.setCell(new CellData().setUserEnteredFormat(
-						new CellFormat().setTextFormat(new TextFormat().setFontFamily("Inter").setFontSize(11))))
-				.setFields("userEnteredFormat.textFormat(fontFamily,fontSize)")));
+        GridRange colValor = rangeCol(sheetId, 1, rowCount, COL_VALOR);
+        GridRange colStatus = rangeCol(sheetId, 1, rowCount, COL_STATUS);
+        GridRange colTipo = rangeCol(sheetId, 1, rowCount, COL_TIPO);
+        GridRange colData = rangeCol(sheetId, 1, rowCount, COL_DATA);
 
-			requests.add(new Request().setRepeatCell(new RepeatCellRequest().setRange(headerRange)
-				.setCell(new CellData().setUserEnteredFormat(new CellFormat()
-					.setTextFormat(new TextFormat().setBold(true).setFontFamily("Inter").setFontSize(12))
-					.setHorizontalAlignment("CENTER")))
-				.setFields("userEnteredFormat(textFormat,horizontalAlignment)")));
+        List<Request> requests = new ArrayList<>();
+        requests.add(congelarCabecalho(sheetId));
+        requests.add(formatarTextoCorpo(corpo));
+        requests.add(formatarCabecalho(header));
+        requests.add(formatarMoeda(colValor));
+        requests.add(alinharEsquerda(colValor));
+        requests.add(formatarData(colData));
+        requests.addAll(regrasCondicionaisStatus(colStatus));
+        requests.addAll(regrasCondicionaisTipo(colTipo));
+        requests.add(aplicarFiltro(todasLinhas));
+        requests.add(aplicarBanding(sheetId, quantidadeIds + 1));
+        requests.addAll(definirLarguras(sheetId, LARGURAS_COLUNAS));
+        return requests;
+    }
 
-			requests.add(new Request().setRepeatCell(new RepeatCellRequest()
-				.setRange(new GridRange().setSheetId(firstSheetId)
-					.setStartRowIndex(1)
-					.setStartColumnIndex(VALOR_COL)
-					.setEndColumnIndex(VALOR_COL + 1))
-				.setCell(new CellData().setUserEnteredFormat(new CellFormat()
-					.setNumberFormat(new NumberFormat().setType("CURRENCY").setPattern("R$ #.##0,00"))))
-				.setFields("userEnteredFormat.numberFormat")));
+    private Request congelarCabecalho(int sheetId) {
+        return new Request().setUpdateSheetProperties(
+                new UpdateSheetPropertiesRequest()
+                        .setProperties(new SheetProperties()
+                                .setSheetId(sheetId)
+                                .setGridProperties(new GridProperties().setFrozenRowCount(1)))
+                        .setFields("gridProperties.frozenRowCount"));
+    }
 
-			requests.add(new Request().setRepeatCell(new RepeatCellRequest().setRange(valorColRange)
-				.setCell(new CellData().setUserEnteredFormat(new CellFormat().setHorizontalAlignment("LEFT")))
-				.setFields("userEnteredFormat.horizontalAlignment")));
+    private Request formatarTextoCorpo(GridRange corpo) {
+        return new Request().setRepeatCell(
+                new RepeatCellRequest()
+                        .setRange(corpo)
+                        .setCell(new CellData().setUserEnteredFormat(
+                                new CellFormat().setTextFormat(new TextFormat()
+                                        .setFontFamily(FONTE)
+                                        .setFontSize(BODY_FONT))))
+                        .setFields("userEnteredFormat.textFormat(fontFamily,fontSize)"));
+    }
 
-			requests.add(new Request().setRepeatCell(new RepeatCellRequest()
-				.setRange(new GridRange().setSheetId(firstSheetId)
-					.setStartRowIndex(1)
-					.setStartColumnIndex(DATA_COL)
-					.setEndColumnIndex(DATA_COL + 1))
-				.setCell(new CellData().setUserEnteredFormat(
-						new CellFormat().setNumberFormat(new NumberFormat().setType("DATE").setPattern("mm/yyyy"))))
-				.setFields("userEnteredFormat.numberFormat")));
+    private Request formatarCabecalho(GridRange header) {
+        return new Request().setRepeatCell(
+                new RepeatCellRequest()
+                        .setRange(header)
+                        .setCell(new CellData().setUserEnteredFormat(
+                                new CellFormat()
+                                        .setTextFormat(new TextFormat()
+                                                .setBold(true)
+                                                .setFontFamily(FONTE)
+                                                .setFontSize(HEADER_FONT))
+                                        .setHorizontalAlignment("CENTER")))
+                        .setFields("userEnteredFormat(textFormat,horizontalAlignment)"));
+    }
 
-			requests.add(
-					new Request().setAddConditionalFormatRule(
-							new AddConditionalFormatRuleRequest()
-								.setRule(
-										new ConditionalFormatRule().setRanges(List.of(statusColRange))
-											.setBooleanRule(
-													new BooleanRule()
-														.setCondition(new BooleanCondition()
-															.setType(CONDITION_TEXT_EQ)
-															.setValues(
-																	List.of(new ConditionValue()
-																		.setUserEnteredValue("EFETIVADO"))))
-														.setFormat(new CellFormat()
-															.setBackgroundColor(new Color().setRed(0.80f)
-																.setGreen(0.94f)
-																.setBlue(0.80f)))))
-								.setIndex(0)));
+    private Request formatarMoeda(GridRange colValor) {
+        return new Request().setRepeatCell(
+                new RepeatCellRequest()
+                        .setRange(colValor)
+                        .setCell(new CellData().setUserEnteredFormat(
+                                new CellFormat()
+                                        .setNumberFormat(new NumberFormat()
+                                                .setType("CURRENCY")
+                                                .setPattern(PADRAO_MOEDA))))
+                        .setFields("userEnteredFormat.numberFormat"));
+    }
 
-			requests.add(
-					new Request().setAddConditionalFormatRule(
-							new AddConditionalFormatRuleRequest()
-								.setRule(
-										new ConditionalFormatRule().setRanges(List.of(statusColRange))
-											.setBooleanRule(
-													new BooleanRule()
-														.setCondition(new BooleanCondition()
-															.setType(CONDITION_TEXT_EQ)
-															.setValues(
-																	List.of(new ConditionValue()
-																		.setUserEnteredValue("PENDENTE"))))
-														.setFormat(new CellFormat()
-															.setBackgroundColor(new Color().setRed(1.00f)
-																.setGreen(0.95f)
-																.setBlue(0.70f)))))
-								.setIndex(1)));
+    private Request alinharEsquerda(GridRange col) {
+        return new Request().setRepeatCell(
+                new RepeatCellRequest()
+                        .setRange(col)
+                        .setCell(new CellData().setUserEnteredFormat(
+                                new CellFormat().setHorizontalAlignment("LEFT")))
+                        .setFields("userEnteredFormat.horizontalAlignment"));
+    }
 
-			requests.add(
-					new Request().setAddConditionalFormatRule(
-							new AddConditionalFormatRuleRequest()
-								.setRule(
-										new ConditionalFormatRule().setRanges(List.of(statusColRange))
-											.setBooleanRule(
-													new BooleanRule()
-														.setCondition(new BooleanCondition()
-															.setType(CONDITION_TEXT_EQ)
-															.setValues(
-																	List.of(new ConditionValue()
-																		.setUserEnteredValue("CANCELADO"))))
-														.setFormat(new CellFormat()
-															.setBackgroundColor(new Color().setRed(0.98f)
-																.setGreen(0.80f)
-																.setBlue(0.80f)))))
-								.setIndex(2)));
+    private Request formatarData(GridRange colData) {
+        return new Request().setRepeatCell(
+                new RepeatCellRequest()
+                        .setRange(colData)
+                        .setCell(new CellData().setUserEnteredFormat(
+                                new CellFormat()
+                                        .setNumberFormat(new NumberFormat()
+                                                .setType("DATE")
+                                                .setPattern(PADRAO_DATA))))
+                        .setFields("userEnteredFormat.numberFormat"));
+    }
 
-			requests.add(
-					new Request()
-						.setAddConditionalFormatRule(
-								new AddConditionalFormatRuleRequest().setRule(
-										new ConditionalFormatRule().setRanges(List.of(tipoColRange))
-											.setBooleanRule(
-													new BooleanRule()
-														.setCondition(new BooleanCondition()
-															.setType(CONDITION_TEXT_EQ)
-															.setValues(
-																	List.of(new ConditionValue()
-																		.setUserEnteredValue("RECEITA"))))
-														.setFormat(new CellFormat()
-															.setBackgroundColor(new Color().setRed(0.686f)
-																.setGreen(0.804f)
-																.setBlue(1.0f)))))
-									.setIndex(0)));
+    private List<Request> regrasCondicionaisStatus(GridRange colStatus) {
+        List<Request> r = new ArrayList<>();
+        r.add(adicionarRegra(colStatus, "EFETIVADO", new Color().setRed(0.80f).setGreen(0.94f).setBlue(0.80f), 0));
+        r.add(adicionarRegra(colStatus, "PENDENTE", new Color().setRed(1.00f).setGreen(0.95f).setBlue(0.70f), 1));
+        r.add(adicionarRegra(colStatus, "CANCELADO", new Color().setRed(0.98f).setGreen(0.80f).setBlue(0.80f), 2));
+        return r;
+    }
 
-			requests.add(
-					new Request()
-						.setAddConditionalFormatRule(
-								new AddConditionalFormatRuleRequest().setRule(
-										new ConditionalFormatRule().setRanges(List.of(tipoColRange))
-											.setBooleanRule(
-													new BooleanRule()
-														.setCondition(new BooleanCondition()
-															.setType(CONDITION_TEXT_EQ)
-															.setValues(
-																	List.of(new ConditionValue()
-																		.setUserEnteredValue("DESPESA"))))
-														.setFormat(new CellFormat()
-															.setBackgroundColor(new Color().setRed(1.0f)
-																.setGreen(0.784f)
-																.setBlue(0.624f)))))
-									.setIndex(1)));
+    private List<Request> regrasCondicionaisTipo(GridRange colTipo) {
+        List<Request> r = new ArrayList<>();
+        r.add(adicionarRegra(colTipo, "RECEITA", new Color().setRed(0.686f).setGreen(0.804f).setBlue(1.0f), 0));
+        r.add(adicionarRegra(colTipo, "DESPESA", new Color().setRed(1.0f).setGreen(0.784f).setBlue(0.624f), 1));
+        return r;
+    }
 
-			requests.add(new Request()
-				.setSetBasicFilter(new SetBasicFilterRequest().setFilter(new BasicFilter().setRange(allRowsRange))));
+    private Request adicionarRegra(GridRange range, String valor, Color cor, int index) {
+        return new Request().setAddConditionalFormatRule(
+                new AddConditionalFormatRuleRequest()
+                        .setRule(new com.google.api.services.sheets.v4.model.ConditionalFormatRule()
+                                .setRanges(List.of(range))
+                                .setBooleanRule(new BooleanRule()
+                                        .setCondition(new BooleanCondition()
+                                                .setType(CONDITION_TEXT_EQ)
+                                                .setValues(List.of(new ConditionValue().setUserEnteredValue(valor))))
+                                        .setFormat(new CellFormat().setBackgroundColor(cor))))
+                        .setIndex(index));
+    }
 
-			requests.add(new Request().setAddBanding(new AddBandingRequest().setBandedRange(new BandedRange()
-				.setRange(new GridRange().setSheetId(firstSheetId)
-					.setStartRowIndex(0)
-					.setEndRowIndex(ids.size() + 1)
-					.setStartColumnIndex(0)
-					.setEndColumnIndex(COLS))
-				.setRowProperties(new BandingProperties()
-					.setFirstBandColor(new Color().setRed(0.95f).setGreen(0.95f).setBlue(0.95f))
-					.setSecondBandColor(new Color().setRed(1f).setGreen(1f).setBlue(1f))))));
+    private Request aplicarFiltro(GridRange range) {
+        return new Request().setSetBasicFilter(
+                new SetBasicFilterRequest().setFilter(new BasicFilter().setRange(range)));
+    }
 
-			// Define os tamanhos das colunas em ordem
-			List<Integer> columnWidths = List.of(170, // DESC
-					240, // VALOR_LANC
-					150, // TIPO
-					100, // STATUS
-					275, // USUARIO
-					140, // DATA_LANC
-					240 // CATEGORIA
-			);
+    private Request aplicarBanding(int sheetId, int totalLinhas) {
+        return new Request().setAddBanding(
+                new AddBandingRequest().setBandedRange(new BandedRange()
+                        .setRange(range(sheetId, 0, totalLinhas, 0, COLS))
+                        .setRowProperties(new BandingProperties()
+                                .setFirstBandColor(new Color().setRed(0.95f).setGreen(0.95f).setBlue(0.95f))
+                                .setSecondBandColor(new Color().setRed(1f).setGreen(1f).setBlue(1f)))));
+    }
 
-			// Itera sobre a lista e cria um request de atualização de dimensão para cada
-			// coluna
-			for (int i = 0; i < columnWidths.size(); i++) {
-				requests.add(new Request().setUpdateDimensionProperties(new UpdateDimensionPropertiesRequest()
-					.setRange(new DimensionRange().setSheetId(firstSheetId)
-						.setDimension(DIMENSION_COLUMNS)
-						.setStartIndex(i)
-						.setEndIndex(i + 1)) // O índice final é exclusivo
-					.setProperties(new DimensionProperties().setPixelSize(columnWidths.get(i)))
-					.setFields(FIELD_PIXEL_SIZE)));
-			}
+    private List<Request> definirLarguras(int sheetId, List<Integer> larguras) {
+        List<Request> r = new ArrayList<>();
+        for (int i = 0; i < larguras.size(); i++) {
+            r.add(new Request().setUpdateDimensionProperties(
+                    new UpdateDimensionPropertiesRequest()
+                            .setRange(new DimensionRange()
+                                    .setSheetId(sheetId)
+                                    .setDimension(DIMENSION_COLUMNS)
+                                    .setStartIndex(i)
+                                    .setEndIndex(i + 1))
+                            .setProperties(new DimensionProperties().setPixelSize(larguras.get(i)))
+                            .setFields(FIELD_PIXEL_SIZE)));
+        }
+        return r;
+    }
 
-			sheets.spreadsheets()
-				.batchUpdate(spreadsheetId, new BatchUpdateSpreadsheetRequest().setRequests(requests))
-				.execute();
+    private static String planilhaOuPadrao(String nomePlanilha) {
+        return (nomePlanilha == null || nomePlanilha.isBlank())
+                ? "Lancamentos " + LocalDate.now()
+                : nomePlanilha;
+    }
 
-			return new CreatedSheet(created.getId(), created.getWebViewLink(), created.getWebContentLink());
-		}
-		catch (java.io.IOException e) {
-			throw new RegraNegocioException("Falha ao acessar as APIs do Google: " + e.getMessage());
-		}
-	}
+    private static GridRange range(int sheetId, int startRow, int endRow, int startCol, int endCol) {
+        return new GridRange()
+                .setSheetId(sheetId)
+                .setStartRowIndex(startRow)
+                .setEndRowIndex(endRow)
+                .setStartColumnIndex(startCol)
+                .setEndColumnIndex(endCol);
+    }
 
+    private static GridRange rangeCol(int sheetId, int startRow, int endRow, int col) {
+        return range(sheetId, startRow, endRow, col, col + 1);
+    }
 }

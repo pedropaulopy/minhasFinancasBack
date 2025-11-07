@@ -39,7 +39,7 @@ public class LancamentoResource {
 
 	private final GoogleSheetsExport sheetsExport;
 
-	@PostMapping()
+	@PostMapping
 	public ResponseEntity salvar(@RequestBody LancamentoDTO dto, Authentication authentication) {
 		try {
 			Lancamento entidade = service.converterDTO(dto, authentication);
@@ -145,54 +145,10 @@ public class LancamentoResource {
 		}
 	}
 
-	@GetMapping(value = "/export/json", produces = MediaType.APPLICATION_JSON_VALUE)
-	public ResponseEntity<StreamingResponseBody> exportJson(
+	@GetMapping(value = "/export")
+	public ResponseEntity<?> export(
+			@RequestParam(value = "formato") String formato,
 			@RequestParam(value = "descricao", required = false) String descricao,
-			@RequestParam(value = "mes", required = false) Integer mes,
-			@RequestParam(value = "ano", required = false) Integer ano,
-			@RequestParam(value = "valor", required = false) BigDecimal valor,
-			@RequestParam(value = "tipo_lancamento", required = false) TipoLancamento tipoLancamento,
-			@RequestParam(value = "status_lancamento", required = false) StatusLancamento status,
-			@RequestParam(value = "categoriaId", required = false) List<Long> categoriaIds,
-			Authentication authentication) throws RegraNegocioException {
-
-		Lancamento filtro = buildFiltro(authentication, descricao, mes, ano, valor, tipoLancamento, status);
-		List<Long> ids = resolverIdsParaExportacao(filtro, categoriaIds);
-		if (ids.isEmpty())
-			return ResponseEntity.badRequest().build();
-
-		StreamingResponseBody stream = os -> exportService.streamJsonByIds(os, ids);
-		return ResponseEntity.ok()
-			.header("Content-Disposition", "attachment; filename=lancamentos_JSON.json")
-			.contentType(MediaType.APPLICATION_JSON)
-			.body(stream);
-	}
-
-	@GetMapping(value = "/export/csv", produces = "text/csv")
-	public ResponseEntity<StreamingResponseBody> exportCsv(
-			@RequestParam(value = "descricao", required = false) String descricao,
-			@RequestParam(value = "mes", required = false) Integer mes,
-			@RequestParam(value = "ano", required = false) Integer ano,
-			@RequestParam(value = "valor", required = false) BigDecimal valor,
-			@RequestParam(value = "tipo_lancamento", required = false) TipoLancamento tipoLancamento,
-			@RequestParam(value = "status_lancamento", required = false) StatusLancamento status,
-			@RequestParam(value = "categoriaId", required = false) List<Long> categoriaIds,
-			Authentication authentication) throws RegraNegocioException {
-
-		Lancamento filtro = buildFiltro(authentication, descricao, mes, ano, valor, tipoLancamento, status);
-		List<Long> ids = resolverIdsParaExportacao(filtro, categoriaIds);
-		if (ids.isEmpty())
-			return ResponseEntity.badRequest().build();
-
-		StreamingResponseBody stream = os -> exportService.streamCsvByIds(os, ids);
-		return ResponseEntity.ok()
-			.header("Content-Disposition", "attachment; filename=lancamentos_CSV.csv")
-			.contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
-			.body(stream);
-	}
-
-	@GetMapping(value = "/export/sheets", produces = MediaType.APPLICATION_JSON_VALUE)
-	public ResponseEntity<?> exportToGoogleSheets(@RequestParam(value = "descricao", required = false) String descricao,
 			@RequestParam(value = "mes", required = false) Integer mes,
 			@RequestParam(value = "ano", required = false) Integer ano,
 			@RequestParam(value = "valor", required = false) BigDecimal valor,
@@ -200,21 +156,38 @@ public class LancamentoResource {
 			@RequestParam(value = "status_lancamento", required = false) StatusLancamento status,
 			@RequestParam(value = "categoriaId", required = false) List<Long> categoriaIds,
 			@RequestParam(value = "nomePlanilha", required = false) String nomePlanilha,
-			@RequestParam(value = "folderId", required = false) String folderId, Authentication authentication)
-			throws RegraNegocioException {
+			@RequestParam(value = "folderId", required = false) String folderId,
+			Authentication authentication) throws RegraNegocioException {
 
 		Lancamento filtro = buildFiltro(authentication, descricao, mes, ano, valor, tipoLancamento, status);
 		List<Long> ids = resolverIdsParaExportacao(filtro, categoriaIds);
-		if (ids.isEmpty())
+		if (ids.isEmpty()) {
 			return ResponseEntity.badRequest().build();
-
-		try {
-			var created = sheetsExport.createSheetFromCsv(ids, nomePlanilha, folderId);
-			return ResponseEntity
-				.ok(new ExportSheetsResultadoDTO(created.id(), created.webViewLink(), created.webContentLink()));
 		}
-		catch (Exception e) {
-			return ResponseEntity.internalServerError().body(new ExportSheetsErrosDTO(e.getMessage()));
+
+		switch (formato.toLowerCase()) {
+			case "json":
+				StreamingResponseBody streamJson = os -> exportService.streamJsonByIds(os, ids);
+				return ResponseEntity.ok()
+						.header("Content-Disposition", "attachment; filename=lancamentos_JSON.json")
+						.contentType(MediaType.APPLICATION_JSON)
+						.body(streamJson);
+			case "csv":
+				StreamingResponseBody streamCsv = os -> exportService.streamCsvByIds(os, ids);
+				return ResponseEntity.ok()
+						.header("Content-Disposition", "attachment; filename=lancamentos_CSV.csv")
+						.contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+						.body(streamCsv);
+			case "sheets":
+				try {
+					var created = sheetsExport.createSheetFromCsv(ids, nomePlanilha, folderId);
+					return ResponseEntity
+							.ok(new ExportSheetsResultadoDTO(created.id(), created.webViewLink(), created.webContentLink()));
+				} catch (Exception e) {
+					return ResponseEntity.internalServerError().body(new ExportSheetsErrosDTO(e.getMessage()));
+				}
+			default:
+				return ResponseEntity.badRequest().body("Formato de exportação não suportado: " + formato);
 		}
 	}
 

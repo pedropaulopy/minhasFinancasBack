@@ -193,7 +193,6 @@ class GoogleSheetsExportImplTest {
 
 		// ### CORREÇÃO 4: O total de requisições agora é 20 (neste teste também) ###
 		assertThat(batchRequest.getRequests()).hasSize(20);
-
 		AddBandingRequest bandingRequest = findAddBandingRequest(batchRequest.getRequests());
 		assertThat(bandingRequest.getBandedRange().getRange().getEndRowIndex()).isEqualTo(ids.size() + 1);
 

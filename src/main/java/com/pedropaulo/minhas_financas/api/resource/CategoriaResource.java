@@ -29,7 +29,7 @@ public class CategoriaResource {
 
 	private final CategoriaService categoriaService;
 
-	@GetMapping()
+	@GetMapping
 	public ResponseEntity<List<Categoria>> buscar(
 			@RequestParam(value = "nomeCategoria", required = false) String nomeCategoria,
 			Authentication authentication) throws RegraNegocioException {
