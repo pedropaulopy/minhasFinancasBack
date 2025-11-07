@@ -6,8 +6,7 @@ import java.util.List;
 
 public interface LancamentoExportService {
 
-	void streamJsonByIds(OutputStream os, List<Long> ids) throws IOException;
+    void exportarJsonPorIds(OutputStream os, List<Long> ids) throws IOException;
 
-	void streamCsvByIds(OutputStream os, List<Long> ids) throws IOException;
-
+    void exportarCsvPorIds(OutputStream os, List<Long> ids) throws IOException;
 }
