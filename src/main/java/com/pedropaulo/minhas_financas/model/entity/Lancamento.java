@@ -7,57 +7,64 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Set;
-
 import lombok.*;
-import org.springframework.data.jpa.convert.threeten.Jsr310JpaConverters;
 
 @Entity
 @Table(name = "lancamento", schema = "financas")
-@Builder // usado para criar objetos de forma mais simples
-@Data // lombok gera getters, setters hashcode e equals
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder(toBuilder = true)
+@ToString(exclude = {"usuario", "categorias"})
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Lancamento {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "lanc_seq_gen")
-	@SequenceGenerator(name = "lanc_seq_gen", sequenceName = "lancamento_seq", allocationSize = 200)
-	@Column(name = "id")
-	private Long id;
+    @Id
+    @EqualsAndHashCode.Include
+    @SequenceGenerator(
+            name = "lancamento_seq_gen",
+            sequenceName = "financas.lancamento_id_seq",
+            allocationSize = 1
+    )
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "lancamento_seq_gen")
+    @Column(name = "id")
+    private Long id;
 
-	@Column(name = "descricao")
-	private String descricao;
+    @Column(name = "descricao", length = 255)
+    private String descricao;
 
-	@Column(name = "mes")
-	private Integer mes;
+    @Column(name = "mes")
+    private Integer mes;
 
-	@Column(name = "ano")
-	private Integer ano;
+    @Column(name = "ano")
+    private Integer ano;
 
-	@JoinColumn(name = "id_usuario")
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JsonIgnore
-	private Usuario usuario;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_usuario")
+    @JsonIgnore
+    private Usuario usuario;
 
-	@Column(name = "valor")
-	private BigDecimal valor;
+    @Column(name = "valor", precision = 19, scale = 2)
+    private BigDecimal valor;
 
-	@Column(name = "data_cadastro")
-	@Convert(converter = Jsr310JpaConverters.LocalDateConverter.class)
-	private LocalDate dataCadastro;
+    @Column(name = "data_cadastro")
+    private LocalDate dataCadastro;
 
-	@Column(name = "tipo")
-	@Enumerated(EnumType.STRING)
-	private TipoLancamento tipoLancamento;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo", length = 20)
+    private TipoLancamento tipoLancamento;
 
-	@Column(name = "status")
-	@Enumerated(EnumType.STRING)
-	private StatusLancamento statusLancamento;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", length = 20)
+    private StatusLancamento statusLancamento;
 
-	@ManyToMany(fetch = FetchType.LAZY)
-	@JoinTable(name = "lancamento_categoria", joinColumns = @JoinColumn(name = "id_lancamento"),
-			inverseJoinColumns = @JoinColumn(name = "id_categoria"))
-	private Set<Categoria> categorias;
-
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "lancamento_categoria",
+            schema = "financas",
+            joinColumns = @JoinColumn(name = "id_lancamento"),
+            inverseJoinColumns = @JoinColumn(name = "id_categoria")
+    )
+    private Set<Categoria> categorias;
 }

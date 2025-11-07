@@ -13,6 +13,7 @@ import com.pedropaulo.minhas_financas.model.repository.LancamentoRepository;
 import com.pedropaulo.minhas_financas.service.CategoriaService;
 import com.pedropaulo.minhas_financas.service.LancamentoService;
 import com.pedropaulo.minhas_financas.service.UsuarioService;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -21,8 +22,6 @@ import java.util.Set;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.JoinType;
-import org.springframework.data.domain.Example;
-import org.springframework.data.domain.ExampleMatcher;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -31,15 +30,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class LancamentoServiceImpl implements LancamentoService {
 
+	private final LancamentoRepository repository;
 
-    private final LancamentoRepository repository;
+	private final UsuarioService usuarioService;
 
-    private final UsuarioService usuarioService;
+	private final CategoriaService categoriaService;
 
-    private final CategoriaService categoriaService;
-
-    @PersistenceContext
-    private EntityManager entityManager;
+	@PersistenceContext
+	private EntityManager entityManager;
 
 	public LancamentoServiceImpl(LancamentoRepository repository, UsuarioService usuarioService,
 			CategoriaService categoriaService) {
@@ -174,12 +172,10 @@ public class LancamentoServiceImpl implements LancamentoService {
 		BigDecimal despesas = repository.obterSaldoPorTipoLancamentoEUsuarioEStatusEAnoEMes(id,
 				TipoLancamento.valueOf(TipoLancamento.DESPESA.name()),
 				StatusLancamento.valueOf(StatusLancamento.EFETIVADO.name()));
-		if (receitas == null) {
+		if (receitas == null)
 			receitas = BigDecimal.ZERO;
-		}
-		if (despesas == null) {
+		if (despesas == null)
 			despesas = BigDecimal.ZERO;
-		}
 		return receitas.subtract(despesas);
 	}
 
@@ -222,7 +218,7 @@ public class LancamentoServiceImpl implements LancamentoService {
 		for (String raw : nomes) {
 			String nome = (raw == null) ? "" : raw.trim();
 			if (nome.isEmpty())
-				continue; // único continue
+				continue;
 
 			Categoria filtro = new Categoria();
 			filtro.setUsuario(usuario);
@@ -257,9 +253,16 @@ public class LancamentoServiceImpl implements LancamentoService {
 	@Override
 	@Transactional
 	public void salvarTodos(List<Lancamento> lote) {
+		if (lote == null || lote.isEmpty())
+			return;
+
 		repository.saveAll(lote);
 		repository.flush();
-        entityManager.clear();
+
+		// Evita NPE em testes unitários sem contexto JPA
+		if (entityManager != null) {
+			entityManager.clear();
+		}
 	}
 
 }

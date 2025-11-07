@@ -28,9 +28,9 @@ class ImportResultadoDTOTest {
 		assertEquals(1, dto.getTotalSucesso(), "totalSucesso");
 		assertEquals(1, dto.getTotalFalha(), "totalFalha");
 
-		List<ImportResultadoDTO.AuxiliarLinhaErro> erros = dto.getErros();
+		List<ImportResultadoDTO.LinhaErro> erros = dto.getErros();
 		assertEquals(1, erros.size(), "erros size");
-		ImportResultadoDTO.AuxiliarLinhaErro e = erros.get(0);
+		ImportResultadoDTO.LinhaErro e = erros.get(0);
 
 		assertEquals(10L, e.linha);
 		assertEquals("motivo X", e.motivo);

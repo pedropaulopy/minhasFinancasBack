@@ -32,6 +32,9 @@ public class CategoriaServiceImpl implements CategoriaService {
 	@Override
 	public List<Categoria> buscarPorNome(Categoria categoriaFiltro) throws RegraNegocioException {
 		this.mapearFiltroCategoria(categoriaFiltro);
+		if (categoriaFiltro == null) {
+			categoriaFiltro = new Categoria();
+		}
 		Example example = Example.of(categoriaFiltro,
 				ExampleMatcher.matching().withIgnoreCase().withStringMatcher(ExampleMatcher.StringMatcher.CONTAINING));
 		List<Categoria> listaCategorias = repository.findAll(example);
@@ -65,11 +68,12 @@ public class CategoriaServiceImpl implements CategoriaService {
 			throws RegraNegocioException {
 		Categoria categoriaExistente = this.obterPorIdCategoria(idCategoria, authentication)
 			.orElseThrow(() -> new RegraNegocioException("Nenhuma categoria foi encontrada para o ID fornecido"));
-		categoriaExistente.setNome(dto.getNome());
+
 		String novoNome = dto.getNome();
 		if (novoNome == null || novoNome.trim().isEmpty()) {
 			throw new RegraNegocioException("Insira um nome válido.");
 		}
+
 		if (!categoriaExistente.getNome().equalsIgnoreCase(novoNome)) {
 			Optional<Categoria> categoriaComNovoNome = repository.findByNomeIgnoreCaseAndUsuario(novoNome,
 					categoriaExistente.getUsuario());
@@ -77,7 +81,8 @@ public class CategoriaServiceImpl implements CategoriaService {
 				throw new RegraNegocioException("Uma categoria com esse nome já existe");
 			}
 		}
-		repository.save(categoriaExistente);
+
+		categoriaExistente.setNome(dto.getNome());
 
 		return repository.save(categoriaExistente);
 	}
@@ -102,7 +107,8 @@ public class CategoriaServiceImpl implements CategoriaService {
 	@Override
 	public void deletar(Long idCategoria, Authentication authentication) throws RegraNegocioException {
 
-		Categoria categoria = this.obterPorIdCategoria(idCategoria, authentication).orElseThrow();
+		Categoria categoria = this.obterPorIdCategoria(idCategoria, authentication)
+			.orElseThrow(() -> new RegraNegocioException("Categoria não encontrada para o ID fornecido."));
 
 		boolean emUso = lancamentoRepository.existsByCategorias_Id(idCategoria);
 

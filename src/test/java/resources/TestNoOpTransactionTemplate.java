@@ -6,13 +6,13 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 public class TestNoOpTransactionTemplate extends TransactionTemplate {
 
-    public TestNoOpTransactionTemplate() {
-        super(null);
-    }
+	public TestNoOpTransactionTemplate() {
+		super(null);
+	}
 
-    @Override
-    public <T> T execute(TransactionCallback<T> action) {
-        return action.doInTransaction(new SimpleTransactionStatus());
-    }
+	@Override
+	public <T> T execute(TransactionCallback<T> action) {
+		return action.doInTransaction(new SimpleTransactionStatus());
+	}
 
 }

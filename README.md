@@ -21,6 +21,28 @@ customizadas.
 
 ---
 
+## Funcionalidades
+
+O backend oferece um conjunto de funcionalidades para o gerenciamento financeiro:
+
+- **Gerenciamento de Lançamentos:**
+    - **CRUD completo:** crie, edite, visualize e delete lançamentos (receitas e despesas).
+    - **Busca flexível:** filtre lançamentos por descrição, mês, ano, valor, tipo e status.
+    - **Atualização de status:** altere o status de um lançamento (ex: de PENDENTE para EFETIVADO).
+
+- **Gerenciamento de Categorias:**
+    - **CRUD completo:** crie, edite, visualize e delete categorias para organizar seus lançamentos.
+    - **Busca por nome:** encontre categorias pelo nome.
+
+- **Importação e Exportação de Dados:**
+    - **Importação em lote via CSV:** envie um arquivo CSV com múltiplos lançamentos para importação em massa. O sistema processa os dados e retorna um relatório detalhado, indicando sucessos e falhas.
+    - **Exportação em múltiplos formatos:**
+        - **JSON:** exporte os dados dos lançamentos em formato JSON.
+        - **CSV:** gere um arquivo CSV com os lançamentos, ideal para planilhas.
+        - **Google Sheets:** exporte os dados diretamente para uma nova planilha no Google Drive do usuário.
+
+---
+
 ## Estrutura do Projeto
 
 ```
@@ -34,13 +56,23 @@ minhas-financas-backend/
 │   │   │           ├── minhas_financas/
 │   │   │               ├── api/
 │   │   │               │   ├── config/
+│   │   │               │   │   ├── GoogleDriveConfig.java
 │   │   │               │   │   └── SecurityConfig.java
 │   │   │               │   ├── dto/
+│   │   │               │   │   ├── exportacao/
+│   │   │               │   │   │   ├── exportLancamentosDTO.java
+│   │   │               │   │   │   ├── exportLancamentosSheetsDTO.java
+│   │   │               │   │   │   ├── exportSheetsErrosDTO.java
+│   │   │               │   │   │   └── exportSheetsResultadoDTO.java
+│   │   │               │   │   ├── importacao/
+│   │   │               │   │   │   └── ImportResultadoDTO.java
 │   │   │               │   │   ├── CategoriaDTO.java
 │   │   │               │   │   ├── LancamentoDTO.java
 │   │   │               │   │   ├── LancamentoStatusDTO.java
 │   │   │               │   │   ├── TokenDTO.java
 │   │   │               │   │   └── UsuarioDTO.java
+│   │   │               │   ├── handler/
+│   │   │               │   │   └── GlobalExceptionHandler.java
 │   │   │               │   ├── resource/
 │   │   │               │   │   ├── CategoriaResource.java
 │   │   │               │   │   ├── LancamentoResource.java
@@ -65,12 +97,18 @@ minhas-financas-backend/
 │   │   │               ├── service/
 │   │   │               │   ├── impl/
 │   │   │               │   │   ├── CategoriaServiceImpl.java
+│   │   │               │   │   ├── GoogleSheetsExportImpl.java
 │   │   │               │   │   ├── JwtServiceImpl.java
+│   │   │               │   │   ├── LancamentoCsvImportServiceImpl.java
+│   │   │               │   │   ├── LancamentoExportServiceImpl.java
 │   │   │               │   │   ├── LancamentoServiceImpl.java
 │   │   │               │   │   ├── SecurityUserDetailsServiceImpl.java
 │   │   │               │   │   └── UsuarioServiceImpl.java
 │   │   │               │   ├── CategoriaService.java
+│   │   │               │   ├── GoogleSheetsExport.java
 │   │   │               │   ├── JwtService.java
+│   │   │               │   ├── LancamentoCsvImportService.java
+│   │   │               │   ├── LancamentoExportService.java
 │   │   │               │   ├── LancamentoService.java
 │   │   │               │   ├── SecurityUserDetailsService.java
 │   │   │               │   └── UsuarioService.java
@@ -84,6 +122,7 @@ minhas-financas-backend/
 │           │       ├── minhas_financas/
 │           │           ├── api/
 │           │           │   ├── dto/
+│           │           │       ├── ImportResultadoDTOTest.java
 │           │           │       └── LancamentoDTOFactory.java
 │           │           ├── exception/
 │           │           ├── model/
@@ -97,6 +136,7 @@ minhas-financas-backend/
 │           │           ├── service/
 │           │           │   ├── impl/
 │           │           │   │   ├── JwtServiceImplTest.java
+│           │           │   │   ├── LancamentoCsvImportServiceImplTest.java
 │           │           │   │   └── SecurityUserDetailsServiceImplTest.java
 │           │           │   ├── CategoriaServiceTest.java
 │           │           │   ├── LancamentoServiceTest.java
@@ -110,6 +150,7 @@ minhas-financas-backend/
 ├── mvnw
 ├── mvnw.cmd
 └── pom.xml
+
 
 ```
 
@@ -251,5 +292,3 @@ Principais testes novos/alterados:
     - Testes de controller continuam funcionais; em ambientes com segurança ativada, é necessário simular autenticação (
       mockar serviços ou configurar header Authorization) ou desativar segurança no teste com
       `excludeAutoConfiguration`.
-
-
