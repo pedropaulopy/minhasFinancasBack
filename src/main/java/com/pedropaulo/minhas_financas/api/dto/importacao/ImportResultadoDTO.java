@@ -1,43 +1,8 @@
 package com.pedropaulo.minhas_financas.api.dto.importacao;
-
 import java.util.ArrayList;
 import java.util.List;
 
 public class ImportResultadoDTO {
-
-	public static class LinhaErro {
-
-		// públicos para manter compatibilidade com testes que fazem acesso direto
-		public final long linha;
-
-		public final String motivo;
-
-		public final String raw;
-
-		public LinhaErro(long linha, String motivo, String raw) {
-			this.linha = linha;
-			this.motivo = motivo;
-			this.raw = raw;
-		}
-
-		public long getLinha() {
-			return linha;
-		}
-
-		public String getMotivo() {
-			return motivo;
-		}
-
-		// alias usado em alguns testes
-		public String getMensagem() {
-			return motivo;
-		}
-
-		public String getRaw() {
-			return raw;
-		}
-
-	}
 
 	private long totalLidas;
 
@@ -45,7 +10,7 @@ public class ImportResultadoDTO {
 
 	private long totalFalha;
 
-	private final List<LinhaErro> erros = new ArrayList<>();
+	private final List<AuxiliarLinhaErro> erros = new ArrayList<>();
 
 	public void incLida() {
 		this.totalLidas++;
@@ -57,7 +22,7 @@ public class ImportResultadoDTO {
 
 	public void addFalha(long linha, String motivo, String raw) {
 		this.totalFalha++;
-		this.erros.add(new LinhaErro(linha, motivo, raw));
+		this.erros.add(new AuxiliarLinhaErro(linha, motivo, raw));
 	}
 
 	public long getTotalLidas() {
@@ -72,7 +37,7 @@ public class ImportResultadoDTO {
 		return totalFalha;
 	}
 
-	public List<LinhaErro> getErros() {
+	public List<AuxiliarLinhaErro> getErros() {
 		return erros;
 	}
 
