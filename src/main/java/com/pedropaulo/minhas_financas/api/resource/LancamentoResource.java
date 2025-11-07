@@ -130,9 +130,8 @@ public class LancamentoResource {
 		}
 
 		try (var in = file.getInputStream()) {
-			final int TAMANHO_LOTE = 1000;
 			Long usuarioAutenticadoId = usuarioService.obterIdUsuarioPorEmail(authentication.getName()).getId();
-			ImportResultadoDTO resultado = importService.importar(in, TAMANHO_LOTE, usuarioAutenticadoId);
+			ImportResultadoDTO resultado = importService.importar(in, usuarioAutenticadoId);
 
 			HttpStatus status = resultado.getTotalFalha() > 0 ? HttpStatus.MULTI_STATUS : HttpStatus.OK;
 			return new ResponseEntity<>(resultado, status);
@@ -146,8 +145,7 @@ public class LancamentoResource {
 	}
 
 	@GetMapping(value = "/export")
-	public ResponseEntity<?> export(
-			@RequestParam(value = "formato") String formato,
+	public ResponseEntity<?> export(@RequestParam(value = "formato") String formato,
 			@RequestParam(value = "descricao", required = false) String descricao,
 			@RequestParam(value = "mes", required = false) Integer mes,
 			@RequestParam(value = "ano", required = false) Integer ano,
@@ -156,8 +154,8 @@ public class LancamentoResource {
 			@RequestParam(value = "status_lancamento", required = false) StatusLancamento status,
 			@RequestParam(value = "categoriaId", required = false) List<Long> categoriaIds,
 			@RequestParam(value = "nomePlanilha", required = false) String nomePlanilha,
-			@RequestParam(value = "folderId", required = false) String folderId,
-			Authentication authentication) throws RegraNegocioException {
+			@RequestParam(value = "folderId", required = false) String folderId, Authentication authentication)
+			throws RegraNegocioException {
 
 		Lancamento filtro = buildFiltro(authentication, descricao, mes, ano, valor, tipoLancamento, status);
 		List<Long> ids = resolverIdsParaExportacao(filtro, categoriaIds);
@@ -167,23 +165,24 @@ public class LancamentoResource {
 
 		switch (formato.toLowerCase()) {
 			case "json":
-				StreamingResponseBody streamJson = os -> exportService.streamJsonByIds(os, ids);
+				StreamingResponseBody streamJson = os -> exportService.exportarJsonPorIds(os, ids);
 				return ResponseEntity.ok()
-						.header("Content-Disposition", "attachment; filename=lancamentos_JSON.json")
-						.contentType(MediaType.APPLICATION_JSON)
-						.body(streamJson);
+					.header("Content-Disposition", "attachment; filename=lancamentos_JSON.json")
+					.contentType(MediaType.APPLICATION_JSON)
+					.body(streamJson);
 			case "csv":
-				StreamingResponseBody streamCsv = os -> exportService.streamCsvByIds(os, ids);
+				StreamingResponseBody streamCsv = os -> exportService.exportarCsvPorIds(os, ids);
 				return ResponseEntity.ok()
-						.header("Content-Disposition", "attachment; filename=lancamentos_CSV.csv")
-						.contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
-						.body(streamCsv);
+					.header("Content-Disposition", "attachment; filename=lancamentos_CSV.csv")
+					.contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+					.body(streamCsv);
 			case "sheets":
 				try {
 					var created = sheetsExport.createSheetFromCsv(ids, nomePlanilha, folderId);
-					return ResponseEntity
-							.ok(new ExportSheetsResultadoDTO(created.id(), created.webViewLink(), created.webContentLink()));
-				} catch (Exception e) {
+					return ResponseEntity.ok(new ExportSheetsResultadoDTO(created.id(), created.webViewLink(),
+							created.webContentLink()));
+				}
+				catch (Exception e) {
 					return ResponseEntity.internalServerError().body(new ExportSheetsErrosDTO(e.getMessage()));
 				}
 			default:

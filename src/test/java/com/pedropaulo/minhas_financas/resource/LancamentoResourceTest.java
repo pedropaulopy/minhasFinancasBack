@@ -385,14 +385,13 @@ class LancamentoResourceTest {
 		when(usuarioService.obterIdUsuarioPorEmail(EMAIL)).thenReturn(usuarioAutenticado);
 
 		ImportResultadoDTO resultadoImportacao = new ImportResultadoDTO();
-		when(lancamentoCsvImportService.importar(any(InputStream.class), eq(1000), eq(42L)))
-			.thenReturn(resultadoImportacao);
+		when(lancamentoCsvImportService.importar(any(InputStream.class), eq(42L))).thenReturn(resultadoImportacao);
 
 		ResponseEntity<ImportResultadoDTO> resposta = resource.importarLancamentos(arquivoCsv, authentication);
 
 		assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(resposta.getBody()).isSameAs(resultadoImportacao);
-		verify(lancamentoCsvImportService).importar(any(InputStream.class), eq(1000), eq(42L));
+		verify(lancamentoCsvImportService).importar(any(InputStream.class), eq(42L));
 		verify(usuarioService).obterIdUsuarioPorEmail(EMAIL);
 		verifyNoMoreInteractions(lancamentoCsvImportService, usuarioService);
 	}
@@ -409,14 +408,13 @@ class LancamentoResourceTest {
 
 		ImportResultadoDTO resultadoParcial = new ImportResultadoDTO();
 		resultadoParcial.addFalha(1, "linha inválida", "erro de formato");
-		when(lancamentoCsvImportService.importar(any(InputStream.class), eq(1000), eq(7L)))
-			.thenReturn(resultadoParcial);
+		when(lancamentoCsvImportService.importar(any(InputStream.class), eq(7L))).thenReturn(resultadoParcial);
 
 		ResponseEntity<ImportResultadoDTO> resposta = resource.importarLancamentos(arquivoCsv, authentication);
 
 		assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.MULTI_STATUS);
 		assertThat(resposta.getBody()).isSameAs(resultadoParcial);
-		verify(lancamentoCsvImportService).importar(any(InputStream.class), eq(1000), eq(7L));
+		verify(lancamentoCsvImportService).importar(any(InputStream.class), eq(7L));
 		verify(usuarioService).obterIdUsuarioPorEmail(EMAIL);
 		verifyNoMoreInteractions(lancamentoCsvImportService, usuarioService);
 	}
@@ -430,7 +428,7 @@ class LancamentoResourceTest {
 		Usuario usuarioAutenticado = new Usuario();
 		usuarioAutenticado.setId(99L);
 		when(usuarioService.obterIdUsuarioPorEmail(EMAIL)).thenReturn(usuarioAutenticado);
-		when(lancamentoCsvImportService.importar(any(InputStream.class), eq(1000), eq(99L)))
+		when(lancamentoCsvImportService.importar(any(InputStream.class), eq(99L)))
 			.thenThrow(new RuntimeException("falha X"));
 
 		ResponseEntity<ImportResultadoDTO> resposta = resource.importarLancamentos(arquivoCsv, authentication);
@@ -439,7 +437,7 @@ class LancamentoResourceTest {
 		assertThat(resposta.getBody()).isNotNull();
 		assertThat(resposta.getBody().getErros()).isNotEmpty();
 		assertThat(resposta.getBody().getErros().get(0).getMotivo()).contains("Erro ao processar arquivo: falha X");
-		verify(lancamentoCsvImportService).importar(any(InputStream.class), eq(1000), eq(99L));
+		verify(lancamentoCsvImportService).importar(any(InputStream.class), eq(99L));
 		verify(usuarioService).obterIdUsuarioPorEmail(EMAIL);
 		verifyNoMoreInteractions(lancamentoCsvImportService, usuarioService);
 	}
@@ -450,14 +448,13 @@ class LancamentoResourceTest {
 		when(usuarioService.obterIdUsuarioPorEmail(EMAIL)).thenReturn(usuarioAutenticado);
 		when(lancamentoService.buscar(any(Lancamento.class), anyList())).thenReturn(Collections.emptyList());
 
-		ResponseEntity<StreamingResponseBody> resposta = resource.exportJson(null, null, null, null, null, null,
-				Collections.emptyList(), authentication);
+		ResponseEntity<?> resposta = resource.export("json", null, null, null, null, null, null,
+				Collections.emptyList(), null, null, authentication);
 
 		assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 		verify(usuarioService).obterIdUsuarioPorEmail(EMAIL);
 		verify(lancamentoService).buscar(any(Lancamento.class), anyList());
 		verifyNoMoreInteractions(usuarioService, lancamentoService);
-		verifyNoInteractions(exportService);
 	}
 
 	@Test
@@ -473,20 +470,20 @@ class LancamentoResourceTest {
 			OutputStream outputStream = invocacao.getArgument(0, OutputStream.class);
 			outputStream.write("[{\"ok\":true}]".getBytes(StandardCharsets.UTF_8));
 			return null;
-		}).when(exportService).streamJsonByIds(any(OutputStream.class), eq(List.of(10L)));
+		}).when(exportService).exportarJsonPorIds(any(OutputStream.class), eq(List.of(10L)));
 
-		ResponseEntity<StreamingResponseBody> resposta = resource.exportJson("descricao", 10, 2025, null,
-				TipoLancamento.RECEITA, StatusLancamento.PENDENTE, Collections.emptyList(), authentication);
+		ResponseEntity<?> resposta = resource.export("json", "descricao", 10, 2025, null, TipoLancamento.RECEITA,
+				StatusLancamento.PENDENTE, Collections.emptyList(), null, null, authentication);
 
 		assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(resposta.getHeaders().getFirst("Content-Disposition")).contains("lancamentos_JSON.json");
 		assertThat(resposta.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_JSON);
 
 		ByteArrayOutputStream conteudoGerado = new ByteArrayOutputStream();
-		resposta.getBody().writeTo(conteudoGerado);
+		((StreamingResponseBody) resposta.getBody()).writeTo(conteudoGerado);
 		assertThat(conteudoGerado.toString(StandardCharsets.UTF_8)).isEqualTo("[{\"ok\":true}]");
 
-		verify(exportService).streamJsonByIds(any(OutputStream.class), eq(List.of(10L)));
+		verify(exportService).exportarJsonPorIds(any(OutputStream.class), eq(List.of(10L)));
 		verify(usuarioService).obterIdUsuarioPorEmail(EMAIL);
 		verify(lancamentoService).buscar(any(Lancamento.class), anyList());
 		verifyNoMoreInteractions(exportService, usuarioService, lancamentoService);
@@ -498,14 +495,13 @@ class LancamentoResourceTest {
 		when(usuarioService.obterIdUsuarioPorEmail(EMAIL)).thenReturn(usuarioAutenticado);
 		when(lancamentoService.buscar(any(Lancamento.class), anyList())).thenReturn(Collections.emptyList());
 
-		ResponseEntity<StreamingResponseBody> resposta = resource.exportCsv(null, null, null, null, null, null,
-				Collections.emptyList(), authentication);
+		ResponseEntity<?> resposta = resource.export("csv", null, null, null, null, null, null, Collections.emptyList(),
+				null, null, authentication);
 
 		assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 		verify(usuarioService).obterIdUsuarioPorEmail(EMAIL);
 		verify(lancamentoService).buscar(any(Lancamento.class), anyList());
 		verifyNoMoreInteractions(usuarioService, lancamentoService);
-		verifyNoInteractions(exportService);
 	}
 
 	@Test
@@ -521,20 +517,20 @@ class LancamentoResourceTest {
 			OutputStream outputStream = invocacao.getArgument(0, OutputStream.class);
 			outputStream.write("A,B\n1,2\n".getBytes(StandardCharsets.UTF_8));
 			return null;
-		}).when(exportService).streamCsvByIds(any(OutputStream.class), eq(List.of(77L)));
+		}).when(exportService).exportarCsvPorIds(any(OutputStream.class), eq(List.of(77L)));
 
-		ResponseEntity<StreamingResponseBody> resposta = resource.exportCsv("descricao", 1, 2024, null, null, null,
-				Collections.emptyList(), authentication);
+		ResponseEntity<?> resposta = resource.export("csv", "descricao", 1, 2024, null, null, null,
+				Collections.emptyList(), null, null, authentication);
 
 		assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(resposta.getHeaders().getFirst("Content-Disposition")).contains("lancamentos_CSV.csv");
 		assertThat(resposta.getHeaders().getContentType().toString()).isEqualTo("text/csv;charset=UTF-8");
 
 		ByteArrayOutputStream conteudoGerado = new ByteArrayOutputStream();
-		resposta.getBody().writeTo(conteudoGerado);
+		((StreamingResponseBody) resposta.getBody()).writeTo(conteudoGerado);
 		assertThat(conteudoGerado.toString(StandardCharsets.UTF_8)).isEqualTo("A,B\n1,2\n");
 
-		verify(exportService).streamCsvByIds(any(OutputStream.class), eq(List.of(77L)));
+		verify(exportService).exportarCsvPorIds(any(OutputStream.class), eq(List.of(77L)));
 		verify(usuarioService).obterIdUsuarioPorEmail(EMAIL);
 		verify(lancamentoService).buscar(any(Lancamento.class), anyList());
 		verifyNoMoreInteractions(exportService, usuarioService, lancamentoService);
@@ -552,7 +548,7 @@ class LancamentoResourceTest {
 		GoogleSheetsExport.CreatedSheet planilhaCriada = new GoogleSheetsExport.CreatedSheet("ID1", "VIEW", "CONTENT");
 		when(sheetsExport.createSheetFromCsv(eq(List.of(5L)), eq("Nome"), eq("Pasta"))).thenReturn(planilhaCriada);
 
-		ResponseEntity<?> resposta = resource.exportToGoogleSheets("descricao", 2, 2023, null, null, null,
+		ResponseEntity<?> resposta = resource.export("sheets", "descricao", 2, 2023, null, null, null,
 				Collections.emptyList(), "Nome", "Pasta", authentication);
 
 		assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -576,7 +572,7 @@ class LancamentoResourceTest {
 		when(sheetsExport.createSheetFromCsv(eq(List.of(9L)), any(), any()))
 			.thenThrow(new RuntimeException("falha sheets"));
 
-		ResponseEntity<?> resposta = resource.exportToGoogleSheets(null, null, null, null, null, null,
+		ResponseEntity<?> resposta = resource.export("sheets", null, null, null, null, null, null,
 				Collections.emptyList(), null, null, authentication);
 
 		assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);

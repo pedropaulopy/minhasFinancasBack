@@ -90,7 +90,7 @@ class GoogleSheetsExportImplTest {
 			OutputStream out = invocation.getArgument(0, OutputStream.class);
 			out.write("A,B,C\n1,2,3\n".getBytes());
 			return null;
-		}).when(exportService).streamCsvByIds(any(OutputStream.class), anyList());
+		}).when(exportService).exportarCsvPorIds(any(OutputStream.class), anyList());
 
 		List<Long> ids = List.of(10L, 20L, 30L);
 		String parentFolderId = "folder-999";
@@ -137,7 +137,7 @@ class GoogleSheetsExportImplTest {
 		assertThat(pixelSizeForColumn(dimensionRequests, 5)).isEqualTo(140);
 		assertThat(pixelSizeForColumn(dimensionRequests, 6)).isEqualTo(240);
 
-		verify(exportService).streamCsvByIds(any(OutputStream.class), eq(ids));
+		verify(exportService).exportarCsvPorIds(any(OutputStream.class), eq(ids));
 		verify(spreadsheets).get(createdId);
 		verify(spreadsheets).batchUpdate(eq(createdId), any(BatchUpdateSpreadsheetRequest.class));
 		verifyNoMoreInteractions(exportService, drive, driveFiles, driveFilesCreate, sheets, spreadsheets,
@@ -163,7 +163,7 @@ class GoogleSheetsExportImplTest {
 			OutputStream out = invocation.getArgument(0, OutputStream.class);
 			out.write("X,Y,Z\n9,8,7\n".getBytes());
 			return null;
-		}).when(exportService).streamCsvByIds(any(OutputStream.class), anyList());
+		}).when(exportService).exportarCsvPorIds(any(OutputStream.class), anyList());
 
 		List<Long> ids = List.of(1L);
 		String nomePlanilha = "Planilha Personalizada";
@@ -191,7 +191,7 @@ class GoogleSheetsExportImplTest {
 		AddBandingRequest bandingRequest = findAddBandingRequest(batchRequest.getRequests());
 		assertThat(bandingRequest.getBandedRange().getRange().getEndRowIndex()).isEqualTo(ids.size() + 1);
 
-		verify(exportService).streamCsvByIds(any(OutputStream.class), eq(ids));
+		verify(exportService).exportarCsvPorIds(any(OutputStream.class), eq(ids));
 		verify(spreadsheets).get(createdId);
 		verify(spreadsheets).batchUpdate(eq(createdId), any(BatchUpdateSpreadsheetRequest.class));
 		verifyNoMoreInteractions(exportService, drive, driveFiles, driveFilesCreate, sheets, spreadsheets,

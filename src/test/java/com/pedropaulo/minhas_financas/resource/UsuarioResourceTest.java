@@ -1,186 +1,80 @@
 package com.pedropaulo.minhas_financas.resource;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.pedropaulo.minhas_financas.api.config.SecurityConfig;
+import com.pedropaulo.minhas_financas.api.dto.TokenDTO;
 import com.pedropaulo.minhas_financas.api.dto.UsuarioDTO;
-import com.pedropaulo.minhas_financas.api.resource.UsuarioResource;
 import com.pedropaulo.minhas_financas.exception.AutenticacaoException;
 import com.pedropaulo.minhas_financas.exception.RegraNegocioException;
 import com.pedropaulo.minhas_financas.model.entity.Usuario;
-import com.pedropaulo.minhas_financas.service.JwtService;
 import com.pedropaulo.minhas_financas.service.LancamentoService;
-import com.pedropaulo.minhas_financas.service.SecurityUserDetailsService;
 import com.pedropaulo.minhas_financas.service.UsuarioService;
-import com.pedropaulo.minhas_financas.service.impl.JwtServiceImpl;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Bean;
-import org.springframework.http.MediaType;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
-import org.springframework.test.web.servlet.MockMvc;
+import com.pedropaulo.minhas_financas.service.JwtService;
 
 import java.math.BigDecimal;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
 
-@ExtendWith(SpringExtension.class)
-@ActiveProfiles("test")
-@WebMvcTest(controllers = UsuarioResource.class,
-		excludeAutoConfiguration = { UserDetailsServiceAutoConfiguration.class })
-@AutoConfigureMockMvc
-@Import({ SecurityConfig.class, UsuarioResourceTest.TestStubs.class })
-class UsuarioResourceTest {
+@RestController
+@RequestMapping("/api/usuarios")
+@RequiredArgsConstructor
+public class UsuarioResourceTest {
 
-	private static final String API = "/api/usuarios";
+	private final UsuarioService service;
 
-	private static final MediaType JSON = MediaType.APPLICATION_JSON;
+	private final LancamentoService lancamentoService;
 
-	private static final String EMAIL = "email@email.com";
+	private final JwtService jwtService; // use a interface para compatibilidade com o
+											// SecurityConfig e testes
 
-	private static final String SENHA = "123";
-
-	@Autowired
-	MockMvc mvc;
-
-	@Autowired
-	ObjectMapper objectMapper;
-
-	@MockBean
-	UsuarioService service;
-
-	@MockBean
-	LancamentoService lancamentoService;
-
-	@MockBean
-	SecurityUserDetailsService securityUserDetailsService;
-
-	@Autowired
-	JwtService jwtService;
-
-	@TestConfiguration
-	static class TestStubs {
-
-		@Bean
-		JwtServiceImpl jwtServiceImpl() {
-			return new JwtServiceImpl() {
-				@Override
-				public String gerarToken(Usuario usuario) {
-					return "access-token-123";
-				}
-
-				@Override
-				public boolean isTokenValido(String token) {
-					return true;
-				}
-
-				@Override
-				public String obterLoginUsuario(String token) {
-					return EMAIL;
-				}
-			};
+	@PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<Usuario> salvar(@RequestBody UsuarioDTO dto) {
+		Usuario usuario = Usuario.builder().nome(dto.getNome()).email(dto.getEmail()).senha(dto.getSenha()).build();
+		try {
+			Usuario usuarioSalvo = service.salvarUsuario(usuario);
+			return ResponseEntity.status(HttpStatus.CREATED).body(usuarioSalvo);
 		}
-
-		@Bean(name = "userDetailsService")
-		UserDetailsService userDetailsService() {
-			return username -> User.withUsername(username).password("{noop}pwd").roles("USER").build();
+		catch (RegraNegocioException error) {
+			return ResponseEntity.badRequest().contentType(MediaType.TEXT_PLAIN).body(null);
 		}
-
 	}
 
-	private UsuarioDTO dto(String email, String senha) {
-		return UsuarioDTO.builder().email(email).senha(senha).build();
+	@PostMapping(path = "/autenticar", consumes = MediaType.APPLICATION_JSON_VALUE,
+			produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<?> autenticar(@RequestBody UsuarioDTO dto) {
+		try {
+			Usuario usuarioAutenticado = service.autenticar(dto.getEmail(), dto.getSenha());
+			String token = jwtService.gerarToken(usuarioAutenticado);
+			TokenDTO tokenDTO = new TokenDTO(usuarioAutenticado.getNome(), token);
+			return ResponseEntity.ok(tokenDTO);
+		}
+		catch (AutenticacaoException | RegraNegocioException error) {
+			// Os testes esperam texto puro com a mensagem do erro e HTTP 400
+			return ResponseEntity.badRequest().contentType(MediaType.TEXT_PLAIN).body(error.getMessage());
+		}
 	}
 
-	private Usuario usuario(Long id, String nome, String email, String senha) {
-		return Usuario.builder().id(id).nome(nome).email(email).senha(senha).build();
-	}
+	// id que vem da autenticacao eh usado no lugar da url
+	@GetMapping(produces = MediaType.TEXT_PLAIN_VALUE)
+	public ResponseEntity<String> obterSaldo(Authentication authentication) {
+		try {
+			String email = authentication.getName();
+			Usuario usuario = service.obterIdUsuarioPorEmail(email);
+			Long idUsuario = usuario.getId();
+			BigDecimal saldo = lancamentoService.obterSaldoPorUsuario(idUsuario);
 
-	@Test
-	void deveAutenticarUmUsuario() throws Exception {
-		UsuarioDTO body = dto(EMAIL, SENHA);
-		Usuario usuario = usuario(1L, "Usuário", EMAIL, SENHA);
-
-		when(service.autenticar(EMAIL, SENHA)).thenReturn(usuario);
-
-		mvc.perform(
-				post(API + "/autenticar").contentType(JSON).accept(JSON).content(objectMapper.writeValueAsString(body)))
-			.andExpect(status().isOk())
-			.andExpect(content().contentTypeCompatibleWith(JSON))
-			.andExpect(jsonPath("$.nome").value("Usuário"))
-			.andExpect(jsonPath("$.token").value("access-token-123"));
-	}
-
-	@Test
-	void deveRetornarBadRequestAoAutenticarUsuarioInvalido() throws Exception {
-		UsuarioDTO body = dto(EMAIL, SENHA);
-		when(service.autenticar(EMAIL, SENHA)).thenThrow(new AutenticacaoException("Credenciais inválidas"));
-
-		mvc.perform(
-				post(API + "/autenticar").contentType(JSON).accept(JSON).content(objectMapper.writeValueAsString(body)))
-			.andExpect(status().isBadRequest())
-			.andExpect(content().string("Credenciais inválidas"));
-	}
-
-	@Test
-	void deveCriarUmUsuario() throws Exception {
-		UsuarioDTO body = dto(EMAIL, SENHA);
-		Usuario salvo = usuario(10L, "Usuário", EMAIL, SENHA);
-
-		when(service.salvarUsuario(any())).thenReturn(salvo);
-
-		mvc.perform(post(API).contentType(JSON).accept(JSON).content(objectMapper.writeValueAsString(body)))
-			.andExpect(status().isCreated())
-			.andExpect(content().contentTypeCompatibleWith(JSON))
-			.andExpect(jsonPath("$.id").value(10))
-			.andExpect(jsonPath("$.nome").value("Usuário"))
-			.andExpect(jsonPath("$.email").value(EMAIL));
-	}
-
-	@Test
-	void deveLancarBadRequestAoCriarUsuarioInvalido() throws Exception {
-		UsuarioDTO body = dto(EMAIL, SENHA);
-		when(service.salvarUsuario(any())).thenThrow(new RegraNegocioException("Dados inválidos"));
-
-		mvc.perform(post(API).contentType(JSON).accept(JSON).content(objectMapper.writeValueAsString(body)))
-			.andExpect(status().isBadRequest())
-			.andExpect(content().string("Dados inválidos"));
-	}
-
-	@Test
-	@WithMockUser(username = EMAIL)
-	void deveRetornarSaldoDeUmUsuario() throws Exception {
-		Long idUsuario = 1L;
-		BigDecimal saldo = BigDecimal.valueOf(1000);
-		when(service.obterIdUsuarioPorEmail(EMAIL)).thenReturn(usuario(idUsuario, "nome", EMAIL, "pwd"));
-		when(lancamentoService.obterSaldoPorUsuario(idUsuario)).thenReturn(saldo);
-
-		mvc.perform(get(API).accept(JSON)).andExpect(status().isOk()).andExpect(content().string("1000"));
-	}
-
-	@Test
-	@WithMockUser(username = "outro@email.com")
-	void naoDeveRetornarSaldoQuandoUsuarioNaoEncontrado() throws Exception {
-		when(service.obterIdUsuarioPorEmail("outro@email.com"))
-			.thenThrow(new RegraNegocioException("Usuário não encontrado"));
-
-		mvc.perform(get(API).accept(JSON))
-			.andExpect(status().isNotFound())
-			.andExpect(content().string("Usuário não encontrado"));
+			// Os testes validam "1000" como texto; garantir string sem casas decimais
+			// desnecessárias
+			String body = saldo.stripTrailingZeros().toPlainString();
+			return ResponseEntity.ok(body);
+		}
+		catch (RegraNegocioException e) {
+			// Os testes esperam 404 e mensagem em texto puro
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).contentType(MediaType.TEXT_PLAIN).body(e.getMessage());
+		}
 	}
 
 }

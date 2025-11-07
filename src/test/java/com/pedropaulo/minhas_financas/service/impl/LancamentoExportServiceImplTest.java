@@ -68,7 +68,7 @@ class LancamentoExportServiceImplTest {
 		});
 
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		service.streamJsonByIds(out, idsEntrada);
+		service.exportarJsonPorIds(out, idsEntrada);
 
 		String json = out.toString(StandardCharsets.UTF_8);
 		ObjectMapper mapper = new ObjectMapper();
@@ -159,7 +159,7 @@ class LancamentoExportServiceImplTest {
 		});
 
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		service.streamCsvByIds(out, idsEntrada);
+		service.exportarCsvPorIds(out, idsEntrada);
 
 		String csv = out.toString(StandardCharsets.UTF_8);
 		List<String> linhas = Arrays.asList(csv.split("\\R"));
@@ -200,7 +200,6 @@ class LancamentoExportServiceImplTest {
 		assertThat(todosIdsConsultados).doesNotContainNull();
 		verifyNoMoreInteractions(lancamentoRepository);
 	}
-
 
 	private static List<String> asStringList(Object value) {
 		if (value == null)

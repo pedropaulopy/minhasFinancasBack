@@ -3,6 +3,8 @@ package com.pedropaulo.minhas_financas.service.impl;
 import com.pedropaulo.minhas_financas.api.dto.importacao.ImportResultadoDTO;
 import com.pedropaulo.minhas_financas.model.entity.Categoria;
 import com.pedropaulo.minhas_financas.model.entity.Usuario;
+import com.pedropaulo.minhas_financas.model.repository.CategoriaRepository;
+import com.pedropaulo.minhas_financas.model.repository.UsuarioRepository;
 import com.pedropaulo.minhas_financas.service.CategoriaService;
 import com.pedropaulo.minhas_financas.service.LancamentoService;
 import jakarta.persistence.EntityManager;
@@ -37,6 +39,12 @@ class LancamentoCsvImportServiceImplTest {
 	@Mock
 	LancamentoService lancamentoService;
 
+	@Mock
+	CategoriaRepository categoriaRepository;
+
+	@Mock
+	UsuarioRepository usuarioRepository;
+
 	static class NoOpTransactionTemplate extends TransactionTemplate {
 
 		NoOpTransactionTemplate() {
@@ -66,48 +74,8 @@ class LancamentoCsvImportServiceImplTest {
 	void setup() throws Exception {
 		txTemplate = new NoOpTransactionTemplate();
 
-		typedQueryProxy = (TypedQuery<Categoria>) Proxy.newProxyInstance(getClass().getClassLoader(),
-				new Class[] { TypedQuery.class }, (proxy, method, args) -> {
-					String name = method.getName();
-					if (name.equals("setParameter"))
-						return proxy; // fluent
-					if (name.equals("getResultList"))
-						return queryResultRef.get();
-					if (name.equals("getSingleResult"))
-						throw new UnsupportedOperationException();
-					return null;
-				});
-
-		// cria proxy de EntityManager
-		emProxy = (EntityManager) Proxy.newProxyInstance(getClass().getClassLoader(),
-				new Class[] { EntityManager.class }, (proxy, method, args) -> {
-					String name = method.getName();
-					switch (name) {
-						case "getReference": {
-							Class<?> cls = (Class<?>) args[0];
-							if (cls == Usuario.class) {
-								Usuario u = new Usuario();
-								u.setId((Long) args[1]);
-								return u;
-							}
-							return null;
-						}
-						case "createQuery":
-							return typedQueryProxy;
-						case "persist":
-						case "flush":
-						case "clear":
-							return null;
-						default:
-							return null;
-					}
-				});
-
-		service = new LancamentoCsvImportServiceImpl(categoriaService, lancamentoService, txTemplate);
-
-		Field f = LancamentoCsvImportServiceImpl.class.getDeclaredField("em");
-		f.setAccessible(true);
-		f.set(service, emProxy);
+		service = new LancamentoCsvImportServiceImpl(categoriaService, lancamentoService, txTemplate,
+				categoriaRepository, usuarioRepository);
 	}
 
 	private static InputStream csv(String content) {
@@ -122,7 +90,7 @@ class LancamentoCsvImportServiceImplTest {
 
 		queryResultRef.set(Collections.emptyList());
 
-		ImportResultadoDTO resumo = service.importar(csv(csv), 2, 99L);
+		ImportResultadoDTO resumo = service.importar(csv(csv), 99L);
 
 		assertEquals(2, resumo.getTotalLidas());
 		assertEquals(2, resumo.getTotalSucesso());
@@ -136,7 +104,7 @@ class LancamentoCsvImportServiceImplTest {
 		String csv = "DESC,VALOR_LANC,TIPO,STATUS,USUARIO,DATA_LANC,CATEGORIA\n"
 				+ "Salário,10000,RECEITA,EFETIVADO,7,05/11/2025,\n";
 
-		ImportResultadoDTO resumo = service.importar(csv(csv), 5, 7L);
+		ImportResultadoDTO resumo = service.importar(csv(csv), 7L);
 
 		assertEquals(1, resumo.getTotalLidas());
 		assertEquals(1, resumo.getTotalSucesso());
@@ -153,7 +121,7 @@ class LancamentoCsvImportServiceImplTest {
 
 		queryResultRef.set(Collections.emptyList());
 
-		ImportResultadoDTO resumo = service.importar(csv(csv), 2, 5L);
+		ImportResultadoDTO resumo = service.importar(csv(csv), 5L);
 
 		assertEquals(2, resumo.getTotalLidas());
 		assertEquals(1, resumo.getTotalSucesso());
@@ -168,7 +136,7 @@ class LancamentoCsvImportServiceImplTest {
 	void importar_cabecalhoInvalido_lancaIAE() {
 		String csv = "DESC,VALOR_LANC,TIPO,STATUS,USUARIO,DATA_LANC\n" + "Qualquer,10,RECEITA,EFETIVADO,1,01/01/2025\n";
 
-		assertThrows(IllegalArgumentException.class, () -> service.importar(csv(csv), 3, 1L));
+		assertThrows(IllegalArgumentException.class, () -> service.importar(csv(csv), 1L));
 
 		verifyNoInteractions(lancamentoService);
 	}
@@ -178,7 +146,7 @@ class LancamentoCsvImportServiceImplTest {
 		String csv = "DESC,VALOR_LANC,TIPO,STATUS,USUARIO,DATA_LANC,CATEGORIA\n"
 				+ "Teste,10,RECEITA,EFETIVADO,123,01/11/2025,Cat\n";
 
-		ImportResultadoDTO resumo = service.importar(csv(csv), 10, 999L);
+		ImportResultadoDTO resumo = service.importar(csv(csv), 999L);
 
 		assertEquals(1, resumo.getTotalLidas());
 		assertEquals(0, resumo.getTotalSucesso());
@@ -199,7 +167,7 @@ class LancamentoCsvImportServiceImplTest {
 		c2.setNome("Essencial");
 		queryResultRef.set(Arrays.asList(c1, c2));
 
-		ImportResultadoDTO resumo = service.importar(csv(csv), 10, 42L);
+		ImportResultadoDTO resumo = service.importar(csv(csv), 42L);
 
 		assertEquals(1, resumo.getTotalSucesso());
 		assertEquals(0, resumo.getTotalFalha());
@@ -211,7 +179,7 @@ class LancamentoCsvImportServiceImplTest {
 	void importar_csvVazio_naoChamaSalvar() throws Exception {
 		String csv = "DESC,VALOR_LANC,TIPO,STATUS,USUARIO,DATA_LANC,CATEGORIA\n";
 
-		ImportResultadoDTO resumo = service.importar(csv(csv), 10, 1L);
+		ImportResultadoDTO resumo = service.importar(csv(csv), 1L);
 
 		assertEquals(0, resumo.getTotalLidas());
 		assertEquals(0, resumo.getTotalSucesso());
@@ -226,7 +194,7 @@ class LancamentoCsvImportServiceImplTest {
 				+ "Invalido 1,0,DESPESA,EFETIVADO,1,01/01/2025,Cat\n"
 				+ "Invalido 2,-10,DESPESA,EFETIVADO,1,01/01/2025,Cat\n";
 
-		ImportResultadoDTO resumo = service.importar(csv(csv), 10, 1L);
+		ImportResultadoDTO resumo = service.importar(csv(csv), 1L);
 
 		assertEquals(2, resumo.getTotalLidas());
 		assertEquals(0, resumo.getTotalSucesso());
@@ -242,7 +210,7 @@ class LancamentoCsvImportServiceImplTest {
 
 		doThrow(new RuntimeException("Erro de banco de dados")).when(lancamentoService).salvarTodos(anyList());
 
-		assertThrows(RuntimeException.class, () -> service.importar(csv(csv), 10, 42L));
+		assertThrows(RuntimeException.class, () -> service.importar(csv(csv), 42L));
 	}
 
 }
