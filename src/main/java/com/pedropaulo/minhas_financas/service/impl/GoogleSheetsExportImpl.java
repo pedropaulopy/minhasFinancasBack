@@ -123,7 +123,7 @@ public class GoogleSheetsExportImpl implements GoogleSheetsExport {
 		}
 	}
 
-	private byte[] gerarCsvBytes(List<Long> ids) throws IOException, RegraNegocioException {
+	private byte[] gerarCsvBytes(List<Long> ids) throws IOException {
 		try (ByteArrayOutputStream out = new ByteArrayOutputStream(TAM_BUFFER)) {
 			exportService.exportarCsvPorIds(out, ids);
 			return out.toByteArray();
