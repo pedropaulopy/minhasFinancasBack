@@ -31,258 +31,284 @@ import java.util.stream.Collectors;
 @Service
 public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportService {
 
-	private static final int TAMANHO_LOTE = 1000;
+    private static final int TAMANHO_LOTE = 1000;
 
-	private static final String H_DESC = "DESC";
+    private static final String H_DESC = "DESC";
+    private static final String H_VALOR_LANC = "VALOR_LANC";
+    private static final String H_TIPO = "TIPO";
+    private static final String H_STATUS = "STATUS";
+    private static final String H_USUARIO = "USUARIO";
+    private static final String H_DATA_LANC = "DATA_LANC";
+    private static final String H_CATEGORIA = "CATEGORIA";
 
-	private static final String H_VALOR_LANC = "VALOR_LANC";
+    private final LancamentoService lancamentoService;
+    private final TransactionTemplate txTemplate;
 
-	private static final String H_TIPO = "TIPO";
+    // Agora serão utilizados
+    private final CategoriaRepository categoriaRepository;
+    private final UsuarioRepository usuarioRepository;
 
-	private static final String H_STATUS = "STATUS";
+    // Mantido por compatibilidade (não é usado aqui diretamente)
+    private final CategoriaService categoriaService;
 
-	private static final String H_USUARIO = "USUARIO";
+    public LancamentoCsvImportServiceImpl(CategoriaService categoriaService,
+                                          LancamentoService lancamentoService,
+                                          TransactionTemplate txTemplate,
+                                          CategoriaRepository categoriaRepository,
+                                          UsuarioRepository usuarioRepository) {
+        this.categoriaService = categoriaService;
+        this.lancamentoService = lancamentoService;
+        this.txTemplate = txTemplate;
+        this.categoriaRepository = categoriaRepository;
+        this.usuarioRepository = usuarioRepository;
+    }
 
-	private static final String H_DATA_LANC = "DATA_LANC";
+    @Override
+    public ImportResultadoDTO importar(InputStream inputStream, Long usuarioAutenticadoId)
+            throws RegraNegocioException {
+        ImportResultadoDTO resumo = new ImportResultadoDTO();
 
-	private static final String H_CATEGORIA = "CATEGORIA";
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+            CSVParser parser = CSVFormat.DEFAULT
+                    .withFirstRecordAsHeader()
+                    .withTrim()
+                    .withIgnoreEmptyLines()
+                    .withAllowMissingColumnNames()
+                    .parse(reader);
 
-	private final LancamentoService lancamentoService;
+            validarCabecalho(parser.getHeaderMap().keySet());
 
-	private final TransactionTemplate txTemplate;
+            Map<Lancamento, Set<String>> catsPorLanc = new IdentityHashMap<>();
+            List<Lancamento> bufferLote = new ArrayList<>(TAMANHO_LOTE);
 
-	// Mantidos por compatibilidade de construtor nos testes, mas não usados
-	private final CategoriaRepository categoriaRepository;
+            for (CSVRecord rec : parser) {
+                long linhaAbsoluta = rec.getRecordNumber() + 1; // +1 para incluir o cabeçalho na contagem "humana"
+                resumo.incLida();
 
-	private final UsuarioRepository usuarioRepository;
+                processarLinhaCsv(rec, usuarioAutenticadoId, catsPorLanc, bufferLote, resumo, linhaAbsoluta);
 
-	private final CategoriaService categoriaService;
+                if (bufferLote.size() >= TAMANHO_LOTE) {
+                    persistirEmLote(bufferLote, catsPorLanc, resumo);
+                    bufferLote.clear();
+                    catsPorLanc.clear();
+                }
+            }
 
-	public LancamentoCsvImportServiceImpl(CategoriaService categoriaService, LancamentoService lancamentoService,
-			TransactionTemplate txTemplate, CategoriaRepository categoriaRepository,
-			UsuarioRepository usuarioRepository) {
-		this.categoriaService = categoriaService;
-		this.lancamentoService = lancamentoService;
-		this.txTemplate = txTemplate;
-		this.categoriaRepository = categoriaRepository;
-		this.usuarioRepository = usuarioRepository;
-	}
+            if (!bufferLote.isEmpty()) {
+                persistirEmLote(bufferLote, catsPorLanc, resumo);
+            }
+        } catch (IOException e) {
+            throw new RegraNegocioException("Erro ao processar o arquivo CSV: " + e.getMessage());
+        }
 
-	@Override
-	public ImportResultadoDTO importar(InputStream inputStream, Long usuarioAutenticadoId)
-			throws RegraNegocioException {
-		ImportResultadoDTO resumo = new ImportResultadoDTO();
+        return resumo;
+    }
 
-		try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
-			CSVParser parser = CSVFormat.DEFAULT.withFirstRecordAsHeader()
-				.withTrim()
-				.withIgnoreEmptyLines()
-				.withAllowMissingColumnNames()
-				.parse(reader);
+    private void validarCabecalho(Set<String> header) {
+        List<String> obrigatorio = List.of(H_DESC, H_VALOR_LANC, H_TIPO, H_STATUS, H_USUARIO, H_DATA_LANC, H_CATEGORIA);
+        List<String> faltando = obrigatorio.stream().filter(h -> !header.contains(h)).collect(Collectors.toList());
+        if (!faltando.isEmpty()) {
+            throw new IllegalArgumentException("Cabeçalho inválido. Faltando: " + faltando);
+        }
+    }
 
-			validarCabecalho(parser.getHeaderMap().keySet());
+    private Lancamento mapearSemEntidades(CSVRecord r, Long usuarioAutenticadoId) throws RegraNegocioException {
+        String desc = obrigatorio(r, H_DESC);
+        String valorStr = obrigatorio(r, H_VALOR_LANC);
+        String tipoStr = obrigatorio(r, H_TIPO);
+        String statusStr = obrigatorio(r, H_STATUS);
+        String usuarioIdStr = obrigatorio(r, H_USUARIO);
+        String dataStr = obrigatorio(r, H_DATA_LANC);
 
-			Map<Lancamento, Set<String>> catsPorLanc = new IdentityHashMap<>();
-			List<Lancamento> bufferLote = new ArrayList<>(TAMANHO_LOTE);
+        BigDecimal valor = parseValorMonetario(valorStr);
+        if (valor.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RegraNegocioException(
+                    "Valor inválido (os valores não podem ser igual ou menores a zero): " + valorStr);
+        }
 
-			for (CSVRecord rec : parser) {
-				long linhaAbsoluta = rec.getRecordNumber() + 1; // +1 para considerar
-																// cabeçalho na contagem
-																// humana
-				resumo.incLida();
+        TipoLancamento tipo = TipoLancamento.valueOf(tipoStr.toUpperCase(Locale.ROOT));
+        StatusLancamento status = StatusLancamento.valueOf(statusStr.toUpperCase(Locale.ROOT));
 
-				processarLinhaCsv(rec, usuarioAutenticadoId, catsPorLanc, bufferLote, resumo, linhaAbsoluta);
+        Long usuarioIdCsv = Long.parseLong(usuarioIdStr);
+        if (!usuarioIdCsv.equals(usuarioAutenticadoId)) {
+            throw new RegraNegocioException("Usuário do CSV (" + usuarioIdCsv + ") diferente do usuário autenticado ("
+                    + usuarioAutenticadoId + ").");
+        }
 
-				if (bufferLote.size() >= TAMANHO_LOTE) {
-					persistirEmLote(bufferLote, catsPorLanc, resumo);
-					bufferLote.clear();
-					catsPorLanc.clear();
-				}
-			}
+        String[] partes = dataStr.split("/");
+        if (partes.length != 3) throw new RegraNegocioException("Data inválida: " + dataStr);
+        int mes = Integer.parseInt(partes[1]);
+        int ano = Integer.parseInt(partes[2]);
+        if (mes < 1 || mes > 12) throw new RegraNegocioException("Insira um mês válido (1-12). Valor recebido: " + mes);
+        if (String.valueOf(ano).length() != 4) throw new RegraNegocioException("Insira um ano válido (AAAA). Valor recebido: " + ano);
 
-			if (!bufferLote.isEmpty()) {
-				persistirEmLote(bufferLote, catsPorLanc, resumo);
-			}
-		}
-		catch (IOException e) {
-			throw new RegraNegocioException("Erro ao processar o arquivo CSV: " + e.getMessage());
-		}
+        Usuario usuarioRef = new Usuario();
+        usuarioRef.setId(usuarioIdCsv);
 
-		return resumo;
-	}
+        Lancamento l = new Lancamento();
+        l.setDescricao(desc);
+        l.setValor(valor);
+        l.setTipoLancamento(tipo);
+        l.setStatusLancamento(status);
+        l.setUsuario(usuarioRef);
+        l.setMes(mes);
+        l.setAno(ano);
+        l.setDataCadastro(LocalDate.now());
+        return l;
+    }
 
-	private void validarCabecalho(Set<String> header) {
-		List<String> obrigatorio = List.of(H_DESC, H_VALOR_LANC, H_TIPO, H_STATUS, H_USUARIO, H_DATA_LANC, H_CATEGORIA);
-		List<String> faltando = obrigatorio.stream().filter(h -> !header.contains(h)).collect(Collectors.toList());
-		if (!faltando.isEmpty()) {
-			throw new IllegalArgumentException("Cabeçalho inválido. Faltando: " + faltando);
-		}
-	}
+    private Set<String> extrairNomesCategorias(String catRaw) {
+        if (catRaw == null || catRaw.isBlank()) return Collections.emptySet();
+        String[] nomes = catRaw.split("\\|");
+        Set<String> out = new LinkedHashSet<>();
+        for (String nome : nomes) {
+            String n = nome.trim();
+            if (!n.isBlank()) out.add(n);
+        }
+        return out;
+    }
 
-	private Lancamento mapearSemEntidades(CSVRecord r, Long usuarioAutenticadoId) throws RegraNegocioException {
-		String desc = obrigatorio(r, H_DESC);
-		String valorStr = obrigatorio(r, H_VALOR_LANC);
-		String tipoStr = obrigatorio(r, H_TIPO);
-		String statusStr = obrigatorio(r, H_STATUS);
-		String usuarioIdStr = obrigatorio(r, H_USUARIO);
-		String dataStr = obrigatorio(r, H_DATA_LANC);
+    private String obrigatorio(CSVRecord r, String h) {
+        String v = r.get(h);
+        if (v == null || v.isBlank()) throw new IllegalArgumentException("Campo obrigatório vazio: " + h);
+        return v.trim();
+    }
 
-		BigDecimal valor = parseValorMonetario(valorStr);
-		if (valor.compareTo(BigDecimal.ZERO) <= 0) {
-			throw new RegraNegocioException(
-					"Valor inválido (os valores não podem ser igual ou menores a zero): " + valorStr);
-		}
+    private BigDecimal parseValorMonetario(String raw) {
+        String clean = raw.replace("R$", "")
+                .replace("$", "")
+                .replace(" ", "")
+                .replace(".", "")
+                .replace(",", ".");
+        return new BigDecimal(clean);
+    }
 
-		TipoLancamento tipo = TipoLancamento.valueOf(tipoStr.toUpperCase(Locale.ROOT));
-		StatusLancamento status = StatusLancamento.valueOf(statusStr.toUpperCase(Locale.ROOT));
+    private void persistirEmLote(List<Lancamento> lote,
+                                 Map<Lancamento, Set<String>> catsPorLanc,
+                                 ImportResultadoDTO resumo) {
+        if (lote == null || lote.isEmpty()) return;
 
-		Long usuarioIdCsv = Long.parseLong(usuarioIdStr);
-		if (!usuarioIdCsv.equals(usuarioAutenticadoId)) {
-			throw new RegraNegocioException("Usuário do CSV (" + usuarioIdCsv + ") diferente do usuário autenticado ("
-					+ usuarioAutenticadoId + ").");
-		}
+        txTemplate.execute(status -> {
+            Long uid = obterUsuarioId(lote);
 
-		String[] partes = dataStr.split("/");
-		if (partes.length != 3)
-			throw new RegraNegocioException("Data inválida: " + dataStr);
-		int mes = Integer.parseInt(partes[1]);
-		int ano = Integer.parseInt(partes[2]);
-		if (mes < 1 || mes > 12)
-			throw new RegraNegocioException("Insira um mês válido (1-12). Valor recebido: " + mes);
-		if (String.valueOf(ano).length() != 4)
-			throw new RegraNegocioException("Insira um ano válido (AAAA). Valor recebido: " + ano);
+            // 1) coletar todos os nomes de categorias do lote (normalizados para lookup)
+            Set<String> nomesDoLoteNormalizados = catsPorLanc.values().stream()
+                    .filter(Objects::nonNull)
+                    .flatMap(Set::stream)
+                    .filter(Objects::nonNull)
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .map(s -> s.toLowerCase(Locale.ROOT))
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
 
-		// Sempre criar o Usuario e anexar ao Lancamento para evitar NPE
-		Usuario usuarioRef = new Usuario();
-		usuarioRef.setId(usuarioIdCsv);
+            // 2) resolver para entidades gerenciadas (buscar existentes e criar faltantes)
+            Map<String, Categoria> mapaGerenciadoPorNomeNormalizado =
+                    resolverCategoriasParaUsuario(nomesDoLoteNormalizados, uid);
 
-		Lancamento l = new Lancamento();
-		l.setDescricao(desc);
-		l.setValor(valor);
-		// use os setters corretos do seu entity
-		l.setTipoLancamento(tipo);
-		l.setStatusLancamento(status);
-		l.setUsuario(usuarioRef);
-		l.setMes(mes);
-		l.setAno(ano);
-		l.setDataCadastro(LocalDate.now());
-		return l;
-	}
+            // 3) aplicar categorias gerenciadas em cada lançamento
+            aplicarCategoriasGerenciadas(lote, catsPorLanc, mapaGerenciadoPorNomeNormalizado);
 
-	private Set<String> extrairNomesCategorias(String catRaw) {
-		if (catRaw == null || catRaw.isBlank())
-			return Collections.emptySet();
-		String[] nomes = catRaw.split("\\|");
-		Set<String> out = new LinkedHashSet<>();
-		for (String nome : nomes) {
-			String n = nome.trim();
-			if (!n.isBlank())
-				out.add(n);
-		}
-		return out;
-	}
+            // 4) salvar o lote
+            lancamentoService.salvarTodos(lote);
+            return null;
+        });
 
-	private String obrigatorio(CSVRecord r, String h) {
-		String v = r.get(h);
-		if (v == null || v.isBlank())
-			throw new IllegalArgumentException("Campo obrigatório vazio: " + h);
-		return v.trim();
-	}
+        atualizarResumo(resumo, lote.size());
+    }
 
-	private BigDecimal parseValorMonetario(String raw) {
-		String clean = raw.replace("R$", "").replace("$", "").replace(" ", "").replace(".", "").replace(",", ".");
-		return new BigDecimal(clean);
-	}
+    private Long obterUsuarioId(List<Lancamento> lote) {
+        // Seguro porque mapeamos sempre o Usuario no parse
+        return lote.get(0).getUsuario().getId();
+    }
 
-	private void persistirEmLote(List<Lancamento> lote, Map<Lancamento, Set<String>> catsPorLanc,
-			ImportResultadoDTO resumo) {
-		if (lote == null || lote.isEmpty())
-			return;
+    /**
+     * Resolve nomes (normalizados em lower) para entidades Categoria GERENCIADAS do usuário.
+     * - Busca existentes por nomes (case-insensitive);
+     * - Cria e persiste as faltantes (com o usuário correto);
+     * - Retorna um mapa {nomeNormalizado -> Categoria managed}.
+     */
+    private Map<String, Categoria> resolverCategoriasParaUsuario(Set<String> nomesNormalizados, Long uid) {
+        if (nomesNormalizados == null || nomesNormalizados.isEmpty()) return Collections.emptyMap();
 
-		txTemplate.execute(status -> {
-			// NÃO buscar usuario no banco; já temos o id setado e isso basta para os
-			// testes
-			Long uid = obterUsuarioId(lote);
+        // Como o método do repositório recebe nomes "como vieram", vamos manter também uma lista "de exibição":
+        // aqui podemos usar os próprios normalizados (lower) porque a query é ignoreCase.
+        List<String> nomesParaBusca = new ArrayList<>(nomesNormalizados);
 
-			// Resolver categorias apenas por nome, sem tocar em repositórios (evita
-			// NPE/stubs)
-			Map<String, Categoria> mapaPorNome = resolverCategoriasSomentePorNome(catsPorLanc);
+        // 1) buscar existentes (case-insensitive)
+        List<Categoria> existentes = categoriaRepository.findByNomeIgnoreCaseInAndUsuario_Id(nomesParaBusca, uid);
+        Map<String, Categoria> porNomeNormalizado = new LinkedHashMap<>();
+        for (Categoria c : existentes) {
+            porNomeNormalizado.put(chave(c.getNome()), c);
+        }
 
-			aplicarCategorias(lote, catsPorLanc, mapaPorNome);
+        // 2) identificar faltantes
+        List<Categoria> novas = new ArrayList<>();
+        for (String nomeNorm : nomesNormalizados) {
+            if (!porNomeNormalizado.containsKey(nomeNorm)) {
+                Categoria c = new Categoria();
+                // Guardar o "nome original" com capitalização igual ao que chegou? Aqui usamos o próprio lower,
+                // mas você pode optar por armazenar com capitalização da primeira ocorrência no CSV.
+                c.setNome(nomeNorm); // se preferir, recupere a forma não-normalizada original
+                Usuario uRef = new Usuario();
+                uRef.setId(uid);
+                c.setUsuario(uRef);
+                novas.add(c);
+            }
+        }
 
-			// Deixar exceção propagar se ocorrer (os testes esperam)
-			lancamentoService.salvarTodos(lote);
-			return null;
-		});
+        if (!novas.isEmpty()) {
+            List<Categoria> salvas = categoriaRepository.saveAll(novas);
+            for (Categoria c : salvas) {
+                porNomeNormalizado.put(chave(c.getNome()), c);
+            }
+        }
 
-		atualizarResumo(resumo, lote.size());
-	}
+        return porNomeNormalizado;
+    }
 
-	private Long obterUsuarioId(List<Lancamento> lote) {
-		// Seguro porque mapeamos sempre o Usuario no parse
-		return lote.get(0).getUsuario().getId();
-	}
+    private String chave(String nome) {
+        return nome == null ? "" : nome.trim().toLowerCase(Locale.ROOT);
+    }
 
-	private Map<String, Categoria> resolverCategoriasSomentePorNome(Map<Lancamento, Set<String>> catsPorLanc) {
-		Set<String> nomes = catsPorLanc.values()
-			.stream()
-			.filter(Objects::nonNull)
-			.flatMap(Set::stream)
-			.filter(Objects::nonNull)
-			.map(String::trim)
-			.filter(s -> !s.isEmpty())
-			.collect(Collectors.toCollection(LinkedHashSet::new));
+    private void aplicarCategoriasGerenciadas(List<Lancamento> lote,
+                                              Map<Lancamento, Set<String>> catsPorLanc,
+                                              Map<String, Categoria> mapaPorNomeNormalizado) {
+        if (mapaPorNomeNormalizado.isEmpty()) return;
 
-		if (nomes.isEmpty())
-			return Collections.emptyMap();
+        for (Lancamento l : lote) {
+            Set<String> nomes = catsPorLanc.getOrDefault(l, Collections.emptySet());
+            if (nomes.isEmpty()) continue;
 
-		Map<String, Categoria> mapa = new LinkedHashMap<>();
-		for (String n : nomes) {
-			Categoria c = new Categoria();
-			c.setNome(n);
-			mapa.put(n, c);
-		}
-		return mapa;
-	}
+            Set<Categoria> categorias = nomes.stream()
+                    .map(n -> mapaPorNomeNormalizado.get(chave(n)))
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
 
-	private void aplicarCategorias(List<Lancamento> lote, Map<Lancamento, Set<String>> catsPorLanc,
-			Map<String, Categoria> mapaPorNome) {
-		if (mapaPorNome.isEmpty())
-			return;
+            if (!categorias.isEmpty()) {
+                l.setCategorias(categorias);
+            }
+        }
+    }
 
-		lote.forEach(l -> {
-			Set<String> nomes = catsPorLanc.getOrDefault(l, Collections.emptySet());
-			if (nomes.isEmpty())
-				return;
+    private void atualizarResumo(ImportResultadoDTO resumo, int quantidade) {
+        for (int i = 0; i < quantidade; i++) {
+            resumo.incSucesso();
+        }
+    }
 
-			Set<Categoria> categorias = nomes.stream()
-				.map(mapaPorNome::get)
-				.filter(Objects::nonNull)
-				.collect(Collectors.toCollection(LinkedHashSet::new));
-
-			if (!categorias.isEmpty()) {
-				l.setCategorias(categorias);
-			}
-		});
-	}
-
-	private void atualizarResumo(ImportResultadoDTO resumo, int quantidade) {
-		for (int i = 0; i < quantidade; i++) {
-			resumo.incSucesso();
-		}
-	}
-
-	private void processarLinhaCsv(CSVRecord rec, Long usuarioAutenticadoId, Map<Lancamento, Set<String>> catsPorLanc,
-			List<Lancamento> bufferLote, ImportResultadoDTO resumo, long linhaAbsoluta) {
-		try {
-			Lancamento l = mapearSemEntidades(rec, usuarioAutenticadoId);
-			Set<String> nomesCats = extrairNomesCategorias(rec.get(H_CATEGORIA));
-			catsPorLanc.put(l, nomesCats);
-			bufferLote.add(l);
-		}
-		catch (Exception e) {
-			resumo.addFalha(linhaAbsoluta, e.getMessage(), String.join(",", rec));
-		}
-	}
-
+    private void processarLinhaCsv(CSVRecord rec,
+                                   Long usuarioAutenticadoId,
+                                   Map<Lancamento, Set<String>> catsPorLanc,
+                                   List<Lancamento> bufferLote,
+                                   ImportResultadoDTO resumo,
+                                   long linhaAbsoluta) {
+        try {
+            Lancamento l = mapearSemEntidades(rec, usuarioAutenticadoId);
+            Set<String> nomesCats = extrairNomesCategorias(rec.get(H_CATEGORIA));
+            catsPorLanc.put(l, nomesCats);
+            bufferLote.add(l);
+        } catch (Exception e) {
+            resumo.addFalha(linhaAbsoluta, e.getMessage(), String.join(",", rec));
+        }
+    }
 }

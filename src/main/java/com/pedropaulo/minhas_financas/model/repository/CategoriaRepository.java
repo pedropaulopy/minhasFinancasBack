@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -21,4 +22,5 @@ public interface CategoriaRepository extends JpaRepository<Categoria, Long> {
 	@Query("select c from Categoria c where c.usuario.id = :uid and c.nome in :nomes")
 	List<Categoria> findByUsuarioIdAndNomesIn(@Param("uid") Long uid, @Param("nomes") Set<String> nomes);
 
+    List<Categoria> findByNomeIgnoreCaseInAndUsuario_Id(Collection<String> nomes, Long usuarioId);
 }
