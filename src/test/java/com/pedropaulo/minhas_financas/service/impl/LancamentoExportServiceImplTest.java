@@ -201,7 +201,6 @@ class LancamentoExportServiceImplTest {
 		verifyNoMoreInteractions(lancamentoRepository);
 	}
 
-	// ----------------- Helpers -----------------
 
 	private static List<String> asStringList(Object value) {
 		if (value == null)
@@ -219,7 +218,6 @@ class LancamentoExportServiceImplTest {
 				out.add(String.valueOf(java.lang.reflect.Array.get(value, i)));
 			return out;
 		}
-		// fallback: valor único
 		return List.of(String.valueOf(value));
 	}
 
