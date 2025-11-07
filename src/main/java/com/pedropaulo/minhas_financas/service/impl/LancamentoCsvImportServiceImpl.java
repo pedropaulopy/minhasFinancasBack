@@ -44,11 +44,9 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
     private final LancamentoService lancamentoService;
     private final TransactionTemplate txTemplate;
 
-    // Agora serão utilizados
     private final CategoriaRepository categoriaRepository;
     private final UsuarioRepository usuarioRepository;
 
-    // Mantido por compatibilidade (não é usado aqui diretamente)
     private final CategoriaService categoriaService;
 
     public LancamentoCsvImportServiceImpl(CategoriaService categoriaService,
@@ -82,7 +80,7 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
             List<Lancamento> bufferLote = new ArrayList<>(TAMANHO_LOTE);
 
             for (CSVRecord rec : parser) {
-                long linhaAbsoluta = rec.getRecordNumber() + 1; // +1 para incluir o cabeçalho na contagem "humana"
+                long linhaAbsoluta = rec.getRecordNumber() + 1;
                 resumo.incLida();
 
                 processarLinhaCsv(rec, usuarioAutenticadoId, catsPorLanc, bufferLote, resumo, linhaAbsoluta);
@@ -191,7 +189,6 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
         txTemplate.execute(status -> {
             Long uid = obterUsuarioId(lote);
 
-            // 1) coletar todos os nomes de categorias do lote (normalizados para lookup)
             Set<String> nomesDoLoteNormalizados = catsPorLanc.values().stream()
                     .filter(Objects::nonNull)
                     .flatMap(Set::stream)
@@ -201,14 +198,11 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
                     .map(s -> s.toLowerCase(Locale.ROOT))
                     .collect(Collectors.toCollection(LinkedHashSet::new));
 
-            // 2) resolver para entidades gerenciadas (buscar existentes e criar faltantes)
             Map<String, Categoria> mapaGerenciadoPorNomeNormalizado =
                     resolverCategoriasParaUsuario(nomesDoLoteNormalizados, uid);
 
-            // 3) aplicar categorias gerenciadas em cada lançamento
             aplicarCategoriasGerenciadas(lote, catsPorLanc, mapaGerenciadoPorNomeNormalizado);
 
-            // 4) salvar o lote
             lancamentoService.salvarTodos(lote);
             return null;
         });
@@ -217,38 +211,25 @@ public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportServic
     }
 
     private Long obterUsuarioId(List<Lancamento> lote) {
-        // Seguro porque mapeamos sempre o Usuario no parse
         return lote.get(0).getUsuario().getId();
     }
 
-    /**
-     * Resolve nomes (normalizados em lower) para entidades Categoria GERENCIADAS do usuário.
-     * - Busca existentes por nomes (case-insensitive);
-     * - Cria e persiste as faltantes (com o usuário correto);
-     * - Retorna um mapa {nomeNormalizado -> Categoria managed}.
-     */
     private Map<String, Categoria> resolverCategoriasParaUsuario(Set<String> nomesNormalizados, Long uid) {
         if (nomesNormalizados == null || nomesNormalizados.isEmpty()) return Collections.emptyMap();
 
-        // Como o método do repositório recebe nomes "como vieram", vamos manter também uma lista "de exibição":
-        // aqui podemos usar os próprios normalizados (lower) porque a query é ignoreCase.
         List<String> nomesParaBusca = new ArrayList<>(nomesNormalizados);
 
-        // 1) buscar existentes (case-insensitive)
         List<Categoria> existentes = categoriaRepository.findByNomeIgnoreCaseInAndUsuario_Id(nomesParaBusca, uid);
         Map<String, Categoria> porNomeNormalizado = new LinkedHashMap<>();
         for (Categoria c : existentes) {
             porNomeNormalizado.put(chave(c.getNome()), c);
         }
 
-        // 2) identificar faltantes
         List<Categoria> novas = new ArrayList<>();
         for (String nomeNorm : nomesNormalizados) {
             if (!porNomeNormalizado.containsKey(nomeNorm)) {
                 Categoria c = new Categoria();
-                // Guardar o "nome original" com capitalização igual ao que chegou? Aqui usamos o próprio lower,
-                // mas você pode optar por armazenar com capitalização da primeira ocorrência no CSV.
-                c.setNome(nomeNorm); // se preferir, recupere a forma não-normalizada original
+                c.setNome(nomeNorm);
                 Usuario uRef = new Usuario();
                 uRef.setId(uid);
                 c.setUsuario(uRef);
