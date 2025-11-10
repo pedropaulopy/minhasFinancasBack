@@ -9,7 +9,6 @@ import com.pedropaulo.minhas_financas.model.enums.StatusLancamento;
 import com.pedropaulo.minhas_financas.model.enums.TipoLancamento;
 import com.pedropaulo.minhas_financas.model.repository.CategoriaRepository;
 import com.pedropaulo.minhas_financas.model.repository.UsuarioRepository;
-import com.pedropaulo.minhas_financas.service.CategoriaService;
 import com.pedropaulo.minhas_financas.service.LancamentoCsvImportService;
 import com.pedropaulo.minhas_financas.service.LancamentoService;
 import org.apache.commons.csv.CSVFormat;
@@ -18,287 +17,337 @@ import org.apache.commons.csv.CSVRecord;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class LancamentoCsvImportServiceImpl implements LancamentoCsvImportService {
 
-	private static final int TAMANHO_LOTE = 1000;
+    private static final int CHUNK_SIZE = 10_000;
+    private static final int IO_BUFFER_SIZE = 1 << 20;
 
-	private static final String H_DESC = "DESC";
+    private static final String H_DESC       = "DESC";
+    private static final String H_VALOR_LANC = "VALOR_LANC";
+    private static final String H_TIPO       = "TIPO";
+    private static final String H_STATUS     = "STATUS";
+    private static final String H_USUARIO    = "USUARIO";
+    private static final String H_DATA_LANC  = "DATA_LANC";
+    private static final String H_CATEGORIA  = "CATEGORIA";
 
-	private static final String H_VALOR_LANC = "VALOR_LANC";
+    private final LancamentoService lancamentoService;
+    private final CategoriaRepository categoriaRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final TransactionTemplate txTemplate;
 
-	private static final String H_TIPO = "TIPO";
+    // cache global de categorias por nome normalizado
+    private final Map<String, Categoria> categoriaCache = new HashMap<>(2048);
 
-	private static final String H_STATUS = "STATUS";
+    @PersistenceContext
+    private EntityManager em;
 
-	private static final String H_USUARIO = "USUARIO";
+    private static final DateTimeFormatter DTF_DDMMYYYY = DateTimeFormatter.ofPattern("dd/MM/uuuu");
 
-	private static final String H_DATA_LANC = "DATA_LANC";
+    public LancamentoCsvImportServiceImpl(
+            LancamentoService lancamentoService,
+            CategoriaRepository categoriaRepository,
+            UsuarioRepository usuarioRepository,
+            TransactionTemplate transactionTemplate
+    ) {
+        this.lancamentoService   = lancamentoService;
+        this.categoriaRepository = categoriaRepository;
+        this.usuarioRepository   = usuarioRepository;
+        this.txTemplate          = transactionTemplate;
+    }
 
-	private static final String H_CATEGORIA = "CATEGORIA";
+    // Estrutura leve para guardar dados parseados sem anexar entidades
+    private static final class LinhaParseada {
+        Lancamento lancamento;           // com usuarioId temporário
+        Long usuarioId;                  // ID a ser resolvido na transação
+        Set<String> nomesCategorias;     // nomes a resolver na transação
+        long linha;                      // número da linha para erro
+    }
 
-	private final LancamentoService lancamentoService;
+    @Override
+    public ImportResultadoDTO importar(InputStream csvStream, Long usuarioAutenticadoId) throws RegraNegocioException {
+        Objects.requireNonNull(csvStream, "csvStream não pode ser nulo");
 
-	private final TransactionTemplate txTemplate;
+        ImportResultadoDTO resumo = new ImportResultadoDTO();
 
-	private final CategoriaRepository categoriaRepository;
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(csvStream, StandardCharsets.UTF_8), IO_BUFFER_SIZE);
+             CSVParser parser = CSVFormat.DEFAULT
+                     .builder()
+                     .setHeader()
+                     .setSkipHeaderRecord(true)
+                     .setIgnoreEmptyLines(true)
+                     .setTrim(true)
+                     .build()
+                     .parse(br)) {
 
-	private final UsuarioRepository usuarioRepository;
+            final List<LinhaParseada> buffer = new ArrayList<>(CHUNK_SIZE);
+            long linhaAbsoluta = 1; // conta o cabeçalho
 
-	private final CategoriaService categoriaService;
+            for (CSVRecord rec : parser) {
+                linhaAbsoluta++;
+                resumo.incLida();
 
-	public LancamentoCsvImportServiceImpl(CategoriaService categoriaService, LancamentoService lancamentoService,
-			TransactionTemplate txTemplate, CategoriaRepository categoriaRepository,
-			UsuarioRepository usuarioRepository) {
-		this.categoriaService = categoriaService;
-		this.lancamentoService = lancamentoService;
-		this.txTemplate = txTemplate;
-		this.categoriaRepository = categoriaRepository;
-		this.usuarioRepository = usuarioRepository;
-	}
+                try {
+                    LinhaParseada lp = mapearLinha(rec, usuarioAutenticadoId, linhaAbsoluta);
+                    buffer.add(lp);
+                } catch (Exception e) {
+                    resumo.addFalha(linhaAbsoluta, safeMessage(e), joinRaw(rec));
+                }
 
-	@Override
-	public ImportResultadoDTO importar(InputStream inputStream, Long usuarioAutenticadoId)
-			throws RegraNegocioException {
-		ImportResultadoDTO resumo = new ImportResultadoDTO();
+                if (buffer.size() >= CHUNK_SIZE) {
+                    processarEPersistirLote(buffer, resumo);
+                }
+            }
 
-		try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
-			CSVParser parser = CSVFormat.DEFAULT.withFirstRecordAsHeader()
-				.withTrim()
-				.withIgnoreEmptyLines()
-				.withAllowMissingColumnNames()
-				.parse(reader);
+            if (!buffer.isEmpty()) {
+                processarEPersistirLote(buffer, resumo);
+            }
+        } catch (Exception e) {
+            throw new RegraNegocioException("Falha ao importar CSV: ".concat(e.getMessage()).concat(String.valueOf(e)));
+        }
 
-			validarCabecalho(parser.getHeaderMap().keySet());
+        return resumo;
+    }
 
-			Map<Lancamento, Set<String>> catsPorLanc = new IdentityHashMap<>();
-			List<Lancamento> bufferLote = new ArrayList<>(TAMANHO_LOTE);
+    private void processarEPersistirLote(List<LinhaParseada> buffer, ImportResultadoDTO resumo) {
 
-			for (CSVRecord rec : parser) {
-				long linhaAbsoluta = rec.getRecordNumber() + 1;
-				resumo.incLida();
+        txTemplate.execute(status -> {
+            try {
+                // 1) Resolver categorias do lote DENTRO da transação
+                Map<String, Categoria> categoriasDoLote = resolverCategoriasDentroTransacao(buffer);
 
-				processarLinhaCsv(rec, usuarioAutenticadoId, catsPorLanc, bufferLote, resumo, linhaAbsoluta);
+                // 2) Trocar IDs por referências gerenciadas e setar categorias
+                List<Lancamento> prontos = new ArrayList<>(buffer.size());
+                for (LinhaParseada lp : buffer) {
+                    Lancamento l = lp.lancamento;
 
-				if (bufferLote.size() >= TAMANHO_LOTE) {
-					persistirEmLote(bufferLote, catsPorLanc, resumo);
-					bufferLote.clear();
-					catsPorLanc.clear();
-				}
-			}
+                    // Usuario como referência gerenciada (sem query)
+                    if (lp.usuarioId == null) {
+                        throw new RegraNegocioException("Usuário não informado para a linha " + lp.linha);
+                    }
+                    l.setUsuario(em.getReference(Usuario.class, lp.usuarioId));
 
-			if (!bufferLote.isEmpty()) {
-				persistirEmLote(bufferLote, catsPorLanc, resumo);
-			}
-		}
-		catch (IOException e) {
-			throw new RegraNegocioException("Erro ao processar o arquivo CSV: " + e.getMessage());
-		}
+                    // Categorias
+                    if (lp.nomesCategorias != null && !lp.nomesCategorias.isEmpty()) {
+                        Set<Categoria> cats = new LinkedHashSet<>(lp.nomesCategorias.size());
+                        for (String nomeRaw : lp.nomesCategorias) {
+                            String key = normalizaNomeCategoria(nomeRaw);
+                            Categoria c = categoriasDoLote.get(key);
+                            if (c != null) cats.add(c);
+                        }
+                        l.setCategorias(cats);
+                    }
 
-		return resumo;
-	}
+                    prontos.add(l);
+                }
 
-	private void validarCabecalho(Set<String> header) {
-		List<String> obrigatorio = List.of(H_DESC, H_VALOR_LANC, H_TIPO, H_STATUS, H_USUARIO, H_DATA_LANC, H_CATEGORIA);
-		List<String> faltando = obrigatorio.stream().filter(h -> !header.contains(h)).collect(Collectors.toList());
-		if (!faltando.isEmpty()) {
-			throw new IllegalArgumentException("Cabeçalho inválido. Faltando: " + faltando);
-		}
-	}
+                // 3) Persistir em lote
+                lancamentoService.salvarTodos(prontos);
+                for (int i = 0; i < prontos.size(); i++) resumo.incSucesso();
 
-	private Lancamento mapearSemEntidades(CSVRecord r, Long usuarioAutenticadoId) throws RegraNegocioException {
-		String desc = obrigatorio(r, H_DESC);
-		String valorStr = obrigatorio(r, H_VALOR_LANC);
-		String tipoStr = obrigatorio(r, H_TIPO);
-		String statusStr = obrigatorio(r, H_STATUS);
-		String usuarioIdStr = obrigatorio(r, H_USUARIO);
-		String dataStr = obrigatorio(r, H_DATA_LANC);
+            } catch (Exception e) {
+                // Se falhar o lote, tentar item a item (para registrar quais quebram)
+                status.setRollbackOnly();
+                persistirComSplit(buffer, resumo);
+            }
+            return null;
+        });
 
-		BigDecimal valor = parseValorMonetario(valorStr);
-		if (valor.compareTo(BigDecimal.ZERO) <= 0) {
-			throw new RegraNegocioException(
-					"Valor inválido (os valores não podem ser igual ou menores a zero): " + valorStr);
-		}
+        buffer.clear();
+    }
 
-		TipoLancamento tipo = TipoLancamento.valueOf(tipoStr.toUpperCase(Locale.ROOT));
-		StatusLancamento status = StatusLancamento.valueOf(statusStr.toUpperCase(Locale.ROOT));
+    private void persistirComSplit(List<LinhaParseada> buffer, ImportResultadoDTO resumo) {
+        for (LinhaParseada lp : buffer) {
+            txTemplate.execute(s2 -> {
+                try {
+                    Lancamento l = lp.lancamento;
+                    l.setUsuario(em.getReference(Usuario.class, lp.usuarioId));
 
-		Long usuarioIdCsv = Long.parseLong(usuarioIdStr);
-		if (!usuarioIdCsv.equals(usuarioAutenticadoId)) {
-			throw new RegraNegocioException("Usuário do CSV (" + usuarioIdCsv + ") diferente do usuário autenticado ("
-					+ usuarioAutenticadoId + ").");
-		}
+                    // resolver categorias por linha (usando o mesmo cache transacional)
+                    Map<String, Categoria> cats = resolverCategoriasDentroTransacao(Collections.singletonList(lp));
+                    if (lp.nomesCategorias != null && !lp.nomesCategorias.isEmpty()) {
+                        Set<Categoria> set = new LinkedHashSet<>(lp.nomesCategorias.size());
+                        for (String n : lp.nomesCategorias) {
+                            Categoria c = cats.get(normalizaNomeCategoria(n));
+                            if (c != null) set.add(c);
+                        }
+                        l.setCategorias(set);
+                    }
 
-		String[] partes = dataStr.split("/");
-		if (partes.length != 3)
-			throw new RegraNegocioException("Data inválida: " + dataStr);
-		int mes = Integer.parseInt(partes[1]);
-		int ano = Integer.parseInt(partes[2]);
-		if (mes < 1 || mes > 12)
-			throw new RegraNegocioException("Insira um mês válido (1-12). Valor recebido: " + mes);
-		if (String.valueOf(ano).length() != 4)
-			throw new RegraNegocioException("Insira um ano válido (AAAA). Valor recebido: " + ano);
+                    lancamentoService.salvar(l);
+                    resumo.incSucesso();
+                } catch (Exception ex) {
+                    resumo.addFalha(lp.linha, safeMessage(ex), lRaw(lp.lancamento));
+                    s2.setRollbackOnly();
+                }
+                return null;
+            });
+        }
+    }
 
-		Usuario usuarioRef = new Usuario();
-		usuarioRef.setId(usuarioIdCsv);
+    private Map<String, Categoria> resolverCategoriasDentroTransacao(List<LinhaParseada> linhas) {
+        // nomes distintos normalizados do conjunto
+        Set<String> nomesDistintos = new LinkedHashSet<>();
+        for (LinhaParseada lp : linhas) {
+            if (lp.nomesCategorias != null) {
+                for (String n : lp.nomesCategorias) {
+                    String key = normalizaNomeCategoria(n);
+                    if (!key.isEmpty()) nomesDistintos.add(key);
+                }
+            }
+        }
+        if (nomesDistintos.isEmpty()) return Collections.emptyMap();
 
-		Lancamento l = new Lancamento();
-		l.setDescricao(desc);
-		l.setValor(valor);
-		l.setTipoLancamento(tipo);
-		l.setStatusLancamento(status);
-		l.setUsuario(usuarioRef);
-		l.setMes(mes);
-		l.setAno(ano);
-		l.setDataCadastro(LocalDate.now());
-		return l;
-	}
+        // faltar no cache global?
+        Set<String> faltantes = new LinkedHashSet<>();
+        for (String nome : nomesDistintos) {
+            if (!categoriaCache.containsKey(nome)) faltantes.add(nome);
+        }
 
-	private Set<String> extrairNomesCategorias(String catRaw) {
-		if (catRaw == null || catRaw.isBlank())
-			return Collections.emptySet();
-		String[] nomes = catRaw.split("\\|");
-		Set<String> out = new LinkedHashSet<>();
-		for (String nome : nomes) {
-			String n = nome.trim();
-			if (!n.isBlank())
-				out.add(n);
-		}
-		return out;
-	}
+        // resolver faltantes no repositório dentro da transação
+        for (String nome : faltantes) {
+            Categoria existente = categoriaRepository.findByNomeIgnoreCase(nome);
+            if (existente == null) {
+                // política: criar automaticamente
+                Categoria nova = new Categoria();
+                nova.setNome(nome);
+                existente = categoriaRepository.save(nova);
+            }
+            categoriaCache.put(nome, existente);
+        }
 
-	private String obrigatorio(CSVRecord r, String h) {
-		String v = r.get(h);
-		if (v == null || v.isBlank())
-			throw new IllegalArgumentException("Campo obrigatório vazio: " + h);
-		return v.trim();
-	}
+        // montar retorno apenas do conjunto do lote
+        Map<String, Categoria> result = new HashMap<>(nomesDistintos.size());
+        for (String nome : nomesDistintos) {
+            Categoria c = categoriaCache.get(nome);
+            if (c != null) result.put(nome, c);
+        }
+        return result;
+    }
 
-	private BigDecimal parseValorMonetario(String raw) {
-		String clean = raw.replace("R$", "").replace("$", "").replace(" ", "").replace(".", "").replace(",", ".");
-		return new BigDecimal(clean);
-	}
+    private LinhaParseada mapearLinha(CSVRecord rec, Long usuarioAutenticadoId, long linhaAbsoluta) throws RegraNegocioException {
+        LinhaParseada lp = new LinhaParseada();
+        lp.linha = linhaAbsoluta;
 
-	private void persistirEmLote(List<Lancamento> lote, Map<Lancamento, Set<String>> catsPorLanc,
-			ImportResultadoDTO resumo) {
-		if (lote == null || lote.isEmpty())
-			return;
+        Lancamento l = new Lancamento();
 
-		txTemplate.execute(status -> {
-			Long uid = obterUsuarioId(lote);
+        // Descrição
+        l.setDescricao(getOrNull(rec, H_DESC));
 
-			Set<String> nomesDoLoteNormalizados = catsPorLanc.values()
-				.stream()
-				.filter(Objects::nonNull)
-				.flatMap(Set::stream)
-				.filter(Objects::nonNull)
-				.map(String::trim)
-				.filter(s -> !s.isEmpty())
-				.map(s -> s.toLowerCase(Locale.ROOT))
-				.collect(Collectors.toCollection(LinkedHashSet::new));
+        // Valor
+        l.setValor(parseValorMonetario(getOrNull(rec, H_VALOR_LANC)));
 
-			Map<String, Categoria> mapaGerenciadoPorNomeNormalizado = resolverCategoriasParaUsuario(
-					nomesDoLoteNormalizados, uid);
+        // Tipo
+        String rawTipo = getOrNull(rec, H_TIPO);
+        l.setTipoLancamento(TipoLancamento.valueOf(rawTipo.trim().toUpperCase(Locale.ROOT)));
 
-			aplicarCategoriasGerenciadas(lote, catsPorLanc, mapaGerenciadoPorNomeNormalizado);
+        // Status
+        String rawStatus = getOrNull(rec, H_STATUS);
+        l.setStatusLancamento(StatusLancamento.valueOf(rawStatus.trim().toUpperCase(Locale.ROOT)));
 
-			lancamentoService.salvarTodos(lote);
-			return null;
-		});
+        // Data
+        l.setDataCadastro(parseData(getOrNull(rec, H_DATA_LANC)));
 
-		atualizarResumo(resumo, lote.size());
-	}
+        // Usuário (somente ID aqui)
+        String rawUsuario = getOrNull(rec, H_USUARIO);
+        if (rawUsuario != null && !rawUsuario.isBlank()) {
+            lp.usuarioId = Long.parseLong(rawUsuario.trim());
+            // valida existência básica sem anexar entidade
+            if (!usuarioRepository.existsById(lp.usuarioId)) {
+                throw new RegraNegocioException("Usuário não encontrado: id=" + lp.usuarioId);
+            }
+        } else {
+            if (usuarioAutenticadoId == null) {
+                throw new RegraNegocioException("Usuário não informado (coluna USUARIO vazia e sem autenticado).");
+            }
+            lp.usuarioId = usuarioAutenticadoId;
+        }
 
-	private Long obterUsuarioId(List<Lancamento> lote) {
-		return lote.get(0).getUsuario().getId();
-	}
+        // Categorias (nomes a resolver depois)
+        lp.nomesCategorias = extrairNomesCategorias(getOrNull(rec, H_CATEGORIA));
 
-	private Map<String, Categoria> resolverCategoriasParaUsuario(Set<String> nomesNormalizados, Long uid) {
-		if (nomesNormalizados == null || nomesNormalizados.isEmpty())
-			return Collections.emptyMap();
+        lp.lancamento = l;
+        return lp;
+    }
 
-		List<String> nomesParaBusca = new ArrayList<>(nomesNormalizados);
+    private static String getOrNull(CSVRecord rec, String header) {
+        try {
+            return rec.isMapped(header) ? rec.get(header) : null;
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
 
-		List<Categoria> existentes = categoriaRepository.findByNomeIgnoreCaseInAndUsuario_Id(nomesParaBusca, uid);
-		Map<String, Categoria> porNomeNormalizado = new LinkedHashMap<>();
-		for (Categoria c : existentes) {
-			porNomeNormalizado.put(chave(c.getNome()), c);
-		}
+    private static LocalDate parseData(String raw) throws RegraNegocioException {
+        if (raw == null || raw.isBlank()) {
+            throw new RegraNegocioException("DATA_LANC vazio/ausente");
+        }
+        try {
+            return LocalDate.parse(raw.trim(), DTF_DDMMYYYY);
+        } catch (DateTimeParseException e) {
+            throw new RegraNegocioException("Data inválida: " + raw);
+        }
+    }
 
-		List<Categoria> novas = new ArrayList<>();
-		for (String nomeNorm : nomesNormalizados) {
-			if (!porNomeNormalizado.containsKey(nomeNorm)) {
-				Categoria c = new Categoria();
-				c.setNome(nomeNorm);
-				Usuario uRef = new Usuario();
-				uRef.setId(uid);
-				c.setUsuario(uRef);
-				novas.add(c);
-			}
-		}
+    private static BigDecimal parseValorMonetario(String raw) throws RegraNegocioException {
+        if (raw == null || raw.isBlank()) {
+            throw new RegraNegocioException("VALOR_LANC vazio/ausente");
+        }
+        String s = raw.trim();
+        s = s.replace("R$", "").replace("$", "").replaceAll("\\s+", "");
+        if (s.contains(",") && s.contains(".")) s = s.replace(".", "").replace(",", ".");
+        else if (s.contains(",")) s = s.replace(",", ".");
+        try {
+            return new BigDecimal(s);
+        } catch (NumberFormatException e) {
+            throw new RegraNegocioException("Valor monetário inválido: " + raw);
+        }
+    }
 
-		if (!novas.isEmpty()) {
-			List<Categoria> salvas = categoriaRepository.saveAll(novas);
-			for (Categoria c : salvas) {
-				porNomeNormalizado.put(chave(c.getNome()), c);
-			}
-		}
+    private static String normalizaNomeCategoria(String nome) {
+        return nome == null ? "" : nome.trim().toLowerCase(Locale.ROOT);
+    }
 
-		return porNomeNormalizado;
-	}
+    private static Set<String> extrairNomesCategorias(String raw) {
+        if (raw == null || raw.isBlank()) return Collections.emptySet();
+        String[] parts = raw.split("\\|");
+        Set<String> out = new LinkedHashSet<>(parts.length);
+        for (String p : parts) {
+            String n = p.trim();
+            if (!n.isEmpty()) out.add(n);
+        }
+        return out;
+    }
 
-	private String chave(String nome) {
-		return nome == null ? "" : nome.trim().toLowerCase(Locale.ROOT);
-	}
+    private static String safeMessage(Throwable t) {
+        String m = t.getMessage();
+        return (m == null || m.isBlank()) ? t.getClass().getSimpleName() : m;
+    }
 
-	private void aplicarCategoriasGerenciadas(List<Lancamento> lote, Map<Lancamento, Set<String>> catsPorLanc,
-			Map<String, Categoria> mapaPorNomeNormalizado) {
-		if (mapaPorNomeNormalizado.isEmpty())
-			return;
+    private static String joinRaw(CSVRecord rec) {
+        StringBuilder sb = new StringBuilder(128);
+        for (int i = 0; i < rec.size(); i++) {
+            if (i > 0) sb.append(',');
+            String v = rec.get(i);
+            if (v != null) sb.append(v);
+        }
+        return sb.toString();
+    }
 
-		for (Lancamento l : lote) {
-			Set<String> nomes = catsPorLanc.getOrDefault(l, Collections.emptySet());
-			if (nomes.isEmpty())
-				continue;
-
-			Set<Categoria> categorias = nomes.stream()
-				.map(n -> mapaPorNomeNormalizado.get(chave(n)))
-				.filter(Objects::nonNull)
-				.collect(Collectors.toCollection(LinkedHashSet::new));
-
-			if (!categorias.isEmpty()) {
-				l.setCategorias(categorias);
-			}
-		}
-	}
-
-	private void atualizarResumo(ImportResultadoDTO resumo, int quantidade) {
-		for (int i = 0; i < quantidade; i++) {
-			resumo.incSucesso();
-		}
-	}
-
-	private void processarLinhaCsv(CSVRecord rec, Long usuarioAutenticadoId, Map<Lancamento, Set<String>> catsPorLanc,
-			List<Lancamento> bufferLote, ImportResultadoDTO resumo, long linhaAbsoluta) {
-		try {
-			Lancamento l = mapearSemEntidades(rec, usuarioAutenticadoId);
-			Set<String> nomesCats = extrairNomesCategorias(rec.get(H_CATEGORIA));
-			catsPorLanc.put(l, nomesCats);
-			bufferLote.add(l);
-		}
-		catch (Exception e) {
-			resumo.addFalha(linhaAbsoluta, e.getMessage(), String.join(",", rec));
-		}
-	}
-
+    private static String lRaw(Lancamento l) {
+        return l == null ? "" :
+                String.valueOf(l.getDescricao());
+    }
 }
