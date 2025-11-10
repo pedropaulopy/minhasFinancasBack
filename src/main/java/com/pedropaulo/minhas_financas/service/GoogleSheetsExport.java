@@ -5,6 +5,11 @@ import com.pedropaulo.minhas_financas.exception.RegraNegocioException;
 import java.util.List;
 
 public interface GoogleSheetsExport {
-	RecordCreatedSheet criarPlanilhaCsv(List<Long> ids, String nomePlanilha, String parentFolderId) throws RegraNegocioException;
+
+	CreatedSheet criarPlanilhaCsv(List<Long> ids, String nomePlanilha, String parentFolderId)
+			throws RegraNegocioException;
+
+	record CreatedSheet(String id, String webViewLink, String webContentLink) {
+	}
 
 }

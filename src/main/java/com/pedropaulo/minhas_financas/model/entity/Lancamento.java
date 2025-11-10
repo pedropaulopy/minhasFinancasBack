@@ -16,55 +16,48 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(toBuilder = true)
-@ToString(exclude = {"usuario", "categorias"})
+@ToString(exclude = { "usuario", "categorias" })
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Lancamento {
 
-    @Id
-    @EqualsAndHashCode.Include
-    @SequenceGenerator(
-            name = "lancamento_seq_gen",
-            sequenceName = "financas.lancamento_id_seq",
-            allocationSize = 1
-    )
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "lancamento_seq_gen")
-    @Column(name = "id")
-    private Long id;
+	@Id
+	@EqualsAndHashCode.Include
+	@SequenceGenerator(name = "lancamento_seq_gen", sequenceName = "financas.lancamento_id_seq", allocationSize = 1)
+	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "lancamento_seq_gen")
+	@Column(name = "id")
+	private Long id;
 
-    @Column(name = "descricao", length = 255)
-    private String descricao;
+	@Column(name = "descricao", length = 255)
+	private String descricao;
 
-    @Column(name = "mes")
-    private Integer mes;
+	@Column(name = "mes")
+	private Integer mes;
 
-    @Column(name = "ano")
-    private Integer ano;
+	@Column(name = "ano")
+	private Integer ano;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_usuario")
-    @JsonIgnore
-    private Usuario usuario;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "id_usuario")
+	@JsonIgnore
+	private Usuario usuario;
 
-    @Column(name = "valor", precision = 19, scale = 2)
-    private BigDecimal valor;
+	@Column(name = "valor", precision = 19, scale = 2)
+	private BigDecimal valor;
 
-    @Column(name = "data_cadastro")
-    private LocalDate dataCadastro;
+	@Column(name = "data_cadastro")
+	private LocalDate dataCadastro;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "tipo", length = 20)
-    private TipoLancamento tipoLancamento;
+	@Enumerated(EnumType.STRING)
+	@Column(name = "tipo", length = 20)
+	private TipoLancamento tipoLancamento;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", length = 20)
-    private StatusLancamento statusLancamento;
+	@Enumerated(EnumType.STRING)
+	@Column(name = "status", length = 20)
+	private StatusLancamento statusLancamento;
 
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "lancamento_categoria",
-            schema = "financas",
-            joinColumns = @JoinColumn(name = "id_lancamento"),
-            inverseJoinColumns = @JoinColumn(name = "id_categoria")
-    )
-    private Set<Categoria> categorias;
+	@ManyToMany(fetch = FetchType.LAZY)
+	@JoinTable(name = "lancamento_categoria", schema = "financas", joinColumns = @JoinColumn(name = "id_lancamento"),
+			inverseJoinColumns = @JoinColumn(name = "id_categoria"))
+	private Set<Categoria> categorias;
+
 }

@@ -1,7 +1,11 @@
 package com.pedropaulo.minhas_financas.api.dto.importacao;
+
+import lombok.Getter;
+
 import java.util.ArrayList;
 import java.util.List;
 
+@Getter
 public class ImportResultadoDTO {
 
 	private long totalLidas;

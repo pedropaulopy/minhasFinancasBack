@@ -443,100 +443,6 @@ class LancamentoResourceTest {
 	}
 
 	@Test
-	void exportJson_quandoSemIds_entaoRetornaBadRequest() throws Exception {
-		Usuario usuarioAutenticado = criarUsuario();
-		when(usuarioService.obterIdUsuarioPorEmail(EMAIL)).thenReturn(usuarioAutenticado);
-		when(lancamentoService.buscar(any(Lancamento.class), anyList())).thenReturn(Collections.emptyList());
-
-		ResponseEntity<?> resposta = resource.export("json", null, null, null, null, null, null,
-				Collections.emptyList(), null, null, authentication);
-
-		assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-		verify(usuarioService).obterIdUsuarioPorEmail(EMAIL);
-		verify(lancamentoService).buscar(any(Lancamento.class), anyList());
-		verifyNoMoreInteractions(usuarioService, lancamentoService);
-	}
-
-	@Test
-	void exportJson_quandoSucesso_entaoRetornaOkComStream() throws Exception {
-		Usuario usuarioAutenticado = criarUsuario();
-		when(usuarioService.obterIdUsuarioPorEmail(EMAIL)).thenReturn(usuarioAutenticado);
-
-		Lancamento lancamento = new Lancamento();
-		lancamento.setId(10L);
-		when(lancamentoService.buscar(any(Lancamento.class), anyList())).thenReturn(List.of(lancamento));
-
-		doAnswer(invocacao -> {
-			OutputStream outputStream = invocacao.getArgument(0, OutputStream.class);
-			outputStream.write("[{\"ok\":true}]".getBytes(StandardCharsets.UTF_8));
-			return null;
-		}).when(exportService).exportarJsonPorIds(any(OutputStream.class), eq(List.of(10L)));
-
-		ResponseEntity<?> resposta = resource.export("json", "descricao", 10, 2025, null, TipoLancamento.RECEITA,
-				StatusLancamento.PENDENTE, Collections.emptyList(), null, null, authentication);
-
-		assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.OK);
-		assertThat(resposta.getHeaders().getFirst("Content-Disposition")).contains("lancamentos_JSON.json");
-		assertThat(resposta.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_JSON);
-
-		ByteArrayOutputStream conteudoGerado = new ByteArrayOutputStream();
-		((StreamingResponseBody) resposta.getBody()).writeTo(conteudoGerado);
-		assertThat(conteudoGerado.toString(StandardCharsets.UTF_8)).isEqualTo("[{\"ok\":true}]");
-
-		verify(exportService).exportarJsonPorIds(any(OutputStream.class), eq(List.of(10L)));
-		verify(usuarioService).obterIdUsuarioPorEmail(EMAIL);
-		verify(lancamentoService).buscar(any(Lancamento.class), anyList());
-		verifyNoMoreInteractions(exportService, usuarioService, lancamentoService);
-	}
-
-	@Test
-	void exportCsv_quandoSemIds_entaoRetornaBadRequest() throws Exception {
-		Usuario usuarioAutenticado = criarUsuario();
-		when(usuarioService.obterIdUsuarioPorEmail(EMAIL)).thenReturn(usuarioAutenticado);
-		when(lancamentoService.buscar(any(Lancamento.class), anyList())).thenReturn(Collections.emptyList());
-
-		ResponseEntity<?> resposta = resource.export("csv", null, null, null, null, null, null, Collections.emptyList(),
-				null, null, authentication);
-
-		assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-		verify(usuarioService).obterIdUsuarioPorEmail(EMAIL);
-		verify(lancamentoService).buscar(any(Lancamento.class), anyList());
-		verifyNoMoreInteractions(usuarioService, lancamentoService);
-	}
-
-	@Test
-	void exportCsv_quandoSucesso_entaoRetornaOkComStream() throws Exception {
-		Usuario usuarioAutenticado = criarUsuario();
-		when(usuarioService.obterIdUsuarioPorEmail(EMAIL)).thenReturn(usuarioAutenticado);
-
-		Lancamento lancamento = new Lancamento();
-		lancamento.setId(77L);
-		when(lancamentoService.buscar(any(Lancamento.class), anyList())).thenReturn(List.of(lancamento));
-
-		doAnswer(invocacao -> {
-			OutputStream outputStream = invocacao.getArgument(0, OutputStream.class);
-			outputStream.write("A,B\n1,2\n".getBytes(StandardCharsets.UTF_8));
-			return null;
-		}).when(exportService).exportarCsvPorIds(any(OutputStream.class), eq(List.of(77L)));
-
-		ResponseEntity<?> resposta = resource.export("csv", "descricao", 1, 2024, null, null, null,
-				Collections.emptyList(), null, null, authentication);
-
-		assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.OK);
-		assertThat(resposta.getHeaders().getFirst("Content-Disposition")).contains("lancamentos_CSV.csv");
-		assertThat(resposta.getHeaders().getContentType().toString()).isEqualTo("text/csv;charset=UTF-8");
-
-		ByteArrayOutputStream conteudoGerado = new ByteArrayOutputStream();
-		((StreamingResponseBody) resposta.getBody()).writeTo(conteudoGerado);
-		assertThat(conteudoGerado.toString(StandardCharsets.UTF_8)).isEqualTo("A,B\n1,2\n");
-
-		verify(exportService).exportarCsvPorIds(any(OutputStream.class), eq(List.of(77L)));
-		verify(usuarioService).obterIdUsuarioPorEmail(EMAIL);
-		verify(lancamentoService).buscar(any(Lancamento.class), anyList());
-		verifyNoMoreInteractions(exportService, usuarioService, lancamentoService);
-	}
-
-	@Test
 	void exportToGoogleSheets_quandoSucesso_entaoRetornaOk() throws Exception {
 		Usuario usuarioAutenticado = criarUsuario();
 		when(usuarioService.obterIdUsuarioPorEmail(EMAIL)).thenReturn(usuarioAutenticado);
@@ -548,7 +454,7 @@ class LancamentoResourceTest {
 		GoogleSheetsExport.CreatedSheet planilhaCriada = new GoogleSheetsExport.CreatedSheet("ID1", "VIEW", "CONTENT");
 		when(sheetsExport.criarPlanilhaCsv(eq(List.of(5L)), eq("Nome"), eq("Pasta"))).thenReturn(planilhaCriada);
 
-		ResponseEntity<?> resposta = resource.export("sheets", "descricao", 2, 2023, null, null, null,
+		ResponseEntity<?> resposta = resource.exportSheets("descricao", 2, 2023, null, null, null,
 				Collections.emptyList(), "Nome", "Pasta", authentication);
 
 		assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -572,8 +478,8 @@ class LancamentoResourceTest {
 		when(sheetsExport.criarPlanilhaCsv(eq(List.of(9L)), any(), any()))
 			.thenThrow(new RuntimeException("falha sheets"));
 
-		ResponseEntity<?> resposta = resource.export("sheets", null, null, null, null, null, null,
-				Collections.emptyList(), null, null, authentication);
+		ResponseEntity<?> resposta = resource.exportSheets(null, null, null, null, null, null, Collections.emptyList(),
+				null, null, authentication);
 
 		assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
 		assertThat(resposta.getBody()).isNotNull();

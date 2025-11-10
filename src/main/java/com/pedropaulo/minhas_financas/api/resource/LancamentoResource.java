@@ -143,88 +143,70 @@ public class LancamentoResource {
 		}
 	}
 
-    @GetMapping(value = "/export", params = "formato=csv", produces = "text/csv")
-    public ResponseEntity<StreamingResponseBody> exportCsv(
-            @RequestParam(value = "descricao", required = false) String descricao,
-            @RequestParam(value = "mes", required = false) Integer mes,
-            @RequestParam(value = "ano", required = false) Integer ano,
-            @RequestParam(value = "valor", required = false) BigDecimal valor,
-            @RequestParam(value = "tipo_lancamento", required = false) TipoLancamento tipoLancamento,
-            @RequestParam(value = "status_lancamento", required = false) StatusLancamento status,
-            @RequestParam(value = "categoriaId", required = false) List<Long> categoriaIds,
-            Authentication authentication
-    ) throws RegraNegocioException {
+	@GetMapping(value = "/export", produces = "text/csv")
+	public ResponseEntity<StreamingResponseBody> export(
+			@RequestParam(value = "tipoExport", defaultValue = "csv") String tipoExport,
+			@RequestParam(value = "descricao", required = false) String descricao,
+			@RequestParam(value = "mes", required = false) Integer mes,
+			@RequestParam(value = "ano", required = false) Integer ano,
+			@RequestParam(value = "valor", required = false) BigDecimal valor,
+			@RequestParam(value = "tipo_lancamento", required = false) TipoLancamento tipoLancamento,
+			@RequestParam(value = "status_lancamento", required = false) StatusLancamento status,
+			@RequestParam(value = "categoriaId", required = false) List<Long> categoriaIds,
+			Authentication authentication) throws RegraNegocioException {
 
-        Lancamento filtro = buildFiltro(authentication, descricao, mes, ano, valor, tipoLancamento, status);
-        List<Long> ids = resolverIdsParaExportacao(filtro, categoriaIds);
-        if (ids.isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
+		Lancamento filtro = buildFiltro(authentication, descricao, mes, ano, valor, tipoLancamento, status);
+		List<Long> ids = resolverIdsParaExportacao(filtro, categoriaIds);
+		if (ids.isEmpty()) {
+			return ResponseEntity.badRequest().build();
+		}
 
-        StreamingResponseBody body = os -> exportService.exportarCsvPorIds(os, ids);
+		StreamingResponseBody body;
+		String filename;
 
-        return ResponseEntity.ok()
-                .header("Content-Disposition", "attachment; filename=\"lancamentos.csv\"")
-                .body(body);
-    }
+		if ("json".equalsIgnoreCase(tipoExport)) {
+			body = os -> exportService.exportarJsonPorIds(os, ids);
+			filename = "lancamentos.json";
+		}
+		else {
+			body = os -> exportService.exportarCsvPorIds(os, ids);
+			filename = "lancamentos.csv";
+		}
 
-    @GetMapping(value = "/export", params = "formato=json", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<StreamingResponseBody> exportJson(
-            @RequestParam(value = "descricao", required = false) String descricao,
-            @RequestParam(value = "mes", required = false) Integer mes,
-            @RequestParam(value = "ano", required = false) Integer ano,
-            @RequestParam(value = "valor", required = false) BigDecimal valor,
-            @RequestParam(value = "tipo_lancamento", required = false) TipoLancamento tipoLancamento,
-            @RequestParam(value = "status_lancamento", required = false) StatusLancamento status,
-            @RequestParam(value = "categoriaId", required = false) List<Long> categoriaIds,
-            Authentication authentication
-    ) throws RegraNegocioException {
+		return ResponseEntity.ok()
+			.header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+			.body(body);
+	}
 
-        Lancamento filtro = buildFiltro(authentication, descricao, mes, ano, valor, tipoLancamento, status);
-        List<Long> ids = resolverIdsParaExportacao(filtro, categoriaIds);
-        if (ids.isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
+	@GetMapping(value = "/export", params = "formato=sheets", produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<?> exportSheets(@RequestParam(value = "descricao", required = false) String descricao,
+			@RequestParam(value = "mes", required = false) Integer mes,
+			@RequestParam(value = "ano", required = false) Integer ano,
+			@RequestParam(value = "valor", required = false) BigDecimal valor,
+			@RequestParam(value = "tipo_lancamento", required = false) TipoLancamento tipoLancamento,
+			@RequestParam(value = "status_lancamento", required = false) StatusLancamento status,
+			@RequestParam(value = "categoriaId", required = false) List<Long> categoriaIds,
+			@RequestParam(value = "nomePlanilha", required = false) String nomePlanilha,
+			@RequestParam(value = "folderId", required = false) String folderId, Authentication authentication)
+			throws RegraNegocioException {
 
-        StreamingResponseBody body = os -> exportService.exportarJsonPorIds(os, ids);
+		Lancamento filtro = buildFiltro(authentication, descricao, mes, ano, valor, tipoLancamento, status);
+		List<Long> ids = resolverIdsParaExportacao(filtro, categoriaIds);
+		if (ids.isEmpty()) {
+			return ResponseEntity.badRequest().build();
+		}
 
-        return ResponseEntity.ok()
-                .header("Content-Disposition", "attachment; filename=\"lancamentos.json\"")
-                .body(body);
-    }
+		try {
+			var created = sheetsExport.criarPlanilhaCsv(ids, nomePlanilha, folderId);
+			return ResponseEntity
+				.ok(new ExportSheetsResultadoDTO(created.id(), created.webViewLink(), created.webContentLink()));
+		}
+		catch (Exception e) {
+			return ResponseEntity.internalServerError().body(new ExportSheetsErrosDTO(e.getMessage()));
+		}
+	}
 
-    @GetMapping(value = "/export", params = "formato=sheets", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> exportSheets(
-            @RequestParam(value = "descricao", required = false) String descricao,
-            @RequestParam(value = "mes", required = false) Integer mes,
-            @RequestParam(value = "ano", required = false) Integer ano,
-            @RequestParam(value = "valor", required = false) BigDecimal valor,
-            @RequestParam(value = "tipo_lancamento", required = false) TipoLancamento tipoLancamento,
-            @RequestParam(value = "status_lancamento", required = false) StatusLancamento status,
-            @RequestParam(value = "categoriaId", required = false) List<Long> categoriaIds,
-            @RequestParam(value = "nomePlanilha", required = false) String nomePlanilha,
-            @RequestParam(value = "folderId", required = false) String folderId,
-            Authentication authentication
-    ) throws RegraNegocioException {
-
-        Lancamento filtro = buildFiltro(authentication, descricao, mes, ano, valor, tipoLancamento, status);
-        List<Long> ids = resolverIdsParaExportacao(filtro, categoriaIds);
-        if (ids.isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        try {
-            var created = sheetsExport.criarPlanilhaCsv(ids, nomePlanilha, folderId);
-            return ResponseEntity.ok(new ExportSheetsResultadoDTO(
-                    created.id(), created.webViewLink(), created.webContentLink()
-            ));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(new ExportSheetsErrosDTO(e.getMessage()));
-        }
-    }
-
-
-    private Lancamento buildFiltro(Authentication authentication, String descricao, Integer mes, Integer ano,
+	private Lancamento buildFiltro(Authentication authentication, String descricao, Integer mes, Integer ano,
 			BigDecimal valor, TipoLancamento tipoLancamento, StatusLancamento status) throws RegraNegocioException {
 
 		String email = authentication.getName();

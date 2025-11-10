@@ -32,6 +32,7 @@ import com.google.api.services.sheets.v4.model.UpdateDimensionPropertiesRequest;
 import com.google.api.services.sheets.v4.model.UpdateSheetPropertiesRequest;
 import com.pedropaulo.minhas_financas.exception.RegraNegocioException;
 import com.pedropaulo.minhas_financas.service.GoogleSheetsExport;
+import com.pedropaulo.minhas_financas.service.GoogleSheetsExport.CreatedSheet;
 import com.pedropaulo.minhas_financas.service.LancamentoExportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -99,7 +100,6 @@ public class GoogleSheetsExportImpl implements GoogleSheetsExport {
 
 	private final Sheets sheets;
 
-	@Override
 	public CreatedSheet criarPlanilhaCsv(List<Long> ids, String nomePlanilha, String parentFolderId)
 			throws RegraNegocioException {
 		try {
