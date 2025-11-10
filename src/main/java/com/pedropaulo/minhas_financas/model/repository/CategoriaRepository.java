@@ -13,10 +13,10 @@ import java.util.Set;
 
 public interface CategoriaRepository extends JpaRepository<Categoria, Long> {
 
-
 	Optional<Categoria> findByNomeIgnoreCaseAndUsuario(String nome, Usuario usuario);
 
 	Optional<Categoria> findByIdAndUsuario_Id(Long id, Long usuarioId);
 
-    Categoria findByNomeIgnoreCase(String nome);
+	Categoria findByNomeIgnoreCase(String nome);
+
 }

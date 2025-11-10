@@ -46,7 +46,7 @@ O backend oferece um conjunto de funcionalidades para o gerenciamento financeiro
 ## Estrutura do Projeto
 
 ```
-minhas-financas-backend/
+development/
 ├── minhasFinancas/
 ├── src/
 │   ├── main/
@@ -60,11 +60,12 @@ minhas-financas-backend/
 │   │   │               │   │   └── SecurityConfig.java
 │   │   │               │   ├── dto/
 │   │   │               │   │   ├── exportacao/
-│   │   │               │   │   │   ├── exportLancamentosDTO.java
-│   │   │               │   │   │   ├── exportLancamentosSheetsDTO.java
-│   │   │               │   │   │   ├── exportSheetsErrosDTO.java
-│   │   │               │   │   │   └── exportSheetsResultadoDTO.java
+│   │   │               │   │   │   ├── ExportLancamentosDTO.java
+│   │   │               │   │   │   ├── ExportLancamentosSheetsDTO.java
+│   │   │               │   │   │   ├── ExportSheetsErrosDTO.java
+│   │   │               │   │   │   └── ExportSheetsResultadoDTO.java
 │   │   │               │   │   ├── importacao/
+│   │   │               │   │   │   ├── AuxiliarLinhaErro.java
 │   │   │               │   │   │   └── ImportResultadoDTO.java
 │   │   │               │   │   ├── CategoriaDTO.java
 │   │   │               │   │   ├── LancamentoDTO.java
@@ -110,11 +111,13 @@ minhas-financas-backend/
 │   │   │               │   ├── LancamentoCsvImportService.java
 │   │   │               │   ├── LancamentoExportService.java
 │   │   │               │   ├── LancamentoService.java
+│   │   │               │   ├── RecordCreatedSheet.java
 │   │   │               │   ├── SecurityUserDetailsService.java
 │   │   │               │   └── UsuarioService.java
 │   │   │               └── MinhasFinancasApplication.java
 │   │   ├── resources/
-│   │       └── application.properties
+│   │       ├── application.properties
+│   │       └── client_secret.json
 │   ├── test/
 │       ├── java/
 │           ├── com/
@@ -122,9 +125,11 @@ minhas-financas-backend/
 │           │       ├── minhas_financas/
 │           │           ├── api/
 │           │           │   ├── dto/
+│           │           │       ├── AuxiliarLinhaErroDTOTest.java
 │           │           │       ├── ImportResultadoDTOTest.java
 │           │           │       └── LancamentoDTOFactory.java
 │           │           ├── exception/
+│           │           │   └── GlobalExceptionHandlerTest.java
 │           │           ├── model/
 │           │           │   ├── repository/
 │           │           │       ├── LancamentoRepositoryTest.java
@@ -135,23 +140,27 @@ minhas-financas-backend/
 │           │           │   └── UsuarioResourceTest.java
 │           │           ├── service/
 │           │           │   ├── impl/
+│           │           │   │   ├── GoogleSheetsExportImplTest.java
 │           │           │   │   ├── JwtServiceImplTest.java
 │           │           │   │   ├── LancamentoCsvImportServiceImplTest.java
+│           │           │   │   ├── LancamentoExportServiceImplTest.java
 │           │           │   │   └── SecurityUserDetailsServiceImplTest.java
+│           │           │   ├── testUtils/
+│           │           │   │   ├── AuthMocks.java
+│           │           │   │   └── StubUserDetailsService.java
 │           │           │   ├── CategoriaServiceTest.java
 │           │           │   ├── LancamentoServiceTest.java
 │           │           │   └── UsuarioServiceTest.java
 │           │           ├── JwtTokenFilterTest.java
 │           │           └── MinhasFinancasApplicationTest.java
 │           ├── resources/
+│               ├── TestNoOpTransactionTemplate.java
 │               └── application-test.properties
 ├── HELP.md
 ├── README.md
 ├── mvnw
 ├── mvnw.cmd
 └── pom.xml
-
-
 ```
 
 ---
@@ -214,6 +223,344 @@ Responsabilidades principais:
 - Delegar a execução para a **camada de serviço** e retornar respostas adequadas (HTTP 2xx/4xx/5xx).
 
 ---
+
+## Endpoints
+
+A API RESTful do Minhas Finanças oferece um conjunto completo de endpoints para gerenciar usuários, categorias e lançamentos financeiros.
+
+### Autenticação
+
+Todos os endpoints, exceto os de autenticação e registro de usuário, são protegidos e exigem um token JWT no cabeçalho `Authorization`.
+
+**Formato do Cabeçalho:**
+`Authorization: Bearer <seu-token-jwt>`
+
+---
+
+### Usuário (`/api/usuarios`)
+
+#### `POST /api/usuarios/autenticar`
+
+Autentica um usuário e retorna um token JWT.
+
+**Request Body:**
+```json
+{
+  "email": "usuario@exemplo.com",
+  "senha": "sua-senha"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "nome": "Nome do Usuário",
+  "email": "usuario@exemplo.com",
+  "token": "seu-token-jwt"
+}
+```
+
+---
+
+#### `POST /api/usuarios`
+
+Registra um novo usuário no sistema.
+
+**Request Body:**
+```json
+{
+  "nome": "Novo Usuário",
+  "email": "novo@exemplo.com",
+  "senha": "sua-senha-forte"
+}
+```
+
+**Response (201-Created):**
+```json
+{
+    "id": 1,
+    "nome": "Novo Usuário",
+    "email": "novo@exemplo.com",
+    "dataCadastro": "2025-11-10T14:30:00"
+}
+```
+
+---
+
+#### `GET /api/usuarios/{id}/saldo`
+
+Obtém o saldo total (receitas - despesas) de um usuário.
+
+**Path Variable:**
+- `{id}`: ID do usuário.
+
+**Response (200 OK):**
+```json
+1500.75
+```
+
+---
+
+### Categorias (`/api/categorias`)
+
+#### `POST /api/categorias`
+
+Cria uma nova categoria para o usuário autenticado.
+
+**Request Body:**
+```json
+{
+  "nome": "Alimentação"
+}
+```
+
+**Response (201-Created):**
+```json
+{
+    "id": 1,
+    "nome": "Alimentação",
+    "usuario": {
+        "id": 10,
+        "nome": "Nome do Usuário"
+    }
+}
+```
+
+---
+
+#### `GET /api/categorias`
+
+Busca categorias do usuário autenticado.
+
+**Query Params (Opcionais):**
+- `nome`: Filtra categorias pelo nome.
+
+**Response (200 OK):**
+```json
+[
+    {
+        "id": 1,
+        "nome": "Alimentação"
+    },
+    {
+        "id": 2,
+        "nome": "Transporte"
+    }
+]
+```
+
+---
+
+#### `PUT /api/categorias/{id}`
+
+Atualiza o nome de uma categoria.
+
+**Path Variable:**
+- `{id}`: ID da categoria.
+
+**Request Body:**
+```json
+{
+  "nome": "Alimentação e Mercado"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+    "id": 1,
+    "nome": "Alimentação e Mercado"
+}
+```
+
+---
+
+#### `DELETE /api/categorias/{id}`
+
+Deleta uma categoria.
+
+**Path Variable:**
+- `{id}`: ID da categoria.
+
+**Response (204 No Content)**
+
+---
+
+### Lançamentos (`/api/lancamentos`)
+
+#### `POST /api/lancamentos`
+
+Cria um novo lançamento (receita ou despesa).
+
+**Request Body:**
+```json
+{
+    "descricao": "Salário Mensal",
+    "mes": 11,
+    "ano": 2025,
+    "valor": 5000.00,
+    "tipoLancamento": "RECEITA",
+    "statusLancamento": "EFETIVADO",
+    "categoriaId": [1]
+}
+```
+
+**Response (201-Created):**
+```json
+{
+    "id": 101,
+    "descricao": "Salário Mensal",
+    "mes": 11,
+    "ano": 2025,
+    "valor": 5000.00,
+    "tipoLancamento": "RECEITA",
+    "statusLancamento": "EFETIVADO",
+    "usuario": { "id": 1, "nome": "Nome do Usuário" },
+    "categorias": [{ "id": 1, "nome": "Salário" }]
+}
+```
+
+---
+
+#### `GET /api/lancamentos`
+
+Busca lançamentos com base em filtros.
+
+**Query Params (Opcionais):**
+- `descricao`: Filtra por descrição.
+- `mes`: Filtra por mês (1-12).
+- `ano`: Filtra por ano.
+- `valor`: Filtra por valor exato.
+- `tipo_lancamento`: `RECEITA` ou `DESPESA`.
+- `status_lancamento`: `PENDENTE`, `EFETIVADO` ou `CANCELADO`.
+- `categoriaId`: Lista de IDs de categorias.
+
+**Response (200 OK):**
+```json
+[
+    {
+        "id": 101,
+        "descricao": "Salário Mensal",
+        "valor": 5000.00,
+        "tipoLancamento": "RECEITA",
+        "statusLancamento": "EFETIVADO"
+    }
+]
+```
+
+---
+
+#### `PUT /api/lancamentos/{id}`
+
+Atualiza um lançamento existente.
+
+**Path Variable:**
+- `{id}`: ID do lançamento.
+
+**Request Body:**
+```json
+{
+    "descricao": "Salário Mensal Atualizado",
+    "valor": 5100.00
+}
+```
+
+**Response (200 OK):**
+```json
+{
+    "id": 101,
+    "descricao": "Salário Mensal Atualizado",
+    "valor": 5100.00,
+    "statusLancamento": "PENDENTE"
+}
+```
+
+---
+
+#### `PUT /api/lancamentos/{id}/atualizar-status`
+
+Atualiza o status de um lançamento.
+
+**Path Variable:**
+- `{id}`: ID do lançamento.
+
+**Request Body:**
+```json
+{
+  "status": "EFETIVADO"
+}
+```
+
+**Response (204 No Content)**
+
+---
+
+#### `DELETE /api/lancamentos/{id}`
+
+Deleta um lançamento.
+
+**Path Variable:**
+- `{id}`: ID do lançamento.
+
+**Response (204 No Content)**
+
+---
+
+#### `POST /api/lancamentos/upload`
+
+Importa lançamentos em lote a partir de um arquivo CSV.
+
+**Request (multipart/form-data):**
+- `file`: Arquivo CSV com os lançamentos.
+
+**Response (200 OK ou 207 Multi-Status):**
+```json
+{
+    "totalLidas": 10,
+    "totalSucesso": 8,
+    "totalFalha": 2,
+    "erros": [
+        {
+            "linha": 5,
+            "motivo": "Valor inválido",
+            "raw": "Compra,abc,RECEITA,..."
+        }
+    ]
+}
+```
+
+---
+
+#### `GET /api/lancamentos/export`
+
+Exporta lançamentos em formato CSV ou JSON.
+
+**Query Params:**
+- `tipoExport`: `csv` (padrão) ou `json`.
+- Outros filtros de busca de lançamento (opcionais).
+
+**Response (200 OK):**
+- O endpoint retorna um arquivo para download (`lancamentos.csv` ou `lancamentos.json`).
+
+---
+
+#### `GET /api/lancamentos/export?formato=sheets`
+
+Exporta lançamentos diretamente para uma nova planilha no Google Sheets.
+
+**Query Params:**
+- `nomePlanilha`: Nome da planilha a ser criada (opcional).
+- `folderId`: ID da pasta no Google Drive onde a planilha será criada (opcional).
+- Outros filtros de busca de lançamento (opcionais).
+
+**Response (200 OK):**
+```json
+{
+    "id": "id-da-planilha-no-google-drive",
+    "webViewLink": "link-para-visualizar-a-planilha",
+    "webContentLink": "link-para-download-direto"
+}
+```
 
 ## Banco de Dados
 
